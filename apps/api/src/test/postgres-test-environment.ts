@@ -1,6 +1,7 @@
 import { execSync } from 'node:child_process';
 import { resolve } from 'node:path';
 
+import { DEFAULT_SLA_POLICIES } from '@ethics/shared';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import { PrismaClient } from '@prisma/client';
 
@@ -8,6 +9,26 @@ export interface PostgresTestEnvironment {
   prisma: PrismaClient;
   databaseUrl: string;
   teardown: () => Promise<void>;
+}
+
+async function seedDefaultSlaPolicies(prisma: PrismaClient): Promise<void> {
+  for (const policy of DEFAULT_SLA_POLICIES) {
+    await prisma.slaPolicyConfig.upsert({
+      where: { taskType: policy.taskType },
+      create: {
+        taskType: policy.taskType,
+        slaDuration: policy.slaDuration,
+        slaUnit: policy.slaUnit,
+        warningThresholdHours: policy.warningThresholdHours,
+        escalationRole: policy.escalationRole,
+      },
+      update: {
+        slaDuration: policy.slaDuration,
+        slaUnit: policy.slaUnit,
+        isActive: true,
+      },
+    });
+  }
 }
 
 export async function createPostgresTestEnvironment(): Promise<PostgresTestEnvironment> {
@@ -36,6 +57,8 @@ export async function createPostgresTestEnvironment(): Promise<PostgresTestEnvir
       },
     },
   });
+
+  await seedDefaultSlaPolicies(prisma);
 
   return {
     prisma,

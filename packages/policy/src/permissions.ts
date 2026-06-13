@@ -30,6 +30,7 @@ export const PermissionCode = {
   // Task
   TASK_LIST: 'task:list',
   TASK_COMPLETE: 'task:complete',
+  TASK_DELEGATE: 'task:delegate',
 
   // Secure messaging (internal)
   SECURE_MESSAGE_READ: 'secure_message:read',

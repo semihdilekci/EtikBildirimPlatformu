@@ -16,6 +16,8 @@ export interface TransitionDefinition {
   requiresReason?: boolean;
   /** Sistem/otomatik geçiş — rol kontrolü atlanır */
   isSystemCommand?: boolean;
+  /** SYSTEM actor ile tetiklenebilir (sessiz kabul / oy birliği) */
+  systemAllowed?: boolean;
   closesCase?: boolean;
 }
 
@@ -67,4 +69,12 @@ export interface TransitionValidationContext {
   metadata?: Record<string, unknown>;
   correlationId?: string;
   idempotencyKey?: string;
+}
+
+export interface CreatedTransitionRecord {
+  id: string;
+  fromState: string;
+  toState: string;
+  command: string;
+  transitionedAt: Date;
 }

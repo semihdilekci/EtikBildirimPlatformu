@@ -177,7 +177,7 @@ describe('TransitionValidators', () => {
     ).toThrow(DomainException);
   });
 
-  it('create_decision_draft memberVotesComplete stub zorunlu', () => {
+  it('create_decision_draft sync validator metadata gerektirmez', () => {
     const definition = resolveTransition(
       CaseState.MEMBER_APPROVAL,
       WorkflowCommand.CREATE_DECISION_DRAFT,
@@ -200,7 +200,7 @@ describe('TransitionValidators', () => {
         },
         metadata: {},
       }),
-    ).toThrow(DomainException);
+    ).not.toThrow();
   });
 
   it('submit_to_board_review decisionDocumentId zorunlu', () => {

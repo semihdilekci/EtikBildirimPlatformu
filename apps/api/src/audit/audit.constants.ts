@@ -48,6 +48,10 @@ export const AUDIT_EVENT_CATEGORY_BY_TYPE: Record<AuditEventTypeCode, AuditEvent
   [AuditEventType.REPORT_SUBMITTED]: AuditEventCategory.INTAKE,
   [AuditEventType.REPORT_ATTACHMENT_UPLOADED]: AuditEventCategory.INTAKE,
   [AuditEventType.TRACKING_ATTACHMENT_UPLOADED]: AuditEventCategory.TRACKING,
+  [AuditEventType.TASK_COMPLETED]: AuditEventCategory.WORKFLOW,
+  [AuditEventType.TASK_DELEGATED]: AuditEventCategory.WORKFLOW,
+  [AuditEventType.DECISION_VOTE_CAST]: AuditEventCategory.WORKFLOW,
+  [AuditEventType.SILENT_ACCEPTANCE_CREATED]: AuditEventCategory.WORKFLOW,
 };
 
 export const AUDIT_EVENT_DEFAULT_SEVERITY: Record<AuditEventTypeCode, AuditSeverityCode> = {
@@ -74,4 +78,8 @@ export const AUDIT_EVENT_DEFAULT_SEVERITY: Record<AuditEventTypeCode, AuditSever
   [AuditEventType.REPORT_SUBMITTED]: AuditSeverity.INFO,
   [AuditEventType.REPORT_ATTACHMENT_UPLOADED]: AuditSeverity.INFO,
   [AuditEventType.TRACKING_ATTACHMENT_UPLOADED]: AuditSeverity.INFO,
+  [AuditEventType.TASK_COMPLETED]: AuditSeverity.INFO,
+  [AuditEventType.TASK_DELEGATED]: AuditSeverity.INFO,
+  [AuditEventType.DECISION_VOTE_CAST]: AuditSeverity.INFO,
+  [AuditEventType.SILENT_ACCEPTANCE_CREATED]: AuditSeverity.INFO,
 };

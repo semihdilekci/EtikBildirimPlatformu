@@ -1,5 +1,5 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
-import { ErrorCode, WorkflowCommand } from '@ethics/shared';
+import { AuditActorType, ErrorCode, WorkflowCommand } from '@ethics/shared';
 import { isClearanceSufficient } from '@ethics/policy';
 import type { ClearanceLevel } from '@ethics/shared';
 
@@ -19,7 +19,7 @@ export class TransitionValidators {
   }
 
   private validateClearance(context: TransitionValidationContext): void {
-    if (context.definition.isSystemCommand) {
+    if (context.definition.isSystemCommand || this.isSystemActorAllowed(context)) {
       return;
     }
 
@@ -37,7 +37,7 @@ export class TransitionValidators {
   private validateRole(context: TransitionValidationContext): void {
     const { definition, actor } = context;
 
-    if (definition.isSystemCommand) {
+    if (definition.isSystemCommand || this.isSystemActorAllowed(context)) {
       return;
     }
 
@@ -114,10 +114,6 @@ export class TransitionValidators {
       case WorkflowCommand.MEMBER_OBJECTION:
         this.requireMetadataString(context.metadata, 'objectionSummary');
         return;
-      case WorkflowCommand.CREATE_DECISION_DRAFT:
-        // Faz 6'da DecisionVote tablosu; şimdilik metadata stub.
-        this.requireMetadataBoolean(context.metadata, 'memberVotesComplete');
-        return;
       case WorkflowCommand.SUBMIT_TO_BOARD_REVIEW:
         this.requireMetadataUserId(context.metadata, 'decisionDocumentId');
         return;
@@ -174,5 +170,11 @@ export class TransitionValidators {
         HttpStatus.UNPROCESSABLE_ENTITY,
       );
     }
+  }
+
+  private isSystemActorAllowed(context: TransitionValidationContext): boolean {
+    return (
+      context.actor.type === AuditActorType.SYSTEM && context.definition.systemAllowed === true
+    );
   }
 }

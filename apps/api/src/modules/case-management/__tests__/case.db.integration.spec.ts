@@ -225,9 +225,10 @@ describe('Case DB integration (Testcontainers)', () => {
     it('append-only: TRUNCATE case_transitions DB hatası verir', async () => {
       await createTransition('immutable-truncate');
 
-      await expect(environment.prisma.$executeRaw`TRUNCATE TABLE case_transitions`).rejects.toThrow(
-        /CASE_TRANSITION_APPEND_ONLY_VIOLATION/,
-      );
+      // tasks.created_by_transition_id FK nedeniyle CASCADE gerekir (Faz 6).
+      await expect(
+        environment.prisma.$executeRaw`TRUNCATE TABLE case_transitions CASCADE`,
+      ).rejects.toThrow(/CASE_TRANSITION_APPEND_ONLY_VIOLATION/);
     });
   });
 

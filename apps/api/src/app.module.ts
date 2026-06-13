@@ -19,6 +19,8 @@ import { DevCryptoAuditModule } from './modules/dev-crypto-audit/dev-crypto-audi
 import { HealthModule } from './modules/health/health.module.js';
 import { IntakeModule } from './modules/intake/intake.module.js';
 import { CaseManagementModule } from './modules/case-management/case-management.module.js';
+import { DecisionModule } from './modules/decision/decision.module.js';
+import { TaskModule } from './modules/task/task.module.js';
 import { TrackingModule } from './modules/tracking/tracking.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 
@@ -70,6 +72,8 @@ import { PrismaModule } from './prisma/prisma.module.js';
     AuthModule,
     IntakeModule,
     CaseManagementModule,
+    DecisionModule,
+    TaskModule,
     TrackingModule,
     AuthorizationModule,
   ],

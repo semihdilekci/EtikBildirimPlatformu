@@ -19,6 +19,7 @@ export const ROLE_PERMISSION_MAP: Readonly<Record<RoleCode, ReadonlySet<Permissi
     PermissionCode.DOCUMENT_DOWNLOAD,
     PermissionCode.TASK_LIST,
     PermissionCode.TASK_COMPLETE,
+    PermissionCode.TASK_DELEGATE,
     PermissionCode.SECURE_MESSAGE_READ,
     PermissionCode.SECURE_MESSAGE_WRITE,
     PermissionCode.AUTH_SESSION_READ,
@@ -33,6 +34,7 @@ export const ROLE_PERMISSION_MAP: Readonly<Record<RoleCode, ReadonlySet<Permissi
     PermissionCode.DOCUMENT_DOWNLOAD,
     PermissionCode.TASK_LIST,
     PermissionCode.TASK_COMPLETE,
+    PermissionCode.TASK_DELEGATE,
     PermissionCode.AUTH_SESSION_READ,
   ]),
 
@@ -44,6 +46,7 @@ export const ROLE_PERMISSION_MAP: Readonly<Record<RoleCode, ReadonlySet<Permissi
     PermissionCode.DOCUMENT_DOWNLOAD,
     PermissionCode.TASK_LIST,
     PermissionCode.TASK_COMPLETE,
+    PermissionCode.TASK_DELEGATE,
     PermissionCode.AUTH_SESSION_READ,
   ]),
 
@@ -55,6 +58,7 @@ export const ROLE_PERMISSION_MAP: Readonly<Record<RoleCode, ReadonlySet<Permissi
     PermissionCode.DOCUMENT_DOWNLOAD,
     PermissionCode.TASK_LIST,
     PermissionCode.TASK_COMPLETE,
+    PermissionCode.TASK_DELEGATE,
     PermissionCode.AUTH_SESSION_READ,
   ]),
 
@@ -67,6 +71,7 @@ export const ROLE_PERMISSION_MAP: Readonly<Record<RoleCode, ReadonlySet<Permissi
     PermissionCode.DOCUMENT_DOWNLOAD,
     PermissionCode.TASK_LIST,
     PermissionCode.TASK_COMPLETE,
+    PermissionCode.TASK_DELEGATE,
     PermissionCode.AUTH_SESSION_READ,
   ]),
 
@@ -79,6 +84,7 @@ export const ROLE_PERMISSION_MAP: Readonly<Record<RoleCode, ReadonlySet<Permissi
     PermissionCode.DOCUMENT_DOWNLOAD,
     PermissionCode.TASK_LIST,
     PermissionCode.TASK_COMPLETE,
+    PermissionCode.TASK_DELEGATE,
     PermissionCode.AUTH_SESSION_READ,
   ]),
 

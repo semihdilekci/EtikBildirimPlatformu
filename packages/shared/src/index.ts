@@ -75,6 +75,45 @@ export type { MalwareScanStatusCode } from './enums/malware-scan-status.enum.js'
 export { CaseState, CASE_STATE_VALUES } from './enums/case-state.enum.js';
 export type { CaseStateCode } from './enums/case-state.enum.js';
 
+export { TaskType, TASK_TYPE_VALUES } from './enums/task-type.enum.js';
+export type { TaskTypeCode } from './enums/task-type.enum.js';
+
+export { SlaUnit, SLA_UNIT_VALUES } from './enums/sla-unit.enum.js';
+export type { SlaUnitCode } from './enums/sla-unit.enum.js';
+
+export {
+  BusinessCalendarDayType,
+  BUSINESS_CALENDAR_DAY_TYPE_VALUES,
+} from './enums/business-calendar-day-type.enum.js';
+export type { BusinessCalendarDayTypeCode } from './enums/business-calendar-day-type.enum.js';
+
+export {
+  DEFAULT_SLA_POLICIES,
+  type DefaultSlaPolicyDefinition,
+} from './constants/default-sla-policies.js';
+
+export { TaskStatus, TASK_STATUS_VALUES } from './enums/task-status.enum.js';
+export type { TaskStatusCode } from './enums/task-status.enum.js';
+
+export { TaskEventType, TASK_EVENT_TYPE_VALUES } from './enums/task-event-type.enum.js';
+export type { TaskEventTypeCode } from './enums/task-event-type.enum.js';
+
+export { VoteType, VOTE_TYPE_VALUES } from './enums/vote-type.enum.js';
+export type { VoteTypeCode } from './enums/vote-type.enum.js';
+
+export {
+  MEMBER_APPROVAL_SILENT_ACCEPTANCE_HOURS,
+  MEMBER_APPROVAL_SILENT_ACCEPTANCE_MS,
+} from './constants/silent-acceptance.constants.js';
+
+export { TASK_TYPE_LABELS, getTaskTypeLabel } from './constants/task-type-labels.js';
+
+export {
+  TASK_COMPLETION_COMMAND,
+  TASK_TYPES_WITHOUT_COMPLETION,
+  resolveTaskCompletionCommand,
+} from './constants/task-completion-commands.js';
+
 export { WorkflowCommand, WORKFLOW_COMMAND_VALUES } from './enums/workflow-command.enum.js';
 export type { WorkflowCommandCode } from './enums/workflow-command.enum.js';
 

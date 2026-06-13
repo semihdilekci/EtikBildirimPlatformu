@@ -685,7 +685,7 @@ Session'lara bölünmeli — tek session'da yazılamaz:
 
 ### Faz 6 — Task Management + SLA + Decision
 
-- **Durum:** planlandı (Cursor faz kuralı hazır)
+- **Durum:** tamamlandı (İterasyon 6 — E2E journey + task/SLA/decision coverage gate; Human Gate merge öncesi)
 
 #### Kapsam
 
@@ -757,7 +757,7 @@ Session'lara bölünmeli — tek session'da yazılamaz:
 
 - **Rule:** `.cursor/rules/56-phase-06-task-sla.mdc`
 - **Branch:** `feature/F6-task-sla` (`48-git-phase-branch.mdc`)
-- **Durum:** planlandı
+- **Durum:** tamamlandı (Human Gate merge öncesi)
 
 #### İterasyon planı (agent)
 

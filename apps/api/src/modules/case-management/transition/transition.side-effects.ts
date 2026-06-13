@@ -1,17 +1,18 @@
 import { Injectable } from '@nestjs/common';
+import { ModuleRef } from '@nestjs/core';
 import type { Prisma } from '@prisma/client';
 import { NotificationChannel, NotificationEventType } from '@ethics/shared';
 
 import { NotificationEventPublisher } from '../../../notification/notification-event.publisher.js';
-import type { TransitionTaskStub, TransitionValidationContext } from './transition.types.js';
+import { lazyProviderToken } from '../../../common/utils/lazy-provider-token.util.js';
+import type { TaskService } from '../../task/task.service.js';
+import type {
+  TransitionTaskStub,
+  TransitionValidationContext,
+  CreatedTransitionRecord,
+} from './transition.types.js';
 
-export interface CreatedTransitionRecord {
-  id: string;
-  fromState: string;
-  toState: string;
-  command: string;
-  transitionedAt: Date;
-}
+export type { CreatedTransitionRecord };
 
 /**
  * Side-effect port — Faz 6'da task oluşturma; Faz 8'de notification dispatch dolar.
@@ -26,7 +27,27 @@ export interface TransitionSideEffectPort {
 
 @Injectable()
 export class TransitionSideEffects implements TransitionSideEffectPort {
-  constructor(private readonly notificationPublisher: NotificationEventPublisher) {}
+  private taskServiceRef: TaskService | null = null;
+
+  constructor(
+    private readonly notificationPublisher: NotificationEventPublisher,
+    private readonly moduleRef: ModuleRef,
+  ) {}
+
+  wireTaskServiceForTests(taskService: TaskService): void {
+    this.taskServiceRef = taskService;
+  }
+
+  private get taskService(): TaskService {
+    if (this.taskServiceRef) {
+      return this.taskServiceRef;
+    }
+
+    return this.moduleRef.get(
+      lazyProviderToken<TaskService>('../../task/task.service.js', 'TaskService'),
+      { strict: false },
+    );
+  }
 
   async apply(
     tx: Prisma.TransactionClient,
@@ -49,6 +70,9 @@ export class TransitionSideEffects implements TransitionSideEffectPort {
       });
     }
 
-    return [];
+    return this.taskService.createTasksForTransition(tx, context.caseEntity, transition, {
+      type: context.actor.type,
+      userId: context.actor.userId ?? null,
+    });
   }
 }

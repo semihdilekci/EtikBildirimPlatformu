@@ -76,3 +76,39 @@ export {
   type CaseTransitionItem,
   type CaseTransitionListResponse,
 } from './case/index.js';
+
+export {
+  listTasksQuerySchema,
+  taskListItemSchema,
+  taskPaginationSchema,
+  listTasksResponseSchema,
+  completeTaskBodySchema,
+  taskDetailSchema,
+  taskDetailCaseSchema,
+  completeTaskResponseSchema,
+  taskDetailResponseSchema,
+  delegateTaskBodySchema,
+  delegateTaskResponseSchema,
+  type ListTasksQuery,
+  type TaskListItem,
+  type TaskPagination,
+  type ListTasksResponse,
+  type CompleteTaskBody,
+  type TaskDetail,
+  type TaskDetailCase,
+  type CompleteTaskResponse,
+  type TaskDetailResponse,
+  type DelegateTaskBody,
+  type DelegateTaskResponse,
+} from './task/index.js';
+
+export {
+  castVoteBodySchema,
+  castVoteResponseSchema,
+  decisionVoteListItemSchema,
+  listDecisionVotesResponseSchema,
+  type CastVoteBody,
+  type CastVoteResponse,
+  type DecisionVoteListItem,
+  type ListDecisionVotesResponse,
+} from './decision/index.js';

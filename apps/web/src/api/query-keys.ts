@@ -17,4 +17,9 @@ export const queryKeys = {
     detail: (caseId: string) => ['cases', 'detail', caseId] as const,
     transitions: (caseId: string) => ['cases', 'transitions', caseId] as const,
   },
+  tasks: {
+    all: () => ['tasks'] as const,
+    list: (filters: unknown) => ['tasks', 'list', filters] as const,
+    detail: (taskId: string) => ['tasks', 'detail', taskId] as const,
+  },
 } as const;

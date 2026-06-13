@@ -11,6 +11,7 @@ import {
   ReportStatus,
   ReportSubCategory,
   Role,
+  VoteType,
   WORKFLOW_VERSION,
   WorkflowCommand,
 } from '@ethics/shared';
@@ -25,17 +26,12 @@ import {
   type PostgresTestEnvironment,
 } from '../../../test/postgres-test-environment.js';
 import { CaseService } from '../case.service.js';
-import { createCaseServiceForTests } from './case-service.test-factory.js';
-import { TransitionSideEffects } from '../transition/transition.side-effects.js';
-import { TransitionService } from '../transition/transition.service.js';
-import { TransitionValidators } from '../transition/transition.validators.js';
-import { AuditEventPublisher } from '../../../audit/audit-event.publisher.js';
-import { NotificationEventPublisher } from '../../../notification/notification-event.publisher.js';
+import { createWorkflowBundleForTests } from './case-service.test-factory.js';
 
 describe('Stage 3 + 4 transition matrix (Testcontainers)', () => {
   let environment: PostgresTestEnvironment;
   let caseService: CaseService;
-  let transitionService: TransitionService;
+  let transitionService: ReturnType<typeof createWorkflowBundleForTests>['transitionService'];
   let companyId: string;
   let secretaryUser: AuthenticatedUser;
   let boardChairUser: AuthenticatedUser;
@@ -46,15 +42,9 @@ describe('Stage 3 + 4 transition matrix (Testcontainers)', () => {
     companyId = await seedSyntheticCompany(environment.prisma);
 
     const prismaService = environment.prisma as unknown as PrismaService;
-    const auditPublisher = new AuditEventPublisher();
-    const notificationPublisher = new NotificationEventPublisher();
-    transitionService = new TransitionService(
-      prismaService,
-      new TransitionValidators(),
-      new TransitionSideEffects(notificationPublisher),
-      auditPublisher,
-    );
-    caseService = createCaseServiceForTests(prismaService);
+    const bundle = createWorkflowBundleForTests(prismaService);
+    caseService = bundle.caseService;
+    transitionService = bundle.transitionService;
 
     secretaryUser = await createRoleUser(environment.prisma, {
       email: 'stage34-secretary@ethics.local',
@@ -171,14 +161,77 @@ describe('Stage 3 + 4 transition matrix (Testcontainers)', () => {
     });
   }
 
+  async function seedUnanimousVotes(caseId: string): Promise<void> {
+    const transition = await environment.prisma.caseTransition.create({
+      data: {
+        caseId,
+        fromState: CaseState.AGENDA_READY,
+        toState: CaseState.MEMBER_APPROVAL,
+        command: WorkflowCommand.SUBMIT_TO_MEMBER_APPROVAL,
+        actorType: AuditActorType.USER,
+        performedByUserId: secretaryUser.id,
+        idempotencyKey: randomUUID(),
+      },
+    });
+
+    let members = await environment.prisma.user.findMany({
+      where: {
+        isActive: true,
+        rolesAssigned: {
+          some: {
+            roleCode: Role.COUNCIL_MEMBER,
+            isActive: true,
+          },
+        },
+      },
+      select: { id: true },
+    });
+
+    if (members.length === 0) {
+      const member = await environment.prisma.user.create({
+        data: {
+          email: `stage34-vote-member-${randomUUID()}@ethics.local`,
+          displayName: 'Stage34 Vote Member',
+          oidcSubjectId: `stage34-vote-member-${randomUUID()}`,
+          clearanceLevel: ClearanceLevel.STRICTLY_CONFIDENTIAL,
+          provisionedAt: new Date(),
+        },
+      });
+
+      await environment.prisma.userRole.create({
+        data: {
+          userId: member.id,
+          roleCode: Role.COUNCIL_MEMBER,
+          assignedBy: secretaryUser.id,
+          reason: 'Stage 3+4 vote seed',
+        },
+      });
+
+      members = [{ id: member.id }];
+    }
+
+    for (const member of members) {
+      await environment.prisma.decisionVote.create({
+        data: {
+          caseId,
+          transitionId: transition.id,
+          voterUserId: member.id,
+          voteType: VoteType.APPROVE,
+        },
+      });
+    }
+  }
+
   async function advanceToBoardApproved(caseId: string): Promise<void> {
+    await seedUnanimousVotes(caseId);
+
     await caseService.executeTransition(
       secretaryUser,
       caseId,
       {
         command: WorkflowCommand.CREATE_DECISION_DRAFT,
         idempotencyKey: randomUUID(),
-        metadata: { memberVotesComplete: true },
+        metadata: {},
       },
       randomUUID(),
     );
@@ -208,6 +261,7 @@ describe('Stage 3 + 4 transition matrix (Testcontainers)', () => {
 
   it('member_approval → create_decision_draft → decision_draft', async () => {
     const caseId = await createCaseAtState(CaseState.MEMBER_APPROVAL, secretaryUser.id);
+    await seedUnanimousVotes(caseId);
 
     const result = await caseService.executeTransition(
       secretaryUser,
@@ -215,7 +269,7 @@ describe('Stage 3 + 4 transition matrix (Testcontainers)', () => {
       {
         command: WorkflowCommand.CREATE_DECISION_DRAFT,
         idempotencyKey: randomUUID(),
-        metadata: { memberVotesComplete: true },
+        metadata: {},
       },
       randomUUID(),
     );
@@ -542,7 +596,7 @@ describe('Stage 3 + 4 transition matrix (Testcontainers)', () => {
     expect(auditRecord).toBeTruthy();
   });
 
-  it('negatif: create_decision_draft memberVotesComplete eksik → CASE_PRECONDITION_FAILED', async () => {
+  it('negatif: create_decision_draft oy birliği yok → DECISION_UNANIMITY_NOT_MET', async () => {
     const caseId = await createCaseAtState(CaseState.MEMBER_APPROVAL, secretaryUser.id);
 
     await expect(
@@ -556,7 +610,7 @@ describe('Stage 3 + 4 transition matrix (Testcontainers)', () => {
         },
         randomUUID(),
       ),
-    ).rejects.toMatchObject({ code: ErrorCode.CASE_PRECONDITION_FAILED });
+    ).rejects.toMatchObject({ code: ErrorCode.DECISION_UNANIMITY_NOT_MET });
   });
 
   it('negatif: submit_to_board_review decisionDocumentId eksik → VALIDATION_FAILED', async () => {

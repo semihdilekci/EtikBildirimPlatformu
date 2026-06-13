@@ -47,10 +47,21 @@ const secretaryActor = {
 };
 
 function createTransitionService(prisma: Record<string, unknown>) {
-  return new TransitionService(
+  const taskService = {
+    createTasksForTransition: vi.fn(() => Promise.resolve([])),
+  };
+  const decisionService = {
+    isUnanimityComplete: vi.fn(() => Promise.resolve(false)),
+  };
+  const sideEffects = new TransitionSideEffects(new NotificationEventPublisher(), {
+    get: () => undefined,
+  } as never);
+  sideEffects.wireTaskServiceForTests(taskService as never);
+
+  const transitionService = new TransitionService(
     prisma as never,
     new TransitionValidators(),
-    new TransitionSideEffects(new NotificationEventPublisher()),
+    sideEffects,
     {
       publish: vi.fn(() =>
         Promise.resolve({
@@ -60,7 +71,13 @@ function createTransitionService(prisma: Record<string, unknown>) {
         }),
       ),
     } as unknown as AuditEventPublisher,
+    {
+      get: () => undefined,
+    } as never,
   );
+  transitionService.wireDecisionServiceForTests(decisionService as never);
+
+  return transitionService;
 }
 
 function buildTransactionHandler(

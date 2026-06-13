@@ -3,6 +3,8 @@ import { createMalwareScannerFromEnv } from './malware/clamav-scanner.adapter.js
 import { ClamAvScanJob } from './jobs/clamav-scan.job.js';
 import { AuditChainVerifyJob } from './jobs/audit-chain-verify.job.js';
 import { AuditOutboxDispatchJob } from './jobs/audit-outbox-dispatch.job.js';
+import { SilentAcceptanceJob } from './jobs/silent-acceptance.job.js';
+import { invokeSilentAcceptanceRunner } from './jobs/silent-acceptance.runner-invoker.js';
 import { createObjectStorageFromEnv } from './storage/local-object-storage.adapter.js';
 
 const DEFAULT_POLL_INTERVAL_MS = 5_000;
@@ -11,6 +13,30 @@ export interface WorkerRunResult {
   dispatch: Awaited<ReturnType<AuditOutboxDispatchJob['processPendingBatch']>>;
   chainVerify: Awaited<ReturnType<AuditChainVerifyJob['run']>>;
   clamAvScan: Awaited<ReturnType<ClamAvScanJob['processPendingBatch']>>;
+  silentAcceptance: Awaited<ReturnType<SilentAcceptanceJob['runIfDue']>>;
+}
+
+let silentAcceptanceJob: SilentAcceptanceJob | null = null;
+
+function getSilentAcceptanceJob(): SilentAcceptanceJob {
+  if (!silentAcceptanceJob) {
+    silentAcceptanceJob = new SilentAcceptanceJob(async () => {
+      try {
+        return await invokeSilentAcceptanceRunner();
+      } catch (error) {
+        console.warn(
+          JSON.stringify({
+            worker: 'silent-acceptance',
+            level: 'warn',
+            err: error instanceof Error ? error.message : String(error),
+          }),
+        );
+        return { casesScanned: 0, silentVotesCreated: 0, casesAdvanced: 0 };
+      }
+    });
+  }
+
+  return silentAcceptanceJob;
 }
 
 export async function runWorkerJobsOnce(): Promise<WorkerRunResult> {
@@ -22,12 +48,13 @@ export async function runWorkerJobsOnce(): Promise<WorkerRunResult> {
     createObjectStorageFromEnv(),
     createMalwareScannerFromEnv(),
   );
+  const silentAcceptance = await getSilentAcceptanceJob().runIfDue();
 
   const dispatch = await dispatchJob.processPendingBatch();
   const chainVerify = await chainVerifyJob.run();
   const clamAvScan = await clamAvScanJob.processPendingBatch();
 
-  return { dispatch, chainVerify, clamAvScan };
+  return { dispatch, chainVerify, clamAvScan, silentAcceptance };
 }
 
 export async function main(): Promise<void> {
@@ -55,7 +82,10 @@ export async function main(): Promise<void> {
       if (
         result.dispatch.processed > 0 ||
         !result.chainVerify.valid ||
-        result.clamAvScan.processed > 0
+        result.clamAvScan.processed > 0 ||
+        (result.silentAcceptance !== null &&
+          (result.silentAcceptance.silentVotesCreated > 0 ||
+            result.silentAcceptance.casesAdvanced > 0))
       ) {
         console.warn(JSON.stringify({ worker: 'audit-jobs', result }));
       }

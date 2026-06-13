@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { PERMISSION_CODE_VALUES, ROLE_VALUES } from '@ethics/policy';
-import { Role } from '@ethics/shared';
+import { BusinessCalendarDayType, DEFAULT_SLA_POLICIES, Role } from '@ethics/shared';
 import { seedRoleTestUsers, seedWorkflowCaseStub } from '@ethics/test-fixtures';
 
 const prisma = new PrismaClient();
@@ -62,6 +62,81 @@ const DEFAULT_SYSTEM_SETTINGS = [
   },
 ] as const;
 
+const SAMPLE_BUSINESS_CALENDAR_ENTRIES = [
+  {
+    date: '2025-01-01',
+    dayType: BusinessCalendarDayType.OFFICIAL_HOLIDAY,
+    description: 'Yılbaşı',
+  },
+  {
+    date: '2025-04-23',
+    dayType: BusinessCalendarDayType.OFFICIAL_HOLIDAY,
+    description: 'Ulusal Egemenlik ve Çocuk Bayramı',
+  },
+  {
+    date: '2025-05-01',
+    dayType: BusinessCalendarDayType.OFFICIAL_HOLIDAY,
+    description: 'Emek ve Dayanışma Günü',
+  },
+  {
+    date: '2025-05-19',
+    dayType: BusinessCalendarDayType.OFFICIAL_HOLIDAY,
+    description: 'Atatürkü Anma, Gençlik ve Spor Bayramı',
+  },
+  {
+    date: '2025-12-31',
+    dayType: BusinessCalendarDayType.HALF_DAY,
+    description: 'Yılsonu yarım gün (sentetik seed)',
+  },
+  {
+    date: '2026-01-02',
+    dayType: BusinessCalendarDayType.COMPANY_HOLIDAY,
+    description: 'Holding yılbaşı arası (sentetik seed)',
+  },
+] as const;
+
+async function seedSlaPolicies(): Promise<void> {
+  for (const policy of DEFAULT_SLA_POLICIES) {
+    await prisma.slaPolicyConfig.upsert({
+      where: { taskType: policy.taskType },
+      create: {
+        taskType: policy.taskType,
+        slaDuration: policy.slaDuration,
+        slaUnit: policy.slaUnit,
+        warningThresholdHours: policy.warningThresholdHours,
+        escalationRole: policy.escalationRole,
+      },
+      update: {
+        slaDuration: policy.slaDuration,
+        slaUnit: policy.slaUnit,
+        warningThresholdHours: policy.warningThresholdHours,
+        escalationRole: policy.escalationRole,
+        isActive: true,
+      },
+    });
+  }
+}
+
+async function seedBusinessCalendarEntries(): Promise<void> {
+  for (const entry of SAMPLE_BUSINESS_CALENDAR_ENTRIES) {
+    const date = new Date(`${entry.date}T12:00:00+03:00`);
+
+    await prisma.businessCalendarEntry.upsert({
+      where: { date },
+      create: {
+        date,
+        dayType: entry.dayType,
+        description: entry.description,
+      },
+      update: {
+        dayType: entry.dayType,
+        description: entry.description,
+        isActive: true,
+      },
+    });
+  }
+}
+
 async function seedKvkkConsentVersion(): Promise<void> {
   await prisma.kvkkConsentVersion.upsert({
     where: { versionCode: KVKK_VERSION_CODE },
@@ -100,6 +175,8 @@ async function seedSystemSettings(): Promise<void> {
 async function main(): Promise<void> {
   await seedKvkkConsentVersion();
   await seedSystemSettings();
+  await seedSlaPolicies();
+  await seedBusinessCalendarEntries();
   const { companyId, usersByRole } = await seedRoleTestUsers(prisma, {
     superadminOidcSub: SUPERADMIN_OIDC_SUB,
   });
@@ -116,7 +193,7 @@ async function main(): Promise<void> {
 main()
   .then(() => {
     console.warn(
-      '[seed] Faz 5 seed tamamlandı (7 rol test kullanıcısı, sentetik şirket, KVKK v1, system_settings, workflow case stub).',
+      '[seed] Faz 6 seed tamamlandı (SLA politikaları, iş günü takvimi, 7 rol test kullanıcısı, sentetik şirket, KVKK v1, system_settings, workflow case stub).',
     );
   })
   .catch((error: unknown) => {

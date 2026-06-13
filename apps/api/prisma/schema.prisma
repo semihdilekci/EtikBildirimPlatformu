@@ -43,6 +43,9 @@ model User {
   casesAsRapporteur  Case[] @relation("CaseRapporteur")
   casesAsActionOwner Case[] @relation("CaseActionOwner")
   caseTransitions    CaseTransition[]
+  tasks                Task[]
+  taskEvents           TaskEvent[]
+  decisionVotes        DecisionVote[]
 
   @@index([companyId], map: "idx_users_company_id")
   @@index([isActive], map: "idx_users_is_active")
@@ -322,6 +325,43 @@ model KvkkConsentVersion {
   @@map("kvkk_consent_versions")
 }
 
+model SlaPolicyConfig {
+  id                       String   @id @default(cuid())
+  taskType                 String   @unique @map("task_type")
+  slaDuration              Int      @map("sla_duration")
+  slaUnit                  String   @default("business_days") @map("sla_unit")
+  warningThresholdHours    Int      @default(24) @map("warning_threshold_hours")
+  dailyOverdueNotification Boolean  @default(true) @map("daily_overdue_notification")
+  escalationRole           String   @default("council_secretary") @map("escalation_role")
+  isActive                 Boolean  @default(true) @map("is_active")
+  versionNo                Int      @default(1) @map("version_no")
+  approvedBy               String?  @map("approved_by")
+  auditEventId             String?  @map("audit_event_id")
+  createdAt                DateTime @default(now()) @map("created_at")
+  updatedAt                DateTime @updatedAt @map("updated_at")
+
+  tasks Task[]
+
+  @@map("sla_policy_configs")
+}
+
+model BusinessCalendarEntry {
+  id           String   @id @default(cuid())
+  date         DateTime @db.Date
+  dayType      String   @map("day_type")
+  description  String?
+  isActive     Boolean  @default(true) @map("is_active")
+  versionNo    Int      @default(1) @map("version_no")
+  approvedBy   String?  @map("approved_by")
+  auditEventId String?  @map("audit_event_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@unique([date], map: "idx_business_calendar_date")
+  @@index([dayType], map: "idx_business_calendar_day_type")
+  @@map("business_calendar_entries")
+}
+
 // ─── Audit (append-only + chain hash DB triggers — Faz 3 İterasyon 3) ───────
 
 model AuditOutbox {
@@ -426,6 +466,8 @@ model Case {
   assignedRapporteur  User?            @relation("CaseRapporteur", fields: [assignedRapporteurId], references: [id])
   assignedActionOwner User?            @relation("CaseActionOwner", fields: [assignedActionOwnerId], references: [id])
   transitions         CaseTransition[]
+  tasks                 Task[]
+  decisionVotes         DecisionVote[]
 
   @@index([currentState], map: "idx_cases_current_state")
   @@index([companyId], map: "idx_cases_company_id")
@@ -453,9 +495,97 @@ model CaseTransition {
 
   case            Case  @relation(fields: [caseId], references: [id])
   performedByUser User? @relation(fields: [performedByUserId], references: [id])
+  tasksCreated    Task[]
+  decisionVotes   DecisionVote[]
 
   @@index([caseId], map: "idx_ct_case_id")
   @@index([transitionedAt], map: "idx_ct_transitioned_at")
   @@index([toState], map: "idx_ct_to_state")
   @@map("case_transitions")
+}
+
+// ─── Task Management (Faz 6 — İterasyon 1) ────────────────────────────────────
+
+model Task {
+  id                     String    @id @default(cuid())
+  caseId                 String    @map("case_id")
+  taskType               String    @map("task_type")
+  status                 String    @default("PENDING")
+  assignedRole           String    @map("assigned_role")
+  assignedUserId         String?   @map("assigned_user_id")
+  assignedCompanyId      String?   @map("assigned_company_id")
+  assignedFunctionId     String?   @map("assigned_function_id")
+  dueAt                  DateTime? @map("due_at")
+  slaPolicyId            String?   @map("sla_policy_id")
+  slaPausedAt            DateTime? @map("sla_paused_at")
+  slaPauseReason         String?   @map("sla_pause_reason")
+  createdByTransitionId  String    @map("created_by_transition_id")
+  completedByUserId      String?   @map("completed_by_user_id")
+  completedAt            DateTime? @map("completed_at")
+  outcome                String?
+  delegatedFromTaskId    String?   @map("delegated_from_task_id")
+  visibilityPolicyId     String?   @map("visibility_policy_id")
+  createdAt              DateTime  @default(now()) @map("created_at")
+  updatedAt              DateTime  @updatedAt @map("updated_at")
+  createdBy              String?   @map("created_by")
+
+  case                 Case             @relation(fields: [caseId], references: [id])
+  createdByTransition  CaseTransition   @relation(fields: [createdByTransitionId], references: [id])
+  assignedUser         User?            @relation(fields: [assignedUserId], references: [id])
+  slaPolicy            SlaPolicyConfig? @relation(fields: [slaPolicyId], references: [id])
+  delegatedFromTask    Task?            @relation("TaskDelegation", fields: [delegatedFromTaskId], references: [id])
+  delegatedTasks       Task[]           @relation("TaskDelegation")
+  events               TaskEvent[]
+
+  @@index([caseId], map: "idx_tasks_case_id")
+  @@index([status], map: "idx_tasks_status")
+  @@index([assignedUserId], map: "idx_tasks_assigned_user")
+  @@index([taskType], map: "idx_tasks_task_type")
+  @@index([dueAt], map: "idx_tasks_due_at")
+  @@index([createdByTransitionId], map: "idx_tasks_created_by_transition")
+  @@map("tasks")
+}
+
+model TaskEvent {
+  id           String   @id @default(cuid())
+  taskId       String   @map("task_id")
+  eventType    String   @map("event_type")
+  actorType    String   @map("actor_type")
+  actorUserId  String?  @map("actor_user_id")
+  metadataJson Json?    @map("metadata_json")
+  occurredAt   DateTime @default(now()) @map("occurred_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  task      Task  @relation(fields: [taskId], references: [id])
+  actorUser User? @relation(fields: [actorUserId], references: [id])
+
+  @@index([taskId], map: "idx_task_events_task_id")
+  @@index([occurredAt], map: "idx_task_events_occurred_at")
+  @@map("task_events")
+}
+
+// ─── Decision Votes (Faz 6 — İterasyon 4) ───────────────────────────────────
+
+model DecisionVote {
+  id                  String   @id @default(cuid())
+  caseId              String   @map("case_id")
+  transitionId        String   @map("transition_id")
+  voterUserId         String   @map("voter_user_id")
+  voteType            String   @map("vote_type")
+  reasonText          String?  @map("reason_text")
+  encryptionMetadata  Json?    @map("encryption_metadata")
+  isSilentAcceptance  Boolean  @default(false) @map("is_silent_acceptance")
+  createdBySystem     Boolean  @default(false) @map("created_by_system")
+  votedAt             DateTime @default(now()) @map("voted_at")
+  auditEventId        String?  @map("audit_event_id")
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  case       Case           @relation(fields: [caseId], references: [id])
+  transition CaseTransition @relation(fields: [transitionId], references: [id])
+  voter      User           @relation(fields: [voterUserId], references: [id])
+
+  @@unique([transitionId, voterUserId], map: "idx_dv_transition_voter_unique")
+  @@index([caseId], map: "idx_dv_case_id")
+  @@index([transitionId], map: "idx_dv_transition_id")
+  @@map("decision_votes")
 }

@@ -6,6 +6,11 @@ import { CryptoService } from '../../../crypto/crypto.service.js';
 import { LocalKeyManagementAdapter } from '../../../crypto/key-management.adapter.js';
 import { NotificationEventPublisher } from '../../../notification/notification-event.publisher.js';
 import type { PrismaService } from '../../../prisma/prisma.service.js';
+import { DecisionService } from '../../decision/decision.service.js';
+import { SilentAcceptanceHandler } from '../../decision/silent-acceptance.handler.js';
+import { BusinessCalendarService } from '../../task/sla/business-calendar.service.js';
+import { SlaCalculatorService } from '../../task/sla/sla-calculator.service.js';
+import { TaskService } from '../../task/task.service.js';
 import { CaseAvailableActionsService } from '../case-available-actions.service.js';
 import { CaseReportDecryptService } from '../case-report-decrypt.service.js';
 import { CaseService } from '../case.service.js';
@@ -23,23 +28,94 @@ function buildTestCryptoService(): CryptoService {
   return new CryptoService(new LocalKeyManagementAdapter(envService));
 }
 
-export function createCaseServiceForTests(prismaService: PrismaService): CaseService {
+function createWorkflowBundle(prismaService: PrismaService): {
+  caseService: CaseService;
+  taskService: TaskService;
+  transitionService: TransitionService;
+  decisionService: DecisionService;
+  silentAcceptanceHandler: SilentAcceptanceHandler;
+} {
   const auditPublisher = new AuditEventPublisher();
   const notificationPublisher = new NotificationEventPublisher();
+  const policyScopeService = new PolicyScopeService();
+  const businessCalendarService = new BusinessCalendarService(prismaService);
+  const slaCalculatorService = new SlaCalculatorService(businessCalendarService);
+  const cryptoService = buildTestCryptoService();
+  const transitionSideEffects = new TransitionSideEffects(notificationPublisher, {
+    get: () => undefined,
+  } as unknown as import('@nestjs/core').ModuleRef);
+  const taskService = new TaskService(
+    prismaService,
+    policyScopeService,
+    auditPublisher,
+    slaCalculatorService,
+    { get: () => undefined } as unknown as import('@nestjs/core').ModuleRef,
+  );
   const transitionService = new TransitionService(
     prismaService,
     new TransitionValidators(),
-    new TransitionSideEffects(notificationPublisher),
+    transitionSideEffects,
     auditPublisher,
+    { get: () => undefined } as unknown as import('@nestjs/core').ModuleRef,
   );
-
-  return new CaseService(
+  transitionSideEffects.wireTaskServiceForTests(taskService);
+  const decisionService = new DecisionService(
     prismaService,
-    new PolicyScopeService(),
+    policyScopeService,
+    auditPublisher,
+    cryptoService,
+    { get: () => undefined } as unknown as import('@nestjs/core').ModuleRef,
+  );
+  taskService.wireTransitionServiceForTests(transitionService);
+  transitionService.wireDecisionServiceForTests(decisionService);
+  decisionService.wireTransitionServiceForTests(transitionService);
+  const silentAcceptanceHandler = new SilentAcceptanceHandler(prismaService, decisionService);
+
+  const caseService = new CaseService(
+    prismaService,
+    policyScopeService,
     new FieldMaskingService(),
     transitionService,
     auditPublisher,
-    new CaseReportDecryptService(buildTestCryptoService()),
+    new CaseReportDecryptService(cryptoService),
     new CaseAvailableActionsService(),
   );
+
+  return {
+    caseService,
+    taskService,
+    transitionService,
+    decisionService,
+    silentAcceptanceHandler,
+  };
+}
+
+export function createWorkflowBundleForTests(prismaService: PrismaService): {
+  caseService: CaseService;
+  taskService: TaskService;
+  transitionService: TransitionService;
+  decisionService: DecisionService;
+  silentAcceptanceHandler: SilentAcceptanceHandler;
+} {
+  return createWorkflowBundle(prismaService);
+}
+
+export function createCaseServiceForTests(prismaService: PrismaService): CaseService {
+  return createWorkflowBundle(prismaService).caseService;
+}
+
+export function createTaskServiceForTests(prismaService: PrismaService): TaskService {
+  return createWorkflowBundle(prismaService).taskService;
+}
+
+export function createDecisionServiceForTests(prismaService: PrismaService): DecisionService {
+  return createWorkflowBundle(prismaService).decisionService;
+}
+
+export function createSilentAcceptanceHandlerForTests(
+  prismaService: PrismaService,
+  clock?: { now(): Date },
+): SilentAcceptanceHandler {
+  const bundle = createWorkflowBundle(prismaService);
+  return new SilentAcceptanceHandler(prismaService, bundle.decisionService, clock);
 }

@@ -68,6 +68,7 @@ export const TRANSITION_MAP: TransitionMap = {
     [WorkflowCommand.CREATE_DECISION_DRAFT]: {
       toState: CaseState.DECISION_DRAFT,
       requiredRoles: [Role.COUNCIL_SECRETARY],
+      systemAllowed: true,
     },
     [WorkflowCommand.MEMBER_OBJECTION]: {
       toState: CaseState.MEMBER_APPROVAL,
