@@ -1,12 +1,12 @@
 ---
-description: '[Faz 0] Monorepo scaffold — 2 iterasyon/chat (workspaces+tooling → docker+CI+hooks). Mesajda "Faz 0 — İterasyon M" belirt.'
+description: '[Faz 0] Monorepo scaffold — 2 iterasyon/chat (workspaces+tooling → CI+hooks). Mesajda "Faz 0 — İterasyon M" belirt.'
 ---
 
 # Faz 0: Monorepo Scaffold
 
 ## Goal
 
-pnpm workspaces + Turborepo ile monorepo iskeleti kurulur: `apps/{api,web,worker}`, `packages/{shared,dto,policy}`, paylaşımlı ESLint/Prettier/TypeScript config, Docker Compose (PostgreSQL 16, MinIO, ClamAV), Husky + commitlint + lint-staged, minimal CI pipeline. NestJS/React implementasyonu yok — yalnızca placeholder entrypoint'ler. Faz sonunda `pnpm install`, `pnpm lint`, `pnpm typecheck` green; `docker compose up` servisleri healthy.
+pnpm workspaces + Turborepo ile monorepo iskeleti kurulur: `apps/{api,web,worker}`, `packages/{shared,dto,policy}`, paylaşımlı ESLint/Prettier/TypeScript config, Husky + commitlint + lint-staged, minimal CI pipeline. NestJS/React implementasyonu yok — yalnızca placeholder entrypoint'ler. Faz sonunda `pnpm install`, `pnpm lint`, `pnpm typecheck` green. Altyapı cloud-only: RDS + S3 + KMS + ClamAV (ECS) AWS üzerinden; local Docker Compose yok.
 
 Detay: `Docs/10_IMPLEMENTATION_ROADMAP.md` §Faz 0.
 
@@ -43,33 +43,32 @@ Tek sohbette tamamlanmaz. Her session: `@50-phase-00-monorepo-scaffold` + mesajd
 - `Docs/09_DEV_WORKFLOW.md` §6–7 (tooling, local setup özet)
 - `Docs/10_IMPLEMENTATION_ROADMAP.md` §Faz 0 Kapsam
 
-**Bu iterasyonda yok:** Docker Compose, Husky, CI workflow, NestJS/React boilerplate, Prisma.
+**Bu iterasyonda yok:** Husky, CI workflow, NestJS/React boilerplate, Prisma.
 
 **Stop:** [ ] `pnpm install` başarılı; [ ] `pnpm lint` green; [ ] `pnpm typecheck` green; [ ] `@ethics/*` scope tutarlı. PR/onay → İterasyon 2.
 
 ---
 
-### İterasyon 2 — Docker, Hooks & CI
+### İterasyon 2 — Hooks & CI
 
-**Hedef:** Dev altyapısı ve kalite gate'leri aktif; onboarding dokümantasyonu hazır.
+**Hedef:** Kalite gate'leri aktif; cloud-only onboarding dokümantasyonu hazır.
 
 **Yapılacaklar:**
 
-1. `docker-compose.yml` — postgres:16, minio, **clamav** (zorunlu — unutma)
-2. Husky: pre-commit (lint-staged) + commit-msg (commitlint)
-3. `commitlint.config.js` — Conventional Commits (`Docs/09` §2)
-4. `.github/workflows/pr-check.yml` — install, lint, typecheck, build (minimal)
-5. `.env.example` kök + `apps/api/.env.example` + `apps/web/.env.example` (değer yok, isim+açıklama)
-6. `README.md` — clone, install, docker compose, pnpm scripts özeti
+1. Husky: pre-commit (lint-staged) + commit-msg (commitlint)
+2. `commitlint.config.js` — Conventional Commits (`Docs/09` §2)
+3. `.github/workflows/pr-check.yml` — install, lint, typecheck, build (minimal)
+4. `.env.example` kök + `apps/api/.env.example` + `apps/web/.env.example` (değer yok, isim+açıklama; AWS RDS/S3/KMS/ClamAV ECS)
+5. `README.md` — clone, install, AWS cloud env, pnpm scripts özeti
 
 **Minimum bağlam:**
 
-- `Docs/09_DEV_WORKFLOW.md` §6 Local Setup, §7 Tooling, §8.1 CI Pipeline (minimal subset)
+- `Docs/09_DEV_WORKFLOW.md` §4 Cloud-Only, §6 Local Setup, §7 Tooling, §8.1 CI Pipeline (minimal subset)
 - `Docs/10_IMPLEMENTATION_ROADMAP.md` §Faz 0 Deliverable, Human Gate, Vibe Coding Risk
 
-**Bu iterasyonda yok:** NestJS bootstrap, React App, Prisma schema, gerçek `pnpm dev` server start.
+**Bu iterasyonda yok:** NestJS bootstrap, React App, Prisma schema, gerçek `pnpm dev` server start, `docker-compose.yml` (cloud-only karar).
 
-**Stop:** [ ] `docker compose up -d` + `docker compose ps` healthy; [ ] CI workflow dosyası geçerli YAML; [ ] örnek conventional commit commitlint'ten geçer (developer doğrular). PR/onay → İterasyon 3.
+**Stop:** [ ] CI workflow dosyası geçerli YAML; [ ] örnek conventional commit commitlint'ten geçer (developer doğrular). PR/onay → İterasyon 3.
 
 ---
 
@@ -108,7 +107,7 @@ packages/shared/   @ethics/shared
 packages/dto/      @ethics/dto
 packages/policy/   @ethics/policy
 packages/eslint-config/
-turbo.json, pnpm-workspace.yaml, docker-compose.yml
+turbo.json, pnpm-workspace.yaml
 .github/workflows/pr-check.yml
 ```
 
@@ -131,7 +130,7 @@ Tam klasör ağacı: `Docs/04_BACKEND_SPEC.md` Bölüm Klasör Yapısı (Faz 1'd
 ### Avoid
 
 - 6 ortamlı aşırı CI, dummy package fazlası
-- ClamAV'sız docker-compose
+- Local Docker Compose (cloud-only karar)
 - npm/yarn
 - `@ethics-platform/*` gibi tutarsız scope
 
@@ -146,15 +145,15 @@ Tam klasör ağacı: `Docs/04_BACKEND_SPEC.md` Bölüm Klasör Yapısı (Faz 1'd
 
 ### DevOps & Tooling
 
-- [ ] Docker: postgres + minio + clamav healthy
 - [ ] Husky + commitlint + lint-staged aktif
-- [ ] `.env.example` kök + api + web
+- [ ] `.env.example` kök + api + web (AWS cloud env isimleri)
 - [ ] `pr-check.yml` minimal CI tanımlı
-- [ ] README onboarding bölümü
+- [ ] README cloud-only onboarding bölümü
+- [ ] `docker-compose.yml` yok (cloud-only)
 
 ### Human Gate
 
-- [ ] Developer: `docker compose up` + commitlint örnek commit doğruladı
+- [ ] Developer: commitlint örnek commit doğruladı
 - [ ] İlk PR squash merge → develop (insan onayı)
 
 ### Manual smoke test
@@ -162,13 +161,12 @@ Tam klasör ağacı: `Docs/04_BACKEND_SPEC.md` Bölüm Klasör Yapısı (Faz 1'd
 ```bash
 pnpm install
 pnpm lint && pnpm typecheck
-docker compose up -d && docker compose ps
 ```
 
 ## Explicit Don'ts
 
 - Nx, Lerna veya alternatif monorepo tool seçme
-- ClamAV container'ını atlama
+- Local Docker Compose ekleme (cloud-only)
 - Faz 1 kodunu (NestJS, Prisma, OIDC) bu faza ekleme
 - `main`'e direct push
 - Gerçek secret değeri `.env.example`'a yazma
@@ -179,7 +177,6 @@ docker compose up -d && docker compose ps
 | --- | --- |
 | Agent Nx/Lerna seçer | Prompt + Explicit Don'ts; Turborepo zorunlu |
 | Scope tutarsızlığı | `@ethics/*` tek convention |
-| ClamAV unutulur | Done Definition + İterasyon 2 checklist |
 | Aşırı boilerplate | Minimal CI; placeholder app'ler |
 
 ---

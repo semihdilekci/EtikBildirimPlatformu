@@ -15,12 +15,11 @@ Detaylı spesifikasyon: [`Docs/`](Docs/) klasörü.
 
 - Node.js ≥ 22 (`.nvmrc` ile sabitlenmiş)
 - pnpm ≥ 9
-- Docker + Docker Compose
+- AWS hesabı (RDS, S3, KMS; Faz 7+ ClamAV ECS)
 
 ```bash
 node --version    # ≥ 22
 pnpm --version    # ≥ 9
-docker compose version
 ```
 
 ## Kurulum
@@ -41,23 +40,34 @@ cp apps/web/.env.example apps/web/.env.local
 
 Secret değerleri team password manager'dan alın. `.env.example` dosyaları yalnızca isim ve açıklama içerir.
 
-## Altyapı (Local Dev)
+## Altyapı (AWS Cloud)
 
-PostgreSQL, MinIO ve ClamAV servislerini başlatın:
+Tüm ortamlar **cloud-only**: local Docker Compose yok. Geliştirme makinesi yalnızca `pnpm dev` çalıştırır; veri ve servisler AWS üzerindedir.
+
+| Servis                  | AWS bileşeni                   | Env                    |
+| ----------------------- | ------------------------------ | ---------------------- |
+| Veritabanı              | RDS PostgreSQL                 | `DATABASE_URL`         |
+| Object storage          | S3                             | `AWS_*`, `S3_BUCKET_*` |
+| Şifreleme               | KMS                            | `AWS_KMS_KEY_ALIAS_*`  |
+| Malware tarama (Faz 7+) | ClamAV on ECS (private subnet) | `CLAMAV_HOST`          |
+
+`apps/api/.env.local` örneği:
 
 ```bash
-docker compose up -d
-docker compose ps
+DATABASE_URL=postgresql://USER:PASSWORD@your-db.region.rds.amazonaws.com:5432/ethics_dev?schema=public
+
+AWS_REGION=eu-west-1
+AWS_ACCESS_KEY_ID=<IAM access key>
+AWS_SECRET_ACCESS_KEY=<IAM secret key>
+S3_BUCKET_DOCUMENTS=etikbildirim-documents-dev
+S3_BUCKET_QUARANTINE=etikbildirim-quarantine-dev
+
+# Faz 7+ — AWS ECS ClamAV internal endpoint
+# CLAMAV_HOST=clamav-dev.internal:3310
+# CLAMAV_TIMEOUT_MS=30000
 ```
 
-| Servis   | Adres            | Amaç                                                                                |
-| -------- | ---------------- | ----------------------------------------------------------------------------------- |
-| postgres | `localhost:5432` | PostgreSQL (`ethics_dev`) — port meşgulse `POSTGRES_PORT=5433 docker compose up -d` |
-| minio    | `localhost:9000` | S3-compatible object storage                                                        |
-| minio UI | `localhost:9001` | MinIO console                                                                       |
-| clamav   | `localhost:3310` | Malware scanner                                                                     |
-
-> ClamAV ilk başlatmada virus definition indirdiği için healthy olması birkaç dakika sürebilir.
+S3 bucket'ları AWS Console'da oluşturun (public access kapalı, SSE-KMS önerilir). `S3_ENDPOINT` tanımlamayın.
 
 ## pnpm Scripts
 

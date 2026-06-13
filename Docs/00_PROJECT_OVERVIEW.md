@@ -127,11 +127,11 @@ MVP platformu responsive web uygulaması olarak teslim edilir; native mobil uygu
 
 **Tech stack:** Node.js v22 LTS + NestJS v11 + TypeScript (strict mode, `any` yasak), React 19 + Vite, PostgreSQL, Prisma ORM + prisma migrate, pnpm workspaces monorepo. Modular monolith mimari; mikroservis MVP dışıdır.
 
-**Altyapı:** Local development + AWS production hedefi. Kesin AWS region, VPC/topology, compute runtime, KMS/HSM ve secret manager seçimi production öncesi Bilgi Güvenliği onayıyla kesinleşir. Bu onay alınmadan doküman/PII içeren production deployment yapılamaz.
+**Altyapı:** Cloud-only — local Docker Compose yok. Development, staging ve production AWS üzerinde: RDS PostgreSQL, S3, KMS; ClamAV ECS Fargate (self-hosted, KVKK uyumlu). Kesin AWS region, VPC/topology ve secret manager seçimi production öncesi Bilgi Güvenliği onayıyla kesinleşir.
 
 **Encryption altyapısı:** AWS KMS customer-managed keys + AWS Secrets Manager önerilen yöndür. Kesin ürün/servis kararı ve key rotation prosedürü production öncesi kesinleşir. Bu karar alınmadan per-field encryption ve doküman encryption altyapısı canlıya açılamaz.
 
-**Dosya yükleme güvenliği:** MVP başlangıç değerleri: PDF, DOCX, XLSX, JPG, JPEG, PNG, MP4, MOV, ZIP, TXT; tek dosya 50 MB, toplam 200 MB. ClamAV (self-hosted, KVKK uyumlu) ile malware taraması. Değerler system_settings'ten konfigüre edilebilir.
+**Dosya yükleme güvenliği:** MVP başlangıç değerleri: PDF, DOCX, XLSX, JPG, JPEG, PNG, MP4, MOV, ZIP, TXT; tek dosya 50 MB, toplam 200 MB. ClamAV (AWS ECS üzerinde self-hosted, KVKK uyumlu) ile malware taraması. Değerler system_settings'ten konfigüre edilebilir.
 
 **HR/SAP entegrasyonu:** ABAC attribute'ları ve rol türetme için nightly read-only senkron modeli tasarlanmıştır. Kesin teknik sözleşme (kaynak endpoint, alan mapping, unique key, schedule) production öncesi HR/SAP ekibiyle kesinleşir. Gerçek entegrasyon sözleşmesi kapanmadan canlı yetki otomasyonu açılamaz; MVP'de mock/sentetik veriyle ilerlenebilir.
 

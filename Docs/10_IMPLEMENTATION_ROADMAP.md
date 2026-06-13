@@ -155,34 +155,34 @@ Solo developer + agent olduğu için paralelleştirme avantajı sınırlıdır. 
 - Root config: `.nvmrc` (Node 22), `.editorconfig`, `.gitignore`, `turbo.json`, `pnpm-workspace.yaml`
 - `@ethics/eslint-config` paylaşımlı ESLint config paketi
 - Prettier + Husky + lint-staged + commitlint setup
-- `docker-compose.yml` — PostgreSQL 16, MinIO, ClamAV
+- `docker-compose.yml` kaldırıldı — cloud-only (RDS, S3, ClamAV on ECS)
 - `.github/workflows/pr-check.yml` — minimal lint + typecheck + build
 - `.env.example` kök + her app altında placeholder
 - `README.md` + onboarding section
 
 #### Agent Kick-off Materyali
 
-- `09_DEV_WORKFLOW` — monorepo workspace yapısı, tool versions, commit convention, Docker Compose servisleri, tooling tablosu
+- `09_DEV_WORKFLOW` — monorepo workspace yapısı, tool versions, commit convention, cloud-only AWS env, tooling tablosu
 
-Tek session yeterli. Prompt: "Bu dokümana uygun monorepo iskeleti kur. Apps ve packages yapısını oluştur. Her app'te boş `index.ts` placeholder; her package'te `index.ts` + `package.json`. Docker Compose servisleri, Husky hooks ve commitlint aktif."
+Tek session yeterli. Prompt: "Bu dokümana uygun monorepo iskeleti kur. Apps ve packages yapısını oluştur. Her app'te boş `index.ts` placeholder; her package'te `index.ts` + `package.json`. Husky hooks ve commitlint aktif. Cloud-only — docker-compose yok."
 
 #### Deliverable
 
 - `pnpm install` başarılı çalışır
 - `pnpm dev` — henüz bir şey başlatmıyor ama command exists
 - `pnpm lint` + `pnpm typecheck` green (boş projelerde)
-- `docker compose up` — PostgreSQL, MinIO, ClamAV ayağa kalkar
+- `docker compose up` — artık gerekli değil (cloud-only altyapı)
 - İlk commit + PR + CI green
 
 #### Human Gate
 
-> **Scaffold:** Repo iskeleti tamamlandı. `docker compose up` ve örnek conventional commit ile commitlint doğrulaması merge öncesi developer tarafından yapılmalıdır.
+> **Scaffold:** Repo iskeleti tamamlandı. Örnek conventional commit ile commitlint doğrulaması merge öncesi developer tarafından yapılmalıdır.
 
 - Klasör yapısı `04_BACKEND_SPEC`'teki workspace tablosuyla birebir eşleşiyor
 - Her internal package `@ethics/*` scope'unda
 - `turbo.json` pipeline tanımlı (build, lint, typecheck, test, dev)
 - Husky hooks aktif — commitlint + lint-staged
-- Docker Compose servisleri tanımlı ve sağlık kontrolü `docker compose ps` ile doğrulandı
+- Cloud-only altyapı kararı dokümante (`Docs/09` §4.2); local Docker Compose yok
 - `.env.example` kök + `apps/api/.env.example` + `apps/web/.env.example`
 
 #### Vibe Coding Risk Uyarıları
@@ -190,7 +190,7 @@ Tek session yeterli. Prompt: "Bu dokümana uygun monorepo iskeleti kur. Apps ve 
 - **Agent başka monorepo tool'u seçebilir** (Nx, Lerna). Prompt'ta açıkça Turborepo + pnpm belirt.
 - **Agent package scope'larını tutarsız yapabilir** (bir yerde `@ethics`, diğerinde `@ethics-platform`). Prompt'ta `@ethics/*` convention'ı belirt.
 - **Agent gereksiz boilerplate ekler** (CI for 6 environments, 3 dummy packages). Minimal kurulum iste.
-- **Agent Docker Compose'da ClamAV'ı unutabilir** — bu proje için zorunlu, ilk günden hazır olmalı.
+- **Agent local Docker ekleyebilir** — cloud-only karar; `docker-compose.yml` kullanılmaz.
 
 #### Tahmini İterasyon
 
@@ -207,7 +207,7 @@ Tek session yeterli. Prompt: "Bu dokümana uygun monorepo iskeleti kur. Apps ve 
 | #   | Hedef                                                                                      | Stop                                                           |
 | --- | ------------------------------------------------------------------------------------------ | -------------------------------------------------------------- |
 | 1   | pnpm workspaces + Turborepo + apps/packages iskeleti + root tooling (ESLint, Prettier, TS) | `pnpm install` + `pnpm lint` + `pnpm typecheck` green          |
-| 2   | Docker Compose (postgres, minio, clamav) + Husky/commitlint + CI + README + `.env.example` | `docker compose up` healthy + CI workflow tanımlı              |
+| 2   | Husky/commitlint + CI + README + `.env.example` (AWS cloud env) | CI workflow tanımlı; local Docker yok |
 | 3   | Human gate kapanışı: `.vscode`, CI format check, `develop` branch, PR                      | PR açık + human gate checklist + squash merge → `develop`      |
 
 ---
@@ -256,7 +256,7 @@ Tek session yeterli. Prompt: "Bu dokümana uygun monorepo iskeleti kur. Apps ve 
 **Integration:**
 
 - `.github/workflows/pr-check.yml` genişletme — unit + integration test (Testcontainers)
-- İlk end-to-end: Docker Compose ile lokal çalıştır → OIDC login → dashboard placeholder (boş sayfa)
+- İlk end-to-end: `pnpm dev` → OIDC login → dashboard placeholder (boş sayfa)
 
 #### Agent Kick-off Materyali
 
@@ -270,7 +270,7 @@ Session'lara bölünmeli — tek session'da yazılamaz:
 
 #### Deliverable
 
-- Lokal: `docker compose up` → `pnpm dev` → browser → OIDC login (Google) → `/app/dashboard` (boş placeholder) yönlendirilir
+- Lokal: `pnpm dev` → browser → OIDC login (Google) → `/app/dashboard` (boş placeholder) yönlendirilir
 - Logout çalışır → login'e döner
 - JIT: ilk kez giriş yapan kullanıcı DB'de oluşur ama rol atanmaz
 - Health endpoint `200 OK` döner
@@ -317,7 +317,7 @@ Session'lara bölünmeli — tek session'da yazılamaz:
 | 2   | Auth modülü: OIDC PKCE, callback, logout, JIT provisioning, connect-pg-simple session                     | Auth integration test: login→callback→me→logout                 |
 | 3   | Common katman: guard zinciri (session, CSRF), Helmet, throttler, correlation ID, exception filter, health | Middleware sırası `04_BACKEND_SPEC` ile uyumlu; unit test green |
 | 4   | Frontend scaffold: Vite+React+MUI, route guard'lar, login/callback, dashboard placeholder                 | Browser OIDC redirect akışı çalışır                             |
-| 5   | Seed (superadmin+roller) + auth test coverage ≥%90 + CI Testcontainers                                    | E2E smoke: docker compose → OIDC login → dashboard; human gate  |
+| 5   | Seed (superadmin+roller) + auth test coverage ≥%90 + CI Testcontainers                                    | E2E smoke: `pnpm dev` → OIDC login → dashboard; human gate  |
 
 ---
 
@@ -1095,7 +1095,7 @@ Session'lara bölünmeli — tek session'da yazılamaz:
 - OIDC production IdP konfigürasyonu (kurumsal IdP + MFA TOTP zorunlu)
 - SMTP production relay konfigürasyonu (DKIM/SPF/DMARC)
 - KMS customer-managed keys (field encryption + document encryption + infra)
-- ClamAV production instance
+- ClamAV AWS ECS production/dev instance (IaC Faz 7 öncesi)
 - Monitoring + alerting: CloudWatch dashboards, alarmlar, PagerDuty routing
 - UAT: Etik ekibi + KVKK + Bilgi Güvenliği + IT ile test senaryoları (sentetik veri)
 - Bug fixes from UAT

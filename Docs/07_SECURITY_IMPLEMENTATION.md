@@ -330,7 +330,7 @@ Dosya yükleme güvenlik kuralları `system_settings` tablosundan konfigüre edi
 | İzin verilen tipler | PDF, DOCX, XLSX, JPG, JPEG, PNG, MP4, MOV, ZIP, TXT | MIME + uzantı eşleşmesi zorunlu; ZIP içeriği de taranır |
 | Tek dosya boyutu | 50 MB | system_settings'ten değiştirilebilir |
 | Toplam yükleme boyutu | 200 MB | Vaka başına |
-| Malware tarama | Her yüklemede zorunlu | ClamAV (self-hosted, KVKK uyumlu) |
+| Malware tarama | Her yüklemede zorunlu | ClamAV on AWS ECS (self-hosted, KVKK uyumlu) |
 | QUARANTINED davranışı | Dosya erişime kapatılır, council_secretary bildirim alır | Otomatik silme yapılmaz |
 
 Dosya upload akışı: `uploaded → quarantined → available` veya `rejected`. Tarama tamamlanmadan doküman başka kullanıcıya gösterilmez veya workflow karar paketine eklenmez.
