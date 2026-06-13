@@ -20,6 +20,16 @@ import { SessionAuthGuard } from '../guards/session-auth.guard.js';
 import { LoginAttemptService } from '../login-attempt.service.js';
 import { AuthSessionSerializer } from '../session/auth-session.serializer.js';
 
+function createSafeLoggerMock() {
+  return {
+    debug: () => undefined,
+    info: () => undefined,
+    warn: () => undefined,
+    error: () => undefined,
+    fatal: () => undefined,
+  };
+}
+
 describe('Auth DB integration (Testcontainers)', () => {
   let environment: PostgresTestEnvironment;
   let authService: AuthService;
@@ -66,7 +76,7 @@ describe('Auth DB integration (Testcontainers)', () => {
 
     app = moduleRef.createNestApplication();
     app.setGlobalPrefix('api/v1');
-    app.useGlobalFilters(new GlobalExceptionFilter());
+    app.useGlobalFilters(new GlobalExceptionFilter(createSafeLoggerMock() as never));
     await app.init();
   }, 120_000);
 

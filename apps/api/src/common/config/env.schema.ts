@@ -2,6 +2,9 @@ import { z } from 'zod';
 
 const positiveInt = z.coerce.number().int().positive();
 
+const DEV_LOCAL_FIELD_KEK = Buffer.from('ethics-dev-local-field-kek-v01!!').toString('base64');
+const DEV_LOCAL_DOCUMENT_KEK = Buffer.from('ethics-dev-local-doc-kek-v01!!!!').toString('base64');
+
 const envInputSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -28,6 +31,16 @@ const envInputSchema = z
     BRUTE_FORCE_LOCKOUT_MINUTES: positiveInt.default(15),
 
     LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
+    LOG_REDACTION_ENABLED: z
+      .enum(['true', 'false'])
+      .default('true')
+      .transform((value) => value === 'true'),
+
+    CRYPTO_KEY_MANAGEMENT_PROVIDER: z.enum(['local', 'kms']).default('local'),
+    CRYPTO_LOCAL_KEK_FIELD: z.string().optional(),
+    CRYPTO_LOCAL_KEK_DOCUMENT: z.string().optional(),
+    AWS_KMS_KEY_ALIAS_FIELD: z.string().optional(),
+    AWS_KMS_KEY_ALIAS_DOCUMENT: z.string().optional(),
   })
   .transform((input) => {
     const oidcIssuerUrl = input.OIDC_ISSUER_URL ?? input.OIDC_ISSUER;
@@ -39,6 +52,43 @@ const envInputSchema = z
 
     if (!oidcCallbackUrl) {
       throw new Error('Invalid environment configuration: OIDC_CALLBACK_URL is required');
+    }
+
+    const cryptoKeyManagementProvider = input.CRYPTO_KEY_MANAGEMENT_PROVIDER;
+    const isNonProduction = input.NODE_ENV === 'development' || input.NODE_ENV === 'test';
+
+    const cryptoLocalKekField =
+      input.CRYPTO_LOCAL_KEK_FIELD ??
+      (cryptoKeyManagementProvider === 'local' && isNonProduction
+        ? DEV_LOCAL_FIELD_KEK
+        : undefined);
+
+    const cryptoLocalKekDocument =
+      input.CRYPTO_LOCAL_KEK_DOCUMENT ??
+      (cryptoKeyManagementProvider === 'local' && isNonProduction
+        ? DEV_LOCAL_DOCUMENT_KEK
+        : undefined);
+
+    if (cryptoKeyManagementProvider === 'local') {
+      if (!cryptoLocalKekField || !cryptoLocalKekDocument) {
+        throw new Error(
+          'Invalid environment configuration: CRYPTO_LOCAL_KEK_FIELD and CRYPTO_LOCAL_KEK_DOCUMENT are required when CRYPTO_KEY_MANAGEMENT_PROVIDER=local',
+        );
+      }
+    }
+
+    if (cryptoKeyManagementProvider === 'kms') {
+      if (!input.AWS_KMS_KEY_ALIAS_FIELD || !input.AWS_KMS_KEY_ALIAS_DOCUMENT) {
+        throw new Error(
+          'Invalid environment configuration: AWS_KMS_KEY_ALIAS_FIELD and AWS_KMS_KEY_ALIAS_DOCUMENT are required when CRYPTO_KEY_MANAGEMENT_PROVIDER=kms',
+        );
+      }
+    }
+
+    if (input.NODE_ENV === 'production' && cryptoKeyManagementProvider === 'local') {
+      throw new Error(
+        'Invalid environment configuration: CRYPTO_KEY_MANAGEMENT_PROVIDER=local is not allowed in production',
+      );
     }
 
     return {
@@ -59,6 +109,12 @@ const envInputSchema = z
       BRUTE_FORCE_MAX_ATTEMPTS: input.BRUTE_FORCE_MAX_ATTEMPTS,
       BRUTE_FORCE_LOCKOUT_MINUTES: input.BRUTE_FORCE_LOCKOUT_MINUTES,
       LOG_LEVEL: input.LOG_LEVEL,
+      LOG_REDACTION_ENABLED: input.LOG_REDACTION_ENABLED,
+      CRYPTO_KEY_MANAGEMENT_PROVIDER: cryptoKeyManagementProvider,
+      CRYPTO_LOCAL_KEK_FIELD: cryptoLocalKekField,
+      CRYPTO_LOCAL_KEK_DOCUMENT: cryptoLocalKekDocument,
+      AWS_KMS_KEY_ALIAS_FIELD: input.AWS_KMS_KEY_ALIAS_FIELD,
+      AWS_KMS_KEY_ALIAS_DOCUMENT: input.AWS_KMS_KEY_ALIAS_DOCUMENT,
     };
   });
 

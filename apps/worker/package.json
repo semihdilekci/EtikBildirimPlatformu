@@ -4,21 +4,33 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "pnpm prisma:generate && tsc -p tsconfig.json",
     "lint": "eslint .",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node -e \"process.exit(0)\"",
-    "dev": "node --watch dist/index.js"
+    "typecheck": "pnpm prisma:generate && tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:unit": "vitest run --exclude 'src/**/*.integration.spec.ts'",
+    "test:integration": "vitest run src/jobs/__tests__/audit-outbox-dispatch.job.integration.spec.ts",
+    "dev": "dotenv -e ../api/.env.local -- tsx watch src/main.ts",
+    "dev:once": "dotenv -e ../api/.env.local -- tsx src/main.ts --once",
+    "start": "node dist/main.js",
+    "start:once": "node dist/main.js --once",
+    "prisma:generate": "prisma generate --schema=../api/prisma/schema.prisma"
   },
   "dependencies": {
     "@ethics/dto": "workspace:*",
     "@ethics/policy": "workspace:*",
-    "@ethics/shared": "workspace:*"
+    "@ethics/shared": "workspace:*",
+    "@prisma/client": "^6.8.2"
   },
   "devDependencies": {
     "@ethics/eslint-config": "workspace:*",
+    "@testcontainers/postgresql": "^10.28.0",
     "@types/node": "^22.10.2",
+    "dotenv-cli": "^8.0.0",
     "eslint": "^9.17.0",
-    "typescript": "^5.7.2"
+    "prisma": "^6.8.2",
+    "tsx": "^4.19.3",
+    "typescript": "^5.7.2",
+    "vitest": "^4.1.8"
   }
 }

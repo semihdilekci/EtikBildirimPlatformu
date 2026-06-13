@@ -1,5 +1,5 @@
 import { Controller, Get, HttpStatus, Post, type INestApplication } from '@nestjs/common';
-import { APP_FILTER, APP_GUARD } from '@nestjs/core';
+import { APP_GUARD } from '@nestjs/core';
 import { Test, type TestingModule } from '@nestjs/testing';
 import cookieParser from 'cookie-parser';
 import request from 'supertest';
@@ -10,6 +10,16 @@ import { EnvService } from '../../config/env.service.js';
 import { GlobalExceptionFilter } from '../../filters/global-exception.filter.js';
 import { CsrfGuard } from '../csrf.guard.js';
 import { CsrfService } from '../../services/csrf.service.js';
+
+function createSafeLoggerMock() {
+  return {
+    debug: () => undefined,
+    info: () => undefined,
+    warn: () => undefined,
+    error: () => undefined,
+    fatal: () => undefined,
+  };
+}
 
 @Controller()
 class TestController {
@@ -48,17 +58,13 @@ describe('CsrfGuard', () => {
           provide: APP_GUARD,
           useClass: CsrfGuard,
         },
-        {
-          provide: APP_FILTER,
-          useClass: GlobalExceptionFilter,
-        },
       ],
     }).compile();
 
     app = moduleRef.createNestApplication();
     csrfService = moduleRef.get(CsrfService);
     app.use(cookieParser());
-    app.useGlobalFilters(new GlobalExceptionFilter());
+    app.useGlobalFilters(new GlobalExceptionFilter(createSafeLoggerMock() as never));
     await app.init();
   }
 

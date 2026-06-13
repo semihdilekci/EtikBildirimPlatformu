@@ -10,7 +10,11 @@ import { EnvModule } from './common/config/env.module.js';
 import { EnvService } from './common/config/env.service.js';
 import { CORRELATION_ID_HEADER } from './common/interceptors/correlation.interceptor.js';
 import { AuthorizationModule } from './authorization/authorization.module.js';
+import { AuditModule } from './audit/audit.module.js';
+import { buildPinoRedactPaths } from './audit/redaction.constants.js';
+import { CryptoModule } from './crypto/crypto.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
+import { DevCryptoAuditModule } from './modules/dev-crypto-audit/dev-crypto-audit.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 
@@ -36,7 +40,7 @@ import { PrismaModule } from './prisma/prisma.module.js';
       useFactory: (envService: EnvService) => ({
         pinoHttp: {
           level: envService.logLevel,
-          redact: ['req.headers.authorization', 'req.headers.cookie'],
+          redact: buildPinoRedactPaths(),
           genReqId: (request) => {
             const header = request.headers[CORRELATION_ID_HEADER];
             if (typeof header === 'string' && header.length > 0) {
@@ -54,7 +58,10 @@ import { PrismaModule } from './prisma/prisma.module.js';
       }),
     }),
     PrismaModule,
+    CryptoModule,
+    AuditModule,
     HealthModule,
+    DevCryptoAuditModule,
     AuthModule,
     AuthorizationModule,
   ],

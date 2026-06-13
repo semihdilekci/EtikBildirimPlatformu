@@ -215,7 +215,37 @@ model KvkkConsentVersion {
   @@map("kvkk_consent_versions")
 }
 
-// ─── Audit (minimal placeholder — chain hash Faz 3) ─────────────────────────
+// ─── Audit (append-only + chain hash DB triggers — Faz 3 İterasyon 3) ───────
+
+model AuditOutbox {
+  id             String    @id @default(cuid())
+  occurredAt     DateTime  @map("occurred_at")
+  eventType      String    @map("event_type")
+  eventCategory  String    @map("event_category")
+  severity       String
+  actorType      String    @map("actor_type")
+  actorId        String?   @map("actor_id")
+  action         String
+  outcome        String
+  resourceType   String?   @map("resource_type")
+  resourceId     String?   @map("resource_id")
+  caseId         String?   @map("case_id")
+  companyId      String?   @map("company_id")
+  correlationId  String?   @map("correlation_id")
+  idempotencyKey String?   @unique @map("idempotency_key")
+  metadataJson   Json?     @map("metadata_json")
+  dispatchStatus String    @default("PENDING") @map("dispatch_status")
+  retryCount     Int       @default(0) @map("retry_count")
+  errorCode      String?   @map("error_code")
+  processedAt    DateTime? @map("processed_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  @@index([dispatchStatus], map: "idx_audit_outbox_dispatch_status")
+  @@index([correlationId], map: "idx_audit_outbox_correlation_id")
+  @@index([createdAt], map: "idx_audit_outbox_created_at")
+  @@index([eventType], map: "idx_audit_outbox_event_type")
+  @@map("audit_outbox")
+}
 
 model AuditEvent {
   id              String   @id @default(cuid())

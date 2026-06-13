@@ -6,6 +6,16 @@ import { describe, expect, it, vi } from 'vitest';
 import { DomainException } from '../../exceptions/domain.exception.js';
 import { GlobalExceptionFilter } from '../global-exception.filter.js';
 
+function createSafeLoggerMock() {
+  return {
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    fatal: vi.fn(),
+  };
+}
+
 function createHost(request: { correlationId?: string } = {}) {
   const response = {
     status: vi.fn().mockReturnThis(),
@@ -24,7 +34,8 @@ function createHost(request: { correlationId?: string } = {}) {
 }
 
 describe('GlobalExceptionFilter', () => {
-  const filter = new GlobalExceptionFilter();
+  const safeLogger = createSafeLoggerMock();
+  const filter = new GlobalExceptionFilter(safeLogger as never);
 
   it('DomainException → standart error zarfı', () => {
     const { host, response } = createHost({ correlationId: 'corr-123' });

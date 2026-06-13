@@ -4,12 +4,13 @@ import {
   ExceptionFilter,
   HttpException,
   HttpStatus,
-  Logger,
+  Inject,
 } from '@nestjs/common';
 import { ErrorCode } from '@ethics/shared';
 import { ThrottlerException } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 
+import { SafeLoggerService } from '../../audit/safe-logger.service.js';
 import { DomainException } from '../exceptions/domain.exception.js';
 
 type CorrelatedRequest = Request & { correlationId?: string };
@@ -32,7 +33,7 @@ interface ErrorEnvelope {
 
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
-  private readonly logger = new Logger(GlobalExceptionFilter.name);
+  constructor(@Inject(SafeLoggerService) private readonly safeLogger: SafeLoggerService) {}
 
   catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
@@ -45,7 +46,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     const envelope = this.buildEnvelope(exception, requestId, timestamp);
 
     if (envelope.status >= 500) {
-      this.logger.error(
+      this.safeLogger.error(
         {
           correlationId: requestId,
           err: exception instanceof Error ? exception.message : String(exception),
