@@ -1,6 +1,8 @@
 export { PLATFORM_NAME } from '@ethics/shared';
 
-/** Placeholder — Zod schemas will be added in Faz 1+ */
-export type PlaceholderDto = {
-  readonly id: string;
-};
+export {
+  authMeResponseSchema,
+  authLogoutResponseSchema,
+  type AuthMeResponse,
+  type AuthLogoutResponse,
+} from './auth/index.js';

@@ -1,0 +1,60 @@
+---
+alwaysApply: true
+---
+
+# Etik Bildirim Platformu — Proje Kimliği
+
+Yıldız Holding Etik Bildirim Uygulaması: anonim dış bildirimden kurul süreci, HYKB onayı, aksiyon takibi ve arşive kadar uçtan uca etik vaka yönetimi. Single-tenant; `company` tenant sınırı değil, ABAC attribute'udur.
+
+## Tech Stack (Pin'li)
+
+- **Runtime:** Node.js 22 LTS, TypeScript strict (`any` yasak)
+- **Backend:** NestJS 11, modular monolith
+- **Frontend:** React 19 + Vite SPA (SSR/Next.js yok), MUI
+- **DB:** PostgreSQL 16, Prisma ORM + `prisma migrate`
+- **Monorepo:** pnpm workspaces + Turborepo
+- **Auth:** OIDC PKCE + server-side session (HttpOnly cookie) — **JWT frontend'e iletilmez**
+- **Crypto:** AES-256-GCM per-field + per-document envelope; AWS KMS (prod)
+- **Jobs:** PostgreSQL outbox + worker (`apps/worker`)
+
+Yeni framework/library → ADR gerekir.
+
+## Monorepo Yapısı
+
+```
+apps/api/          NestJS REST API
+apps/web/          React SPA
+apps/worker/       Background jobs (outbox, SLA, scan)
+packages/shared/   Enum, constant, util
+packages/dto/      Zod schema (FE+BE paylaşımlı)
+packages/policy/   RBAC+ABAC tanımları
+infra/             CI/CD, IaC (AWS ECS, RDS, S3, KMS, ClamAV)
+```
+
+## Domain Terminolojisi
+
+| Terim | Anlam |
+| --- | --- |
+| Report | Dış formdan gelen ham bildirim |
+| Case | Workflow üzerinden yürütülen vaka |
+| CaseTransition | Append-only state geçiş kaydı |
+| Task | Workflow adımına karşılık görev + SLA |
+| Document | Grant modeli + envelope encryption |
+| tracking_code | Anonim takip kodu (session açılmaz) |
+| ClearanceLevel | NORMAL / SENSITIVE / STRICTLY_CONFIDENTIAL |
+| PolicyGuard | RBAC + ABAC + clearance tek noktada |
+
+## MVP Kapsamı Dışı
+
+- Native mobil, çok dilli yapı, MİM API otomatik intake
+- Telefon/çağrı merkezi kanalı, e-imza, full-text/OCR arama
+- Mikroservis, Redis broker (MVP'de PostgreSQL outbox yeterli)
+- HR/SAP canlı sync (MVP mock/sentetik veri)
+
+## Güvenlik İlkeleri (Özet)
+
+Deny-by-default · least privilege · need-to-know · privacy by design. Developer, DBA ve admin plaintext etik içeriğe DB/storage erişimiyle ulaşamaz.
+
+---
+
+Detay: `Docs/00_PROJECT_OVERVIEW.md`, `Docs/01_DOMAIN_MODEL.md`, `Docs/04_BACKEND_SPEC.md`

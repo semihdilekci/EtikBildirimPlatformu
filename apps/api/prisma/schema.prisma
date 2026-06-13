@@ -1,0 +1,242 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Auth & Users ───────────────────────────────────────────────────────────
+
+model User {
+  id                   String    @id @default(cuid())
+  oidcSubjectId        String?   @unique @map("oidc_subject_id")
+  employeeId           String?   @unique @map("employee_id") @db.VarChar(20)
+  email                String    @unique
+  displayName          String    @map("display_name")
+  companyId            String?   @map("company_id")
+  locationId           String?   @map("location_id")
+  functionId           String?   @map("function_id")
+  positionCode         String?   @map("position_code") @db.VarChar(50)
+  managerUserId        String?   @map("manager_user_id")
+  clearanceLevel       String    @default("NORMAL") @map("clearance_level")
+  isGeneralSecretary   Boolean   @default(false) @map("is_general_secretary")
+  isActive             Boolean   @default(true) @map("is_active")
+  provisionedAt        DateTime? @map("provisioned_at")
+  lastLoginAt          DateTime? @map("last_login_at")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+  createdBy            String?   @map("created_by")
+
+  company   Company?  @relation(fields: [companyId], references: [id])
+  location  Location? @relation(fields: [locationId], references: [id])
+  function  Function? @relation(fields: [functionId], references: [id])
+  manager   User?     @relation("UserManager", fields: [managerUserId], references: [id])
+  directReports User[] @relation("UserManager")
+
+  rolesAssigned   UserRole[] @relation("UserRoleSubject")
+  rolesGranted    UserRole[] @relation("UserRoleAssignedBy")
+  rolesApproved   UserRole[] @relation("UserRoleApprovedBy")
+  loginAttempts   LoginAttempt[]
+
+  @@index([companyId], map: "idx_users_company_id")
+  @@index([isActive], map: "idx_users_is_active")
+  @@map("users")
+}
+
+model UserRole {
+  id            String    @id @default(cuid())
+  userId        String    @map("user_id")
+  roleCode      String    @map("role_code")
+  assignedBy    String    @map("assigned_by")
+  approvedBy    String?   @map("approved_by")
+  reason        String?
+  isActive      Boolean   @default(true) @map("is_active")
+  assignedAt    DateTime  @default(now()) @map("assigned_at")
+  revokedAt     DateTime? @map("revoked_at")
+  auditEventId  String?   @map("audit_event_id")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  user          User  @relation("UserRoleSubject", fields: [userId], references: [id])
+  assignedByUser User @relation("UserRoleAssignedBy", fields: [assignedBy], references: [id])
+  approvedByUser User? @relation("UserRoleApprovedBy", fields: [approvedBy], references: [id])
+
+  @@index([userId, isActive], map: "idx_user_roles_user_active")
+  @@map("user_roles")
+}
+
+/// connect-pg-simple session store — sid/sess/expire convention
+model UserSession {
+  sid    String   @id @db.VarChar(255)
+  sess   Json
+  expire DateTime @db.Timestamp(6)
+
+  @@index([expire], map: "idx_user_sessions_expire")
+  @@map("user_sessions")
+}
+
+model LoginAttempt {
+  id              String    @id @default(cuid())
+  scopeKey        String    @unique @map("scope_key")
+  ipAddressHash   String    @map("ip_address_hash")
+  userId          String?   @map("user_id")
+  trackingCode    String?   @map("tracking_code") @db.VarChar(12)
+  failedCount     Int       @default(0) @map("failed_count")
+  lockedUntil     DateTime? @map("locked_until")
+  lastAttemptAt   DateTime  @map("last_attempt_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([userId], map: "idx_login_attempts_user_id")
+  @@index([trackingCode], map: "idx_login_attempts_tracking_code")
+  @@index([lockedUntil], map: "idx_login_attempts_locked_until")
+  @@map("login_attempts")
+}
+
+// ─── Master Data ────────────────────────────────────────────────────────────
+
+model Company {
+  id              String    @id @default(cuid())
+  name            String
+  code            String    @unique @db.VarChar(20)
+  sourceSystem    String?   @map("source_system")
+  sourceRecordId  String?   @map("source_record_id")
+  sourceUpdatedAt DateTime? @map("source_updated_at")
+  syncRunId       String?   @map("sync_run_id")
+  isActive        Boolean   @default(true) @map("is_active")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  locations Location[]
+  functions Function[]
+  positions Position[]
+  users     User[]
+
+  @@index([isActive], map: "idx_companies_is_active")
+  @@map("companies")
+}
+
+model Location {
+  id              String    @id @default(cuid())
+  companyId       String    @map("company_id")
+  name            String
+  code            String    @db.VarChar(20)
+  sourceSystem    String?   @map("source_system")
+  sourceRecordId  String?   @map("source_record_id")
+  sourceUpdatedAt DateTime? @map("source_updated_at")
+  syncRunId       String?   @map("sync_run_id")
+  isActive        Boolean   @default(true) @map("is_active")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id])
+  users   User[]
+
+  @@unique([companyId, code], map: "idx_locations_company_code")
+  @@index([companyId], map: "idx_locations_company_id")
+  @@index([isActive], map: "idx_locations_is_active")
+  @@map("locations")
+}
+
+model Function {
+  id              String    @id @default(cuid())
+  companyId       String    @map("company_id")
+  name            String
+  code            String    @db.VarChar(20)
+  sourceSystem    String?   @map("source_system")
+  sourceRecordId  String?   @map("source_record_id")
+  sourceUpdatedAt DateTime? @map("source_updated_at")
+  syncRunId       String?   @map("sync_run_id")
+  isActive        Boolean   @default(true) @map("is_active")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id])
+  users   User[]
+
+  @@unique([companyId, code], map: "idx_functions_company_code")
+  @@index([companyId], map: "idx_functions_company_id")
+  @@index([isActive], map: "idx_functions_is_active")
+  @@map("functions")
+}
+
+model Position {
+  id              String    @id @default(cuid())
+  companyId       String    @map("company_id")
+  name            String
+  code            String    @db.VarChar(20)
+  sourceSystem    String?   @map("source_system")
+  sourceRecordId  String?   @map("source_record_id")
+  sourceUpdatedAt DateTime? @map("source_updated_at")
+  syncRunId       String?   @map("sync_run_id")
+  isActive        Boolean   @default(true) @map("is_active")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id])
+
+  @@unique([companyId, code], map: "idx_positions_company_code")
+  @@index([companyId], map: "idx_positions_company_id")
+  @@index([isActive], map: "idx_positions_is_active")
+  @@map("positions")
+}
+
+// ─── Config & Admin ───────────────────────────────────────────────────────────
+
+model SystemSetting {
+  id           String   @id @default(cuid())
+  key          String   @unique
+  value        Json
+  category     String
+  versionNo    Int      @default(1) @map("version_no")
+  isActive     Boolean  @default(true) @map("is_active")
+  approvedBy   String?  @map("approved_by")
+  auditEventId String?  @map("audit_event_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@index([category], map: "idx_system_settings_category")
+  @@map("system_settings")
+}
+
+model KvkkConsentVersion {
+  id          String    @id @default(cuid())
+  versionCode String    @unique @map("version_code") @db.VarChar(20)
+  contentText String    @map("content_text")
+  publishedAt DateTime? @map("published_at")
+  isActive    Boolean   @default(true) @map("is_active")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@map("kvkk_consent_versions")
+}
+
+// ─── Audit (minimal placeholder — chain hash Faz 3) ─────────────────────────
+
+model AuditEvent {
+  id              String   @id @default(cuid())
+  occurredAt      DateTime @map("occurred_at")
+  recordedAt      DateTime @default(now()) @map("recorded_at")
+  eventType       String   @map("event_type")
+  eventCategory   String   @map("event_category")
+  severity        String
+  actorType       String   @map("actor_type")
+  actorId         String?  @map("actor_id")
+  action          String
+  outcome         String
+  correlationId   String?  @map("correlation_id")
+  metadataJson    Json?    @map("metadata_json")
+  prevHash        String?  @map("prev_hash")
+  eventHash       String?  @map("event_hash")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@index([eventType], map: "idx_ae_event_type")
+  @@index([occurredAt], map: "idx_ae_occurred_at")
+  @@index([correlationId], map: "idx_ae_correlation_id")
+  @@index([eventCategory], map: "idx_ae_event_category")
+  @@map("audit_events")
+}

@@ -1,0 +1,55 @@
+---
+alwaysApply: true
+---
+
+# Dil ve İsimlendirme
+
+## TR/EN Hibrit
+
+| Katman | Dil |
+| --- | --- |
+| UI metinleri, toast, form label | Türkçe |
+| Kod (değişken, sınıf, dosya, enum) | İngilizce |
+| Commit mesajı açıklama | Türkçe veya İngilizce (tutarlı) |
+| Error code | SCREAMING_SNAKE_CASE İngilizce |
+
+## Commit Format
+
+Conventional Commits zorunlu:
+
+```
+type(scope): açıklama
+```
+
+Types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `perf`, `build`, `ci`
+
+Scope'lar: `auth`, `authz`, `workflow`, `task`, `document`, `audit`, `notification`, `intake`, `tracking`, `admin`, `crypto`, `integration`, `api`, `ui`, `db`, `infra`, `deps`
+
+Branch: `feature/KARAR_ID-kısa-açıklama` (kebab-case). Squash merge only.
+
+## Error Code Pattern
+
+Format: `DOMAIN_ENTITY_CONDITION` — `packages/shared/constants/error-codes.ts`'te tanımla.
+
+```typescript
+// ✓ Doğru
+throw new DomainException('AUTHZ_FORBIDDEN', 'Bu işlem için yetkiniz yok.');
+
+// ✗ Yanlış
+throw new ForbiddenException('Yetkisiz'); // code yok
+throw new Error('403'); // string status
+```
+
+Frontend error code'ları switch/map ile eşler; magic string kullanma.
+
+## Naming Convention
+
+- Service: `CaseService`, `TransitionService`
+- Controller: `CaseController` — route prefix modül bazlı
+- Hook: `useCaseDetail`, `useCases`
+- Screen ID: `S-CASE-LIST` (docs referans)
+- Prisma model: PascalCase; tablo snake_case (`case_transitions`)
+
+---
+
+Detay: `Docs/09_DEV_WORKFLOW.md` §2–3, `Docs/03_API_CONTRACTS.md` §Error Taxonomy

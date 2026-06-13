@@ -1,0 +1,49 @@
+---
+description: Step-by-step for adding a REST endpoint. Use when creating or modifying apps/api controller routes.
+---
+
+# Yeni Endpoint Prosedürü
+
+## Step 1: Spec & Contract
+
+`Docs/03_API_CONTRACTS.md`'e endpoint ekle: method, path, auth, permission, request/response shape, error codes.
+
+## Step 2: DTO Schema
+
+`packages/dto/<module>/` Zod schema oluştur. Frontend import edecek — duplicate yasak.
+
+## Step 3: Controller
+
+```typescript
+@RequirePolicy('resource:action')
+@AuditAction('RESOURCE_ACTION')  // mutating ise
+@Post()
+async create(@Body() dto: CreateDto, @CurrentUser() user: AuthenticatedUser) {
+  return this.service.create(dto, user.id);
+}
+```
+
+Public endpoint (intake/tracking): farklı guard profili — session değil tracking/header.
+
+## Step 4: Service
+
+Business logic + Prisma transaction. Encrypt hassas alanlar. PolicyScope row filter list endpoint'lerde.
+
+## Step 5: Permission
+
+Yeni permission gerekiyorsa → `43-add-new-permission` prosedürünü uygula.
+
+## Step 6: Test
+
+- Unit: service pozitif + negatif
+- Integration: Supertest + Testcontainers — 401/403/404 deny senaryoları
+- Error code taxonomy uyumu
+
+## Step 7: Dokümantasyon
+
+- [ ] `Docs/03_API_CONTRACTS.md` güncellendi
+- [ ] İlgili ekran varsa `Docs/06_SCREEN_CATALOG.md` veri kaynağı
+
+---
+
+Detay: `Docs/03_API_CONTRACTS.md`; `Docs/04_BACKEND_SPEC.md`; `Docs/07_SECURITY_IMPLEMENTATION.md`

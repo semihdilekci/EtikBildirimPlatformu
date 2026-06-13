@@ -1,0 +1,46 @@
+---
+alwaysApply: true
+---
+
+# Kodlama Felsefesi — Vibe Coding Disiplini
+
+Bu proje **faz-bazlı dikey dilim** ile vibe coding ile inşa edilir. Agent kod yazar; developer yön verir, review eder, merge onaylar. Agent tek başına `main`'e merge edemez.
+
+## MVP Scope Disiplini
+
+- Yalnızca `Docs/00` MVP in-scope maddelerini implement et
+- "Later" bırakma yasak: encryption, audit, CSRF, policy guard ilk günden zorunlu
+- Over-abstraction yasak — mevcut faz deliverable'ına odaklan
+- 500+ satır PR → böl
+
+## Test-First
+
+Her feature için:
+1. Pozitif senaryo testi
+2. En az bir negatif deny testi (auth, workflow, document, audit)
+3. `pnpm lint` + `pnpm typecheck` + `pnpm test` green
+
+Kritik modüller (authz, workflow, document, audit, crypto): ≥%90 line coverage.
+
+## Self-Review Checklist (Her Değişiklik)
+
+- [ ] `@RequirePolicy` tüm yeni internal endpoint'lerde
+- [ ] `@AuditAction` tüm mutating endpoint'lerde
+- [ ] Hassas alan encrypt edildi mi? (CryptoService — doğrudan `crypto` import yok)
+- [ ] Audit outbox domain transaction içinde mi? (fail-closed)
+- [ ] Frontend PermissionGate yalnızca UX — backend enforcement zorunlu
+- [ ] İlgili `Docs/` güncellendi mi?
+
+## Human Gate (Faz Sonu)
+
+Feature lokal E2E çalışıyor · coverage threshold karşılandı · pattern consistency (`04_BACKEND_SPEC`) · staging smoke test.
+
+## Agent Session Kuralları
+
+- Session başına 2–4 ilgili doc context'e; tüm 11 doc'u yükleme
+- Belirsizlikte tahmin etme — docs oku veya sor
+- CI red → fix et, 3 başarısız denemede developer'a escalate
+
+---
+
+Detay: `Docs/10_IMPLEMENTATION_ROADMAP.md` §1, `Docs/09_DEV_WORKFLOW.md` §3

@@ -1,0 +1,54 @@
+---
+description: Audit outbox and CryptoService — fail-closed audit, AES-256-GCM, PII redaction
+globs:
+  - "apps/api/src/audit/**"
+  - "apps/api/src/crypto/**"
+  - "apps/api/src/common/interceptors/audit.interceptor.ts"
+  - "apps/api/src/common/decorators/audit-action.decorator.ts"
+---
+
+# Audit & Crypto
+
+## CryptoService (Merkezi)
+
+AES-256-GCM; her alan ayrı DEK. KMS adapter interface — dev lokal key, prod AWS KMS.
+
+```typescript
+// ✓ Doğru — tek injection noktası
+constructor(private readonly crypto: CryptoService) {}
+const cipher = await this.crypto.encryptField(plaintext, context);
+
+// ✗ Yanlış
+import { createCipheriv } from 'crypto'; // serviste doğrudan crypto modülü
+```
+
+DEK her encryption'da random IV. Sabit DEK tüm alanlar için yasak.
+
+## Audit Fail-Closed
+
+Domain mutation + `audit_outbox` **aynı `$transaction`**. Outbox fail → domain rollback.
+
+Audit event: resource ID, action, actor, policy decision, correlation ID — **içerik kopyalamaz**.
+
+## Chain Hash
+
+DB trigger seviyesinde (application code'da compute etme). Periyodik verify job: `audit-chain-verify.job.ts`.
+
+## SafeLogger & Redaction
+
+Pino wrapper — email/phone masked. Audit snapshot'ta encrypted alanlar `[REDACTED]`.
+
+## Append-Only
+
+`audit_logs`: UPDATE/DELETE/TRUNCATE → DB error. Integration test zorunlu.
+
+## Anti-pattern'ler
+
+- Audit transaction dışında
+- Chain hash application layer'da
+- Audit event'e report_text / incident_description kopyalama
+- Crypto logic dağıtık (her serviste ayrı)
+
+---
+
+Detay: `Docs/07_SECURITY_IMPLEMENTATION.md` §8–9; `Docs/04_BACKEND_SPEC.md` audit/, crypto/

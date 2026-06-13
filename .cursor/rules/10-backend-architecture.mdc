@@ -1,0 +1,62 @@
+---
+description: NestJS backend architecture — module layout, DI, middleware chain, service boundaries
+globs:
+  - "apps/api/src/**/*.ts"
+  - "apps/worker/src/**/*.ts"
+---
+
+# Backend Mimarisi
+
+NestJS modular monolith. Controller → Service → Prisma/CryptoService/PolicyScope. HTTP concern controller'da; iş kuralı service'te.
+
+## Modül İskeleti
+
+Her feature module:
+
+| Dosya | Zorunlu |
+| --- | --- |
+| `*.module.ts` | DI config |
+| `*.controller.ts` | HTTP (endpoint varsa) |
+| `*.service.ts` | Business logic |
+| `dto/` | Request/response DTO |
+| `__tests__/` | Unit/slice test |
+
+Modüller arası: (1) `packages/shared|dto|policy` import, (2) NestJS module export (authorization, crypto, audit global), (3) outbox event — **doğrudan cross-module service call yasak**.
+
+## Middleware Zinciri (Sıra Değişmez)
+
+Helmet → CORS (allowlist, wildcard yasak) → CSRF (mutating) → body parser → rate limit → correlation ID → session guard → auth/tracking guard → policy guard → validation pipe → audit interceptor → response transform → exception filter.
+
+Public intake/tracking: session guard exempt. Tracking: `TrackingGuard` (header auth).
+
+## Transaction Pattern
+
+Birden fazla tablo veya outbox → tek `$transaction`:
+
+```typescript
+// ✓ Doğru — domain + audit aynı transaction
+return this.prisma.$transaction(async (tx) => {
+  const result = await this.domainOp(tx, command);
+  await this.auditPublisher.publish(tx, { eventType: 'CASE_TRANSITION', ... });
+  return result;
+});
+
+// ✗ Yanlış — audit transaction dışında
+await this.domainOp(command);
+await this.auditPublisher.publish(...); // fail-closed ihlali
+```
+
+## Worker
+
+`apps/worker` ayrı entrypoint; aynı Prisma/service tanımları. Cron: `@nestjs/schedule` — `setInterval` yasak.
+
+## Anti-pattern'ler
+
+- Controller'da Prisma/crypto/policy logic
+- Service'te `Request`/`Response` erişimi
+- Modül A → Modül B service inject (outbox kullan)
+- `prisma migrate dev` production'da
+
+---
+
+Detay: `Docs/04_BACKEND_SPEC.md` Bölüm 1–6; `Docs/03_API_CONTRACTS.md` §Genel Prensipler

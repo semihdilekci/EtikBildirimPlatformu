@@ -1,0 +1,49 @@
+---
+description: Step-by-step for adding a workflow state transition. Use when extending WorkflowCommandHandler or case state machine.
+---
+
+# Workflow Transition Ekleme Prosedürü
+
+## Step 1: Domain Spec
+
+`Docs/01_DOMAIN_MODEL.md` geçiş tablosuna ekle: from_state, command, to_state, rol, precondition, side-effect.
+
+## Step 2: API Contract
+
+`Docs/03_API_CONTRACTS.md` transition endpoint — command enum, request body (reason, idempotency_key).
+
+## Step 3: Transition Map
+
+`transition.commands.ts` / `TRANSITION_MAP` — explicit allowed geçiş. Map dışı → `CASE_INVALID_TRANSITION`.
+
+## Step 4: Validator
+
+`transition.validators.ts` — rol, clearance, atama, precondition (task/doc complete).
+
+## Step 5: Service Implementation
+
+`TransitionService.execute` içinde tek `$transaction`:
+1. Optimistic lock check
+2. Idempotency check
+3. State update
+4. CaseTransition create (append-only)
+5. Task side-effects
+6. Audit outbox
+7. Notification event (outbox)
+
+## Step 6: Transition Matrix Test
+
+8 senaryo seti (`Docs/08` §4): pozitif, yanlış rol, yanlış state, clearance, atama, idempotency, side-effect, precondition.
+
+## Step 7: Frontend (Gerekirse)
+
+`CaseActionBar` availableActions + `TransitionDialog` — S-CASE-DETAIL catalog.
+
+## Step 8: Dokümantasyon
+
+- [ ] `Docs/01_DOMAIN_MODEL.md` geçiş tablosu
+- [ ] `Docs/03_API_CONTRACTS.md`
+
+---
+
+Detay: `Docs/01_DOMAIN_MODEL.md`; `Docs/04_BACKEND_SPEC.md` transition/; `Docs/08_TESTING_STRATEGY.md` §4

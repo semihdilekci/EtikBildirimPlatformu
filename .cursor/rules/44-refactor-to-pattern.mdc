@@ -1,0 +1,41 @@
+---
+description: Step-by-step for refactoring legacy code to project patterns. Use when aligning inconsistent implementations.
+---
+
+# Refactor-to-Pattern Prosedürü
+
+## Step 1: Hedef Pattern Belirle
+
+`Docs/04_BACKEND_SPEC.md` veya ilgili glob rule (10–16, 20–25) — referans implementasyonu oku.
+
+## Step 2: Davranış Koruma
+
+Mevcut testleri green tut. Refactor öncesi eksik test varsa önce test ekle (characterization test).
+
+## Step 3: Incremental Değişiklik
+
+Tek concern per commit/PR slice:
+- Controller logic → service taşıma
+- if/else policy → PolicyGuard + FieldMasking
+- Inline crypto → CryptoService injection
+- setInterval job → `@nestjs/schedule` cron
+
+## Step 4: Consistency Audit
+
+Refactor sonrası checklist:
+- [ ] `@RequirePolicy` + `@AuditAction` stack
+- [ ] Transaction + outbox pattern
+- [ ] Error code taxonomy
+- [ ] Shared DTO (duplicate schema kaldırıldı)
+
+## Step 5: Regression Test
+
+Integration test suite — özellikle authorization deny ve workflow transition.
+
+## Step 6: Dokümantasyon
+
+Pattern değişikliği global ise `Docs/04` veya `Docs/05` güncelle.
+
+---
+
+Detay: `Docs/04_BACKEND_SPEC.md`; `Docs/10_IMPLEMENTATION_ROADMAP.md` §VR-06 consistency

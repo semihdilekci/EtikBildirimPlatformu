@@ -1,0 +1,47 @@
+---
+description: Step-by-step for roadmap phase implementation branch. Use when starting Faz N work from IMPLEMENTATION_ROADMAP.
+---
+
+# Faz Branch Prosedürü
+
+## Step 1: Faz Kuralını Oku
+
+Mesajda **「Faz N — İterasyon M」** belirt. `@NN-phase-XX-slug` invoke et (phase-creator ile üretilmiş `.mdc`).
+
+## Step 2: Feature Branch
+
+```bash
+git checkout develop
+git pull
+git checkout -b feature/F<N>-<kısa-açıklama>
+```
+
+Format: `feature/F5-case-workflow` veya karar ID'li: `feature/W-002-workflow-state-machine`.
+
+## Step 3: Context Docs
+
+Roadmap'teki "Agent Kick-off Materyali" — yalnızca ilgili 2–4 doc yükle.
+
+## Step 4: Implement + Test
+
+Faz deliverable + human gate checklist (`Docs/10` ilgili faz bölümü).
+
+## Step 5: PR
+
+- Squash merge → `develop`
+- PR template checklist tamamla (`Docs/09` §3.3)
+- CI green zorunlu
+
+## Step 6: Human Gate
+
+Faz bitmeden sonraki faza geçme. Gate fail → iterate.
+
+## Explicit Don'ts
+
+- `main`'e direct push/merge yasak
+- Faz scope creep (sonraki faz feature'ı ekleme)
+- Docs sync atlaması
+
+---
+
+Detay: `Docs/10_IMPLEMENTATION_ROADMAP.md`; `Docs/09_DEV_WORKFLOW.md` §1

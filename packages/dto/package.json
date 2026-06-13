@@ -17,7 +17,8 @@
     "dev": "tsc -p tsconfig.json --watch"
   },
   "dependencies": {
-    "@ethics/shared": "workspace:*"
+    "@ethics/shared": "workspace:*",
+    "zod": "^3.24.2"
   },
   "devDependencies": {
     "@ethics/eslint-config": "workspace:*",

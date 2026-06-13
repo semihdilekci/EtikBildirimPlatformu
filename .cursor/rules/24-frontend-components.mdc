@@ -1,0 +1,50 @@
+---
+description: Shared UI components — PermissionGate, FileUploadZone, CaseTimeline, modals
+globs:
+  - "apps/web/src/components/**"
+  - "apps/web/src/features/**/components/**"
+---
+
+# Component Kuralları
+
+MUI tabanlı. Feature-specific component'ler `features/<domain>/components/`; cross-cutting `components/`.
+
+## PermissionGate (UX Only)
+
+```tsx
+<PermissionGate permission="case:transition">
+  <Button onClick={openTransitionDialog}>Geçiş Yap</Button>
+</PermissionGate>
+```
+
+Backend enforcement olmadan UI gizleme yeterli değil — yalnızca UX optimizasyonu.
+
+## Kritik Shared Component'ler
+
+| Component | Kullanım |
+| --- | --- |
+| `FileUploadZone` | Presigned upload + progress |
+| `CaseTimeline` | Transition tarihçesi |
+| `TransitionDialog` | Command + reason input |
+| `NotificationBell` | 30sn polling |
+| `TaskSlaIndicator` | yeşil/sarı/kırmızı badge |
+
+## Modal Standartları
+
+- Focus trap, ESC (destructive/blocking modal hariç)
+- KVKK consent modal: ESC disabled, outside click disabled
+- Transition onay: reason zorunlu alanlar
+
+## Loading / Empty / Error States
+
+Her liste/detail component üç state'i handle eder — tutarlı skeleton/empty message.
+
+## Anti-pattern'ler
+
+- Component içinde doğrudan axios (hook/service layer)
+- Admin viewer'da masked alanları raw gösterme
+- Inline style-heavy — MUI theme/sx kullan
+
+---
+
+Detay: `Docs/06_SCREEN_CATALOG.md` §Ortak Component'ler, §Modal; `Docs/05_FRONTEND_SPEC.md` components

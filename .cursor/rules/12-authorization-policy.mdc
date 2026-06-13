@@ -1,0 +1,55 @@
+---
+description: Authorization — PolicyGuard, RBAC+ABAC, clearance, field masking, packages/policy
+globs:
+  - "apps/api/src/authorization/**"
+  - "apps/api/src/common/guards/policy.guard.ts"
+  - "apps/api/src/common/decorators/require-policy.decorator.ts"
+  - "packages/policy/**"
+---
+
+# Yetkilendirme
+
+Deny-by-default. Üç katman: API guard → query scope → response masking.
+
+## PolicyGuard
+
+`@RequirePolicy('case:pre_review')` decorator + guard tek noktada:
+1. RBAC — rol + permission (`packages/policy/role-permission-map.ts`)
+2. ABAC — company, assignment, function/location scope
+3. Clearance — `user.clearance >= resource.confidentiality_level`
+
+```typescript
+// ✓ Doğru
+@RequirePolicy('case:read')
+@Get(':id')
+async getCase(@Param('id') id: string) { ... }
+
+// ✗ Yanlış — controller'da if/else
+if (user.role === 'admin') { ... } // FieldMasking + policy bypass riski
+```
+
+## PolicyScope
+
+Liste/detail sorgularında ORM seviyesinde row filter. Controller'da manuel `where companyId` yerine PolicyScope service kullan.
+
+## FieldMaskingService
+
+Response interceptor pattern — controller temiz kalır. Admin: `report_text`, `incident_description` → null/masked.
+
+## Erişim Reddi
+
+Kaynak var ama erişim yok → **404** (403 bilgi sızıntısı). Kullanıcı kaynağı görüyor ama işlem yetkisi yok → 403 `AUTHZ_FORBIDDEN`.
+
+## Permission Enum
+
+Tüm MVP permission'lar `packages/policy/permissions.ts`'te; placeholder bırakma.
+
+## Anti-pattern'ler
+
+- Yetki kontrolü yalnızca frontend (`PermissionGate` UX only)
+- Clearance check ayrı if/else (PolicyGuard'a entegre)
+- SSO grup → rol otomatik mapping (JIT rol atamaz)
+
+---
+
+Detay: `Docs/07_SECURITY_IMPLEMENTATION.md` §3; `Docs/04_BACKEND_SPEC.md` authorization/

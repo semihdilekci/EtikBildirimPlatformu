@@ -1,0 +1,54 @@
+---
+description: Frontend routes and layouts — AuthGuard, RoleGuard, route groups, screen IDs
+globs:
+  - "apps/web/src/routes/**"
+  - "apps/web/src/layouts/**"
+  - "apps/web/src/App.tsx"
+---
+
+# Routes & Layouts
+
+React Router. Route tanımları `routes/index.tsx`.
+
+## Guard Stack
+
+```tsx
+// Internal route örneği
+<Route element={<AuthGuard><InternalLayout /></AuthGuard>}>
+  <Route path="/app/cases" element={<CaseListPage />} />
+</Route>
+
+// Admin — ek RoleGuard
+<Route element={<AuthGuard><RoleGuard roles={['admin']}><AdminLayout /></RoleGuard></AuthGuard>}>
+  ...
+</Route>
+```
+
+| Guard | Kullanım |
+| --- | --- |
+| `GuestGuard` | Login sayfası — authenticated → `/app` |
+| `AuthGuard` | Session cookie kontrolü |
+| `RoleGuard` | Route-level rol (UX; backend zorunlu) |
+
+## Public Routes (Login Gerektirmez)
+
+- `/report`, `/report/success` — intake
+- `/tracking/*` — anonim takip
+
+## Screen ID Referansı
+
+Implementasyon `Docs/06_SCREEN_CATALOG.md` S-* ID ile eşleşmeli (örn. `S-CASE-LIST` → `CaseListPage`).
+
+## Error Routes
+
+`S-FORBIDDEN`, `S-NOT-FOUND`, `S-ERROR`, `S-SESSION-EXPIRED` — prod'da stack trace yok.
+
+## Anti-pattern'ler
+
+- Route-level yetki yalnızca frontend (backend guard şart)
+- Admin URL'e normal kullanıcı erişimi (403 page)
+- Tracking route'ta session cookie varsayımı
+
+---
+
+Detay: `Docs/05_FRONTEND_SPEC.md` routing; `Docs/06_SCREEN_CATALOG.md` §Ekran Haritası

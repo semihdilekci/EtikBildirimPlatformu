@@ -1,0 +1,275 @@
+---
+description: '[Faz 1] DB schema + Auth foundation — 5 iterasyon/chat (Prisma → Auth OIDC → guards/middleware → web scaffold → seed+test). Mesajda "Faz 1 — İterasyon M" belirt.'
+---
+
+# Faz 1: Database Schema + Auth Foundation
+
+## Goal
+
+NestJS API ve React SPA iskeleti kurulur; Prisma v1 şeması (auth, kullanıcı, master data, config tabloları) migrate edilir. OIDC Authorization Code + PKCE ile server-side session (connect-pg-simple, HttpOnly cookie) çalışır — JWT frontend'e iletilmez. JIT provisioning kullanıcı oluşturur, rol atamaz. CSRF, rate limit, correlation ID ve standart error zarfı ilk günden aktif. Frontend: login → callback → boş dashboard E2E akışı.
+
+Detay: `Docs/10_IMPLEMENTATION_ROADMAP.md` §Faz 1.
+
+## Feature branch (zorunlu)
+
+Faz koduna **main üzerinde başlanmaz**. İlk commit/dosya değişikliği öncesi `48-git-phase-branch.mdc` uygula.
+
+**Bu faz branch adı:** `feature/F1-database-auth`
+
+**Stop (İterasyon 1, kod öncesi):** [ ] `develop` güncel; [ ] faz branch oluşturuldu; [ ] `git push -u origin HEAD` (remote varsa).
+
+## Bu fazın çalışma modeli (iterasyonlar)
+
+Tek sohbette tamamlanmaz. Her session: `@51-phase-01-database-auth` + mesajda **「Faz 1 — İterasyon M」**. Branch açmadan kod yok.
+
+---
+
+### İterasyon 1 — NestJS + Prisma Schema v1
+
+**Hedef:** `apps/api` NestJS bootstrap; Prisma v1 şeması + ilk migration; master data iskeleti DB'de.
+
+**Yapılacaklar:**
+
+1. NestJS bootstrap: `main.ts`, `app.module.ts`, `PrismaModule`, env validation (`env.schema.ts` Zod)
+2. Prisma schema v1 — tablolar `Docs/02_DATABASE_SCHEMA.md` ile uyumlu (Faz 1 kapsamı):
+   - Auth/users: `users`, `user_roles`, `user_sessions`
+   - Master data: `companies`, `locations`, `functions`, `positions`
+   - Config: `system_settings`, `kvkk_consent_versions`
+   - Audit placeholder: `audit_events` (minimal kolon seti — chain hash Faz 3)
+3. Brute-force: `login_attempts` tablosu (`Docs/07_SECURITY_IMPLEMENTATION.md` §4.3)
+4. `packages/shared`: ilk enum'lar (`Role`, `ClearanceLevel`, `Permission` placeholder)
+5. Health endpoint iskeleti (`GET /api/v1/health`)
+
+**Minimum bağlam:**
+
+- `Docs/02_DATABASE_SCHEMA.md` — users, user_roles, companies/locations/functions/positions, system_settings, kvkk_consent_versions
+- `Docs/04_BACKEND_SPEC.md` — Framework ve Runtime, Klasör Yapısı, Modül İskeleti
+- `Docs/10_IMPLEMENTATION_ROADMAP.md` §Faz 1 Kapsam (Backend — Prisma)
+
+**Bu iterasyonda yok:** OIDC/auth modülü, guard'lar, frontend, seed, case/report tabloları, PolicyGuard, CryptoService.
+
+**Stop:** [ ] `pnpm --filter api prisma migrate dev` başarılı; [ ] `pnpm typecheck` green; [ ] health endpoint 200. PR/onay → İterasyon 2.
+
+---
+
+### İterasyon 2 — Auth Modülü (OIDC + Session)
+
+**Hedef:** OIDC PKCE login/callback/logout/me; JIT provisioning; server-side session.
+
+**Yapılacaklar:**
+
+1. `auth` modülü: `AuthService`, `AuthController`, `oidc.strategy.ts` (passport-openidconnect)
+2. Endpoint'ler: `Docs/03_API_CONTRACTS.md` §8.3 (`/auth/oidc/login`, `/auth/oidc/callback`, `/auth/logout`, `/auth/me`)
+3. express-session + connect-pg-simple → `user_sessions`
+4. JIT: ilk girişte `users` kaydı; **rol atanmaz** (deny-by-default)
+5. `login_attempts` kaydı + lockout eşiği (`07` §4.3)
+6. `packages/dto`: auth Zod schema'ları (me response, logout)
+7. Pino structured logging + correlation ID interceptor (temel)
+
+**Minimum bağlam:**
+
+- `Docs/07_SECURITY_IMPLEMENTATION.md` §1.1 OIDC PKCE, §1.4 sequence diagram, §1.5 Logout, §2 Session Modeli
+- `Docs/03_API_CONTRACTS.md` §8.3 Auth / Session
+- `Docs/04_BACKEND_SPEC.md` — `modules/auth/` yapısı
+
+**Bu iterasyonda yok:** CSRF guard (İterasyon 3), PolicyGuard (Faz 2), frontend, seed script, MFA/TOTP.
+
+**Stop:** [ ] Integration test: OIDC mock → callback → session cookie → `/auth/me` 200 → logout; [ ] JIT: yeni kullanıcı rol almaz; [ ] token frontend'e sızmaz. PR/onay → İterasyon 3.
+
+---
+
+### İterasyon 3 — Guards, Middleware & Error Zarfı
+
+**Hedef:** Request lifecycle zinciri tam; CSRF + session guard; standart error response.
+
+**Yapılacaklar:**
+
+1. Middleware/guard sırası: `Docs/04_BACKEND_SPEC.md` Middleware / Guard zinciri (Helmet → CORS → CSRF → body parser → throttler → correlation → session → validation → exception filter)
+2. `SessionGuard`, `CsrfGuard` (double-submit cookie — mutating endpoint'ler)
+3. `GlobalExceptionFilter` — `Docs/03_API_CONTRACTS.md` Standart Response Zarfı + Error Taxonomy
+4. `@nestjs/throttler` base config (`07` §7)
+5. Helmet security headers
+6. Readiness probe (`/api/v1/health/ready` — DB connectivity)
+
+**Minimum bağlam:**
+
+- `Docs/04_BACKEND_SPEC.md` — Middleware / Guard / Interceptor / Pipe Zinciri
+- `Docs/03_API_CONTRACTS.md` — Standart Response Zarfı, Error Taxonomy, Rate Limiting
+- `Docs/07_SECURITY_IMPLEMENTATION.md` §6.3 CSRF, §6.4 Guard Zinciri, §7 Rate Limiting
+
+**Bu iterasyonda yok:** PolicyGuard, AuditInterceptor (Faz 3), frontend, `@RequirePolicy` decorator enforcement.
+
+**Stop:** [ ] CSRF: mutating istek token'sız → 403; [ ] error zarfı `03` formatında; [ ] correlation ID log'larda; [ ] auth modülü unit test green. PR/onay → İterasyon 4.
+
+---
+
+### İterasyon 4 — Frontend Scaffold + OIDC Login
+
+**Hedef:** React + Vite + MUI; login/callback/dashboard placeholder; session cookie tabanlı API client.
+
+**Yapılacaklar:**
+
+1. `apps/web`: Vite + React 19 + TypeScript strict + MUI tema
+2. React Router: route grupları (`05` Route Konfigürasyonu)
+3. `AuthGuard`, `GuestGuard`; `useAuthStore` (Zustand); TanStack Query setup
+4. Axios client: session cookie (`withCredentials`), CSRF header, 401 → `/auth/login` redirect
+5. Login sayfası: "Kurumsal Hesapla Giriş Yap" → `GET /api/v1/auth/oidc/login` redirect
+6. `S-AUTH-CALLBACK` (`Docs/06_SCREEN_CATALOG.md` §S-AUTH-CALLBACK)
+7. `InternalLayout` iskeleti + `/app/dashboard` boş placeholder
+
+**Minimum bağlam:**
+
+- `Docs/05_FRONTEND_SPEC.md` — Klasör Yapısı, Route Konfigürasyonu, Axios interceptor
+- `Docs/06_SCREEN_CATALOG.md` — S-AUTH-CALLBACK, InternalLayout auth guard notları
+- `Docs/03_API_CONTRACTS.md` §8.3 (frontend contract)
+
+**Bu iterasyonda yok:** PermissionGate/RoleGuard (Faz 2), S-SESSION-EXPIRED modal (Faz 10), case/task ekranları, seed.
+
+**Stop:** [ ] Browser: login → IdP (dev Google) → callback → dashboard; [ ] logout → login; [ ] 401 interceptor redirect çalışır. PR/onay → İterasyon 5.
+
+---
+
+### İterasyon 5 — Seed, Test & CI
+
+**Hedef:** Seed data; auth modülü ≥%90 coverage; CI integration test; E2E smoke.
+
+**Yapılacaklar:**
+
+1. Prisma seed: superadmin user + roller + permission placeholder + v1 KVKK consent + varsayılan system_settings
+2. Auth unit + integration test (pozitif + negatif deny: invalid session, lockout, JIT no-role)
+3. Testcontainers PostgreSQL integration test setup
+4. `.github/workflows/pr-check.yml` genişletme: unit + integration test adımı
+5. Manual E2E checklist: `pnpm dev` → OIDC login → dashboard
+
+**Minimum bağlam:**
+
+- `Docs/08_TESTING_STRATEGY.md` — factory pattern, coverage hedefleri, integration test
+- `Docs/09_DEV_WORKFLOW.md` §6 Local Setup, §8.1 CI Pipeline
+- `Docs/10_IMPLEMENTATION_ROADMAP.md` §Faz 1 Deliverable, Human Gate
+
+**Bu iterasyonda yok:** PolicyGuard testleri (Faz 2), audit outbox (Faz 3), staging deploy.
+
+**Stop:** [ ] Auth modülü coverage ≥%90; [ ] CI green (lint + typecheck + unit + integration); [ ] Human Gate checklist tamam. Faz 1 Done.
+
+---
+
+## Required Context
+
+- `Docs/02_DATABASE_SCHEMA.md` — Auth & Users, Config & Admin tabloları
+- `Docs/03_API_CONTRACTS.md` §8.3 Auth / Session, Standart Response Zarfı, Error Taxonomy
+- `Docs/04_BACKEND_SPEC.md` — Klasör Yapısı, Middleware zinciri, auth modülü
+- `Docs/05_FRONTEND_SPEC.md` — Klasör yapısı, route grupları, Axios pattern
+- `Docs/06_SCREEN_CATALOG.md` — S-AUTH-CALLBACK
+- `Docs/07_SECURITY_IMPLEMENTATION.md` §1 Kimlik Doğrulama, §2 Session, §4.3 Brute-Force, §6–7
+- `Docs/08_TESTING_STRATEGY.md` — coverage, integration test
+- `Docs/09_DEV_WORKFLOW.md` §6–8
+- `Docs/10_IMPLEMENTATION_ROADMAP.md` §Faz 1
+
+Auto-attached glob rules: `10-backend-architecture`, `11-auth-session`, `15-database-prisma`, `20-frontend-architecture`, `21-frontend-routes`, `04-quality-gates`, `03-security-baseline`
+
+## Scope
+
+```
+apps/api/src/
+  main.ts, app.module.ts
+  common/          config, guards, filters, interceptors, pipes
+  modules/auth/    OIDC, session, JIT
+  prisma/          schema.prisma, migrations/, seed.ts
+apps/web/src/
+  routes/, layouts/, features/auth/, api/, hooks/, stores/
+packages/shared/   Role, ClearanceLevel, Permission enum
+packages/dto/      auth Zod schema
+```
+
+Tam modül ağacı: `Docs/04_BACKEND_SPEC.md` Klasör Yapısı.
+
+### Files NOT touched
+
+- `apps/api/src/modules/case-management/**` — Faz 5
+- `authorization/**`, `PolicyGuard` full impl — Faz 2
+- `crypto/**`, `audit/**` full impl — Faz 3
+- `apps/worker/**` job implementasyonu — Faz 3+
+- Case/report/intake/tracking Prisma modelleri — Faz 4–5
+
+## Constraints
+
+### Use
+
+- OIDC PKCE + passport-openidconnect (dev: Google, prod: kurumsal IdP)
+- express-session + connect-pg-simple (PostgreSQL session store)
+- HttpOnly + Secure + SameSite=Strict session cookie
+- Zod env validation + `packages/dto` paylaşımlı schema
+- Pino structured logging + correlation ID
+
+### Avoid
+
+- JWT frontend'e iletmek veya localStorage'da token saklamak
+- JIT provisioning'de varsayılan rol atamak
+- CSRF/rate limit'i "later" bırakmak
+- Custom session mekanizması (express-session zorunlu)
+- bcrypt tracking parolası için (Faz 4 — burada login_attempts only)
+
+## Done Definition
+
+### Backend
+
+- [ ] Prisma schema v1 `02_DATABASE_SCHEMA` ile uyumlu (Faz 1 tabloları)
+- [ ] OIDC PKCE flow: code_verifier + code_challenge doğrulanıyor
+- [ ] JIT: yeni kullanıcı oluşuyor, rol atanmıyor
+- [ ] Session HttpOnly + Secure + SameSite=Strict
+- [ ] CSRF double-submit aktif (mutating endpoint'ler)
+- [ ] Error response zarfı `03` formatında
+- [ ] Health + readiness probe 200
+- [ ] Auth modülü test coverage ≥%90
+
+### Frontend
+
+- [ ] Login → OIDC → callback → dashboard E2E çalışıyor
+- [ ] Logout → login sayfasına dönüş
+- [ ] Axios 401 → `/auth/login` redirect
+- [ ] `InternalLayout` iskeleti render
+
+### DevOps & CI
+
+- [ ] Seed: superadmin + roller + system_settings + KVKK v1
+- [ ] CI: lint + typecheck + unit + integration green
+- [ ] `.env.example` OIDC değişkenleri dokümante
+
+### Human Gate
+
+- [ ] Developer: lokal OIDC login (Google dev) doğruladı
+- [ ] Correlation ID grep ile log'larda görünüyor
+- [ ] PR squash merge → develop (insan onayı)
+
+### Manual smoke test
+
+```bash
+pnpm --filter api prisma migrate dev && pnpm --filter api prisma db seed
+pnpm dev
+# Browser: /auth/login → Google → /app/dashboard
+# curl health + /auth/me (session cookie ile)
+```
+
+## Explicit Don'ts
+
+- JWT veya access token frontend'e iletmek
+- JIT provisioning'de otomatik rol atamak
+- PolicyGuard / `@RequirePolicy` full impl (Faz 2'ye bırak)
+- CryptoService / field encryption (Faz 3)
+- Case, report, intake, tracking modülleri
+- MFA/TOTP implementasyonu (prod go-live — Faz 13)
+- `main`'e direct push
+
+## Kısıtlar & Riskler
+
+| Risk | Önlem |
+| --- | --- |
+| Agent JWT çözümü yazar | Explicit Don'ts + `07` §1.1 referans |
+| Agent CSRF'yi atlar | İterasyon 3 zorunlu; Done Definition checklist |
+| Agent JIT'e varsayılan rol atar | Integration test negatif deny |
+| login_attempts unutulur | İterasyon 1 schema + İterasyon 2 kayıt |
+| Roadmap vs `02` tablo adı farkı | `02_DATABASE_SCHEMA` tek kaynak (`kvkk_consent_versions`, `audit_events`) |
+
+---
+
+Phase done → `Docs/10_IMPLEMENTATION_ROADMAP.md` Faz 1 durumunu güncelle.

@@ -1,0 +1,44 @@
+---
+description: Step-by-step for adding a new screen or route. Use when implementing S-* screens from screen catalog.
+---
+
+# Yeni Ekran Prosedürü
+
+## Step 1: Screen Catalog
+
+`Docs/06_SCREEN_CATALOG.md`'de S-* ID bul: layout, bileşenler, veri kaynakları, yetkiler, UX state'ler.
+
+## Step 2: Route & Layout
+
+`apps/web/src/routes/index.tsx` — doğru layout (Public/Internal/Admin) + guard stack.
+
+## Step 3: Page Component
+
+`features/<domain>/pages/<Name>Page.tsx` — catalog'daki screen ID ile eşle.
+
+## Step 4: Data Layer
+
+TanStack Query hook'ları — API endpoint'ler `Docs/03` ile uyumlu query key.
+
+## Step 5: Permission UX
+
+`<PermissionGate>` ile action/button gizle — backend guard zaten zorunlu.
+
+## Step 6: Form (varsa)
+
+Zod schema `packages/dto`'dan. Multi-step ise step hook pattern (`22-frontend-forms`).
+
+## Step 7: Test & a11y
+
+- Vitest: kritik interaction
+- Label, keyboard nav, error announce
+- Loading/empty/error states
+
+## Step 8: Dokümantasyon
+
+- [ ] `Docs/06_SCREEN_CATALOG.md` implementasyon notu (gerekirse)
+- [ ] `Docs/05_FRONTEND_SPEC.md` yeni global pattern eklendiyse
+
+---
+
+Detay: `Docs/06_SCREEN_CATALOG.md`; `Docs/05_FRONTEND_SPEC.md`

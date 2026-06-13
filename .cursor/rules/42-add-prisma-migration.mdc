@@ -1,0 +1,44 @@
+---
+description: Step-by-step for Prisma schema migration. Use when changing apps/api/prisma/schema.prisma.
+---
+
+# Prisma Migration Prosedürü
+
+## Step 1: Schema Design
+
+`Docs/02_DATABASE_SCHEMA.md` ile hizala — tablo/kolon/index/encryption alanları.
+
+## Step 2: schema.prisma Güncelle
+
+Model + relation + index. Append-only tablolarda update trigger gereksinimini kontrol et.
+
+## Step 3: Migration Oluştur
+
+```bash
+pnpm --filter api prisma migrate dev --name kebab_case_description
+```
+
+SQL'i review et — destructive change varsa forward-fix planı yaz.
+
+## Step 4: Seed / Factory
+
+Sentetik seed güncelle. `packages/test-fixtures` factory'leri yeni alanlara uyarla.
+
+## Step 5: Test
+
+- Integration: migration apply clean DB'de
+- Rollback stratejisi: forward-fix migration (prod'da rollback command yok)
+
+## Step 6: Dokümantasyon & PR
+
+- [ ] `Docs/02_DATABASE_SCHEMA.md` güncellendi
+- [ ] PR checklist: migration + rollback plan + privacy etkisi
+- [ ] Security-sensitive → ek reviewer
+
+## Production
+
+Yalnızca `prisma migrate deploy` — pipeline üzerinden, migrate-then-deploy sırası.
+
+---
+
+Detay: `Docs/02_DATABASE_SCHEMA.md`; `Docs/09_DEV_WORKFLOW.md` §8.3–8.4

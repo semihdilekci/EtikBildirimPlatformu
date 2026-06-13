@@ -1,0 +1,50 @@
+---
+alwaysApply: true
+---
+
+# Güvenlik Baseline — Her Değişiklikte Zorunlu
+
+Her PR/commit öncesi bu 6 kontrolü uygula. Skip yasak.
+
+## 1. Kimlik Doğrulama
+
+- [ ] İç kullanıcı: OIDC PKCE + server-side session (HttpOnly, Secure, SameSite=Strict)
+- [ ] **JWT frontend'e iletilmez** — session cookie only
+- [ ] JIT provisioning rol **atamaz** (deny-by-default)
+- [ ] Anonim tracking: her istekte `X-Tracking-Code` + `X-Tracking-Password`; **cookie/session açılmaz**
+- [ ] Tracking parola: argon2id (memory ≥64MB, iterations ≥3)
+
+## 2. Yetkilendirme (3 Katman)
+
+- [ ] API: `@RequirePolicy()` + PolicyGuard (RBAC + ABAC + clearance)
+- [ ] Query: PolicyScope row filtering
+- [ ] Response: FieldMaskingService (admin içerik göremez)
+- [ ] Yetkisiz kaynak erişimi → 404 (bilgi sızıntısı önleme)
+
+## 3. Şifreleme
+
+- [ ] Hassas alanlar CryptoService ile AES-256-GCM; alan başına ayrı DEK
+- [ ] Doküman: envelope encryption + grant modeli (case erişimi ≠ doküman erişimi)
+- [ ] Plaintext log/audit/error response'a sızmıyor
+
+## 4. Input & Dosya
+
+- [ ] Zod/class-validator whitelist; tanımsız alan → 400
+- [ ] Dosya: MIME+uzantı whitelist, ClamAV quarantine, presigned URL upload
+- [ ] CSRF: mutating endpoint'lerde double-submit cookie
+
+## 5. Audit & Log
+
+- [ ] Mutating işlem → audit outbox **aynı transaction'da** (fail-closed)
+- [ ] Audit içerik kopyalamaz — metadata + policy decision only
+- [ ] SafeLogger PII redaction aktif
+
+## 6. KVKK & Non-Prod
+
+- [ ] Yeni PII alanı → retention/consent/minimizasyon etkisi değerlendirildi
+- [ ] Non-prod ortamda gerçek etik veri kullanılmaz (sentetik seed only)
+- [ ] E-posta şablonları hassas içerik taşımaz
+
+---
+
+Detay: `Docs/07_SECURITY_IMPLEMENTATION.md`, `Docs/00_PROJECT_OVERVIEW.md` §Güvenlik

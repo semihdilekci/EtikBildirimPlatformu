@@ -1,0 +1,55 @@
+---
+description: Testing conventions — co-located tests, factories, negatif deny, transition matrix
+globs:
+  - "**/*.{test,spec}.{ts,tsx}"
+  - "packages/test-fixtures/**"
+---
+
+# Test Kuralları
+
+## Dosya Konumu
+
+Co-located: `__tests__/` veya `*.spec.ts` — test edilen modülle aynı dizin.
+
+## Naming
+
+```typescript
+describe('PolicyGuard', () => {
+  it('should deny action_owner accessing unassigned case', () => { ... });
+  it('should allow council_secretary with sufficient clearance', () => { ... });
+});
+```
+
+Karar traceability: test adında ilgili karar ID mümkünse (`AUTH-006`).
+
+## Mock Stratejisi
+
+Mock at boundary — KMS, S3, SMTP, ClamAV, OIDC. Internal module mock yasak.
+
+## Factory Pattern
+
+`packages/test-fixtures` — faker + typed factory. Manuel object yaratma yasak. Sentetik veri only.
+
+## Integration Test
+
+Testcontainers PostgreSQL — production DB'ye bağlanma yasak. Transaction rollback per-test tercih.
+
+## Workflow Transition Matrix
+
+Her geçiş minimum 8 senaryo: pozitif, yanlış rol, yanlış state, clearance, atama dışı, idempotency, side-effect, precondition fail.
+
+Detay: `Docs/08_TESTING_STRATEGY.md` §4 tablo.
+
+## Security Test
+
+SAST/SCA/secret/container scan CI gate — skip yasak.
+
+## Anti-pattern'ler
+
+- Happy path only authorization test
+- Production seed test ortamında
+- Implementation detail assertion (call count) over behavior
+
+---
+
+Detay: `Docs/08_TESTING_STRATEGY.md`; `Docs/09_DEV_WORKFLOW.md` §PR Test checklist

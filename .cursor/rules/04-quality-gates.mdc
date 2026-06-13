@@ -1,0 +1,47 @@
+---
+alwaysApply: true
+---
+
+# Kalite Kapıları
+
+## Test Coverage
+
+| Alan | Line | Branch |
+| --- | --- | --- |
+| Kritik modüller (authz, workflow, document, audit, crypto, notification) | ≥%90 | ≥%85 |
+| Backend toplam | ≥%80 | ≥%70 |
+| Frontend kritik form/guard/hook | ≥%70 | — |
+
+Her auth/workflow/document testinde **en az bir negatif deny** senaryosu zorunlu.
+
+## CI Pipeline (PR Zorunlu)
+
+Install → lint → typecheck → unit → integration → SAST → SCA → secret scan → build → container scan. Hepsi green olmadan merge yok.
+
+Security-sensitive dosya değişikliği → ek reviewer (Bilgi Güvenliği veya kıdemli dev).
+
+## TypeScript
+
+- `strict: true`, `noImplicitAny: true`, `strictNullChecks: true`
+- `any`, `@ts-ignore`, `as any` → review red
+- Shared DTO: `packages/dto` Zod schema — FE/BE duplicate schema yasak
+
+## Frontend Kalite
+
+- Lighthouse (Faz 11+): performance ≥80, a11y ≥90
+- Bundle initial < 200 KB gzipped
+- `dangerouslySetInnerHTML` yasak · `localStorage` yasak (session cookie-only)
+- Web Vitals: LCP < 2.5s, CLS < 0.1
+
+## API Performans Hedefleri
+
+- İç ekranlar p95 < 500 ms
+- Dış form submit p95 < 2 s
+
+## OWASP ASVS
+
+MVP'de L3 kritik %80; kalan %20 production öncesi. HIGH/CRITICAL bulgu ile release yok.
+
+---
+
+Detay: `Docs/08_TESTING_STRATEGY.md`, `Docs/09_DEV_WORKFLOW.md` §8, `Docs/00_PROJECT_OVERVIEW.md` §Başarı Kriterleri

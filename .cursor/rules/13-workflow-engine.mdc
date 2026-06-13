@@ -1,0 +1,53 @@
+---
+description: Workflow engine — WorkflowCommandHandler, state machine, CaseTransition append-only
+globs:
+  - "apps/api/src/modules/case-management/**"
+  - "apps/api/src/modules/decision/**"
+---
+
+# Workflow Engine
+
+17 state, 20+ geçiş. Yalnızca `WorkflowCommandHandler` / `TransitionService` state değiştirir — doğrudan `case.currentState` set yasak.
+
+## Command Pattern
+
+```typescript
+// ✓ Doğru — explicit allowed-transitions map
+const allowed = TRANSITION_MAP[fromState]?.[command];
+if (!allowed) throw new DomainException('CASE_INVALID_TRANSITION', ...);
+
+// ✗ Yanlış — serbest geçiş
+await tx.case.update({ data: { currentState: targetState } }); // bypass
+```
+
+## Zorunlu Kontroller (Her Geçiş)
+
+1. Doğru state (kaynak)
+2. Doğru rol + permission
+3. Clearance yeterli
+4. Atama scope (rapporteur/action_owner)
+5. Precondition (gerekli task/doküman tamamlandı mı)
+6. Idempotency key — çift geçiş üretmez
+7. Optimistic lock — concurrent → 409
+
+## Side-Effect (Aynı Transaction)
+
+Transition + CaseTransition kaydı + task oluşturma + audit outbox + notification event. Partial state kabul edilmez.
+
+## CaseTransition
+
+Append-only — UPDATE/DELETE yasak. `current_state` performans kısayolu; denetim kaynağı `case_transitions`.
+
+## Decision / Sessiz Kabul
+
+24 takvim saati → `SilentAcceptanceHandler` (worker cron). Oy birliği (unanimity), majority değil.
+
+## Anti-pattern'ler
+
+- CaseTransition status düzeltme (update)
+- Side-effect ayrı endpoint'te (transition sonrası)
+- Precondition "happy path only"
+
+---
+
+Detay: `Docs/01_DOMAIN_MODEL.md` state machine; `Docs/04_BACKEND_SPEC.md` transition/; `Docs/08_TESTING_STRATEGY.md` §4

@@ -1,0 +1,61 @@
+---
+description: TanStack Query hooks — server state, cache keys, polling, error handling
+globs:
+  - "apps/web/src/**/hooks/use*.ts"
+  - "apps/web/src/features/**/hooks/**"
+---
+
+# Query & Hook Pattern'leri
+
+TanStack Query server state için. Client state için Zustand/context.
+
+## Query Key Convention
+
+```typescript
+// ✓ Doğru — hierarchical keys
+['cases', 'list', filters] 
+['cases', 'detail', caseId]
+['tasks', 'list', { status: 'PENDING' }]
+
+// ✗ Yanlış
+['getCases'] // flat, filter'sız cache bug
+```
+
+## Hook Yapısı
+
+```typescript
+export function useCaseDetail(caseId: string) {
+  return useQuery({
+    queryKey: ['cases', 'detail', caseId],
+    queryFn: () => api.cases.getById(caseId),
+    enabled: !!caseId,
+  });
+}
+```
+
+Mutation sonrası `queryClient.invalidateQueries` — ilgili key prefix.
+
+## Polling
+
+- NotificationBell: 30 sn (5 sn değil)
+- Dashboard widget'lar: parallel independent queries
+
+## Error Handling
+
+- 403 → toast + navigate back
+- 404 → toast "Kayıt bulunamadı"
+- 401 → auth store clear + login redirect
+
+## Tracking Hooks
+
+Her mutating/read call'da tracking headers inject et (`useTrackingAuth` context).
+
+## Anti-pattern'ler
+
+- useEffect + fetch (Query kullan)
+- Global single big query (dashboard widget isolation)
+- Sensitive data query cache'te gereksiz uzun staleTime
+
+---
+
+Detay: `Docs/05_FRONTEND_SPEC.md` data fetching; `Docs/06_SCREEN_CATALOG.md` veri kaynakları

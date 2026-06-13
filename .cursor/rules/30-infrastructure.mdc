@@ -1,0 +1,58 @@
+---
+description: Infrastructure — AWS cloud, CI/CD, env vars, deployment, Turborepo
+globs:
+  - "infra/**"
+  - ".github/**"
+  - "turbo.json"
+  - "pnpm-workspace.yaml"
+  - ".env.example"
+  - "apps/*/.env.example"
+---
+
+# Altyapı
+
+**Cloud-only:** Local Docker Compose yok. Tüm ortamlar AWS üzerinden: RDS (`DATABASE_URL`), S3 (`AWS_*`, `S3_BUCKET_*`), KMS, ClamAV (ECS Fargate, Faz 7+). Prod/staging: ECS Fargate + Secrets Manager.
+
+## AWS Servisleri (Dev / Staging / Prod)
+
+| Servis | Bileşen | Not |
+| --- | --- | --- |
+| DB | RDS PostgreSQL | Docker'da postgres yok |
+| Storage | S3 | Local MinIO yok |
+| Encryption | KMS CMK | Per-field + per-document alias |
+| Malware scan | ClamAV on ECS | Private subnet, TCP 3310; KVKK — self-hosted |
+| Compute (staging/prod) | ECS Fargate | API + worker |
+
+Non-prod ↔ prod izolasyon: ayrı DB, bucket, KMS key, ClamAV instance, IAM scope.
+
+## Environment
+
+- Secret değer commit edilmez — `.env.example` placeholder only
+- Dev: `.env.local`; staging/prod: AWS Secrets Manager
+- `pnpm install --frozen-lockfile` CI'da zorunlu
+
+## CI/CD Akışı
+
+PR: lint → typecheck → unit → integration → SAST → SCA → secret scan → build → container scan.
+
+Staging merge: deploy + `prisma migrate deploy` + DAST + E2E.
+
+Production: human approval (4-göz) → promote → migrate deploy → smoke.
+
+## Deploy Kuralları
+
+- Manuel SSH/console deploy yasak
+- Production'da yalnızca `prisma migrate deploy`
+- Config değişikliği version-controlled IaC + PR
+
+## Turborepo Pipeline
+
+`build`, `lint`, `typecheck`, `test`, `dev` — `turbo.json`'da tanımlı.
+
+## Dependency Ekleme
+
+Ayrı PR + SCA/license review. `pnpm-lock.yaml` değişikliği → dependency review. Floating `latest` yasak.
+
+---
+
+Detay: `Docs/09_DEV_WORKFLOW.md` §4–8; `Docs/00_PROJECT_OVERVIEW.md` §Altyapı

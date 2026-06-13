@@ -1,0 +1,56 @@
+---
+description: Step-by-step for writing an Architecture Decision Record. Use when making stack or pattern decisions.
+---
+
+# ADR Yazım Prosedürü
+
+## Ne Zaman ADR?
+
+- Yeni framework/library ekleme
+- Auth/crypto/workflow pattern değişikliği
+- Stack pin değişikliği
+- "Artık X yerine Y" kararları
+
+## Step 1: Taslak
+
+Agent draft yazar; developer onaylar. Dosya: `Docs/adr/NNNN-kebab-title.md` (klasör yoksa oluştur).
+
+## Step 2: MADR İskelet
+
+```markdown
+# NNNN: Başlık
+
+## Durum
+Kabul Edildi | Önerildi | Deprecated
+
+## Bağlam
+Problem ve kısıtlar (2–3 paragraf)
+
+## Karar
+Ne yapılacak
+
+## Sonuçlar
+Olumlu / olumsuz / nötr
+
+## Alternatifler
+Reddedilen seçenekler ve neden
+```
+
+## Step 3: Docs Sync
+
+ADR kararı ilgili spec'e yansıt:
+- Stack → `Docs/00`, `Docs/04`, `Docs/05`
+- Security → `Docs/07`
+- Domain → `Docs/01`
+
+## Step 4: Rule Sync
+
+Pin karar `00-project-identity.mdc` özetine; pattern karar ilgili glob rule referansına.
+
+## Step 5: PR
+
+ADR + doc update aynı PR'da veya ADR-first follow-up PR.
+
+---
+
+Detay: `Docs/09_DEV_WORKFLOW.md`; `Docs/10_IMPLEMENTATION_ROADMAP.md` §ADR disiplini

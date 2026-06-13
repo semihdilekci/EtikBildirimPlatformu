@@ -1,0 +1,47 @@
+---
+description: Step-by-step for fixing failing CI or local tests. Use when pnpm test or CI pipeline fails.
+---
+
+# Failing Test Fix Prosedürü
+
+## Step 1: Reproduce
+
+```bash
+pnpm test -- --testPathPattern="<failing-module>"
+pnpm test:integration  # integration fail ise
+```
+
+CI log'dan tam test adı + error message al.
+
+## Step 2: Sınıflandır
+
+| Tip | Yaklaşım |
+| --- | --- |
+| Regression (kod doğru, test eski) | Test güncelle — davranış spec'e uygun mu kontrol et |
+| Bug (kod yanlış) | Kod fix — test koru |
+| Flaky (timing/order) | Deterministic fake clock / transaction isolation |
+| Env (Testcontainers, port) | Docker/CI config |
+
+## Step 3: Fix Loop
+
+Max 3 agent iterasyonu. Her fix sonrası full affected suite — yalnızca tek test değil.
+
+## Step 4: Negatif Test Koruma
+
+Authorization/workflow fix'inde deny senaryolarını silme — coverage düşmesin.
+
+## Step 5: Root Cause
+
+Quick patch yerine kök neden notu PR description'da (1–2 cümle).
+
+## Step 6: Verify
+
+```bash
+pnpm lint && pnpm typecheck && pnpm test
+```
+
+Coverage threshold CI gate'i geçiyor mu kontrol et.
+
+---
+
+Detay: `Docs/08_TESTING_STRATEGY.md`; `Docs/09_DEV_WORKFLOW.md` §CI

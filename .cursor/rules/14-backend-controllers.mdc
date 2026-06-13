@@ -1,0 +1,54 @@
+---
+description: Backend controllers — decorator stack, Zod pipe, policy, audit, response envelope
+globs:
+  - "apps/api/**/*.controller.ts"
+---
+
+# Controller Kuralları
+
+Controller: parse → validate → delegate → serialize. İş kuralı yok.
+
+## Decorator Stack (Internal Endpoint)
+
+```typescript
+@Controller('cases')
+export class CaseController {
+  @RequirePolicy('case:transition')
+  @AuditAction('CASE_TRANSITION')
+  @Post(':id/transitions')
+  async transition(
+    @Param('id') id: string,
+    @Body() dto: CreateTransitionDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.transitionService.execute({ caseId: id, ...dto, actorUserId: user.id });
+  }
+}
+```
+
+Sıra: `@RequirePolicy` → `@AuditAction` → HTTP method. Public intake/tracking: policy farklı profil.
+
+## DTO Validation
+
+- `class-validator` + global ValidationPipe: `whitelist`, `forbidNonWhitelisted`, `transform`
+- Shared schema: `packages/dto` Zod — controller DTO re-export
+- Hata: `VALIDATION_FAILED` + field errors
+
+## Response Zarfı
+
+Başarı: `{ data: T }` veya `{ data: [], pagination: {} }`. Controller manuel wrap yapmaz — interceptor halleder.
+
+## Error Handling
+
+`DomainException` → bilinen HTTP status + error code. Controller'da try/catch ile swallow yasak — global filter.
+
+## Anti-pattern'ler
+
+- Controller'da `$transaction`, encrypt/decrypt, policy evaluation
+- Endpoint without `@RequirePolicy` (internal)
+- Mutating endpoint without `@AuditAction`
+- Stack trace / SQL detayı response'a
+
+---
+
+Detay: `Docs/03_API_CONTRACTS.md` §Response Zarfı, §Audit; `Docs/04_BACKEND_SPEC.md` §Middleware Zinciri

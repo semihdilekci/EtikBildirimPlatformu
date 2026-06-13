@@ -1,0 +1,293 @@
+---
+description: '[Faz 2] Authorization RBAC+ABAC+clearance — 6 iterasyon/chat (policy pkg → PolicyGuard → PolicyScope → FieldMasking → FE guards → seed+test). Mesajda "Faz 2 — İterasyon M" belirt.'
+---
+
+# Faz 2: Authorization (RBAC + ABAC + Clearance)
+
+## Goal
+
+Merkezi yetkilendirme katmanı kurulur: `PolicyGuard` (RBAC + ABAC + clearance tek noktada), `PolicyScope` (satır filtreleme), `FieldMaskingService` (yanıt alan maskeleme), `DocumentPolicy` iskeleti. `packages/policy` MVP permission set'i ile doldurulur. Frontend: `RoleGuard`, `PermissionGate`, `usePermissions` — yalnızca UX; backend enforcement zorunlu. Deny-by-default: rolsüz kullanıcı internal endpoint'lere erişemez.
+
+Detay: `Docs/10_IMPLEMENTATION_ROADMAP.md` §Faz 2.
+
+**Bağımlılık:** Faz 1 tamamlanmış olmalı (session, auth, seed superadmin).
+
+## Feature branch (zorunlu)
+
+Faz koduna **main üzerinde başlanmaz**. İlk commit/dosya değişikliği öncesi `48-git-phase-branch.mdc` uygula.
+
+**Bu faz branch adı:** `feature/F2-authorization`
+
+**Stop (İterasyon 1, kod öncesi):** [ ] Faz 1 merge edilmiş / `develop` güncel; [ ] faz branch oluşturuldu; [ ] `git push -u origin HEAD` (remote varsa).
+
+## Bu fazın çalışma modeli (iterasyonlar)
+
+Tek sohbette tamamlanmaz. Her session: `@52-phase-02-authorization` + mesajda **「Faz 2 — İterasyon M」**. Branch açmadan kod yok.
+
+---
+
+### İterasyon 1 — packages/policy Paketi
+
+**Hedef:** MVP permission enum, rol-permission map, ABAC kuralları ve field visibility defaults tam tanımlı.
+
+**Yapılacaklar:**
+
+1. `packages/policy/src/permissions.ts` — tüm MVP `PermissionCode` enum (`07` §3.4)
+2. `role-permission-map.ts` — 7 rol × permission set (`07` §3.5 yetki matrisi)
+3. `abac-rules.ts` — company, assignment, function/location, clearance koşulları (`07` §3.1)
+4. `field-visibility-defaults.ts` — alan görünürlük matrisi (`07` §3.6)
+5. `packages/shared` `Role`, `ClearanceLevel` enum'ları policy ile uyumlu export
+6. Unit test: her rol için en az bir granted + bir denied permission
+
+**Minimum bağlam:**
+
+- `Docs/07_SECURITY_IMPLEMENTATION.md` §3.1–3.6
+- `Docs/04_BACKEND_SPEC.md` — `packages/policy/` yapısı
+- `.cursor/rules/43-add-new-permission.mdc`
+
+**Bu iterasyonda yok:** NestJS guard/service, frontend, case endpoint'leri, seed kullanıcı genişletmesi.
+
+**Stop:** [ ] Permission enum placeholder yok; [ ] role map `07` matrisiyle spot-check uyumlu; [ ] `pnpm --filter @ethics/policy test` green. PR/onay → İterasyon 2.
+
+---
+
+### İterasyon 2 — PolicyGuard + @RequirePolicy
+
+**Hedef:** Merkezi guard; RBAC + clearance; mevcut internal endpoint'ler korunur.
+
+**Yapılacaklar:**
+
+1. `apps/api/src/authorization/` modülü: `authorization.module.ts`, `policy-guard.service.ts`
+2. `common/decorators/require-policy.decorator.ts` — `@RequirePolicy('case:pre_review')`
+3. `common/guards/policy.guard.ts` — RBAC permission check + clearance hierarchy
+4. Guard zincirine ekleme: SessionGuard → AuthGuard → **PolicyGuard** (`04` middleware sırası §9)
+5. Mevcut protected endpoint'lere `@RequirePolicy` (auth/me hariç — kendi profili)
+6. Deny: yetkisiz → `AUTHZ_FORBIDDEN` (403); bilgi sızıntısı riski → 404 tercih (`04` §Policy guard)
+7. `@Public()` yalnızca intake/tracking için (henüz yok — auth OIDC endpoint'leri exempt)
+
+**Minimum bağlam:**
+
+- `Docs/07_SECURITY_IMPLEMENTATION.md` §3.2 Katman 1, §6.4 Guard Zinciri
+- `Docs/04_BACKEND_SPEC.md` — authorization/, policy.guard, controller örneği
+- `Docs/03_API_CONTRACTS.md` — Error Taxonomy (`AUTHZ_FORBIDDEN`)
+
+**Bu iterasyonda yok:** PolicyScope query builder, FieldMasking, frontend, ABAC assignment scope (İterasyon 3).
+
+**Stop:** [ ] Rolsüz JIT kullanıcı protected endpoint → 403; [ ] superadmin seed → 200; [ ] unit test policy evaluation ≥ temel senaryolar. PR/onay → İterasyon 3.
+
+---
+
+### İterasyon 3 — PolicyScope ABAC
+
+**Hedef:** Liste/detay sorgularında satır seviyesi filtreleme; clearance hierarchy.
+
+**Yapılacaklar:**
+
+1. `policy-scope.service.ts` — `buildCaseScope`, `buildTaskScope` (case tablosu yoksa mock/fixture ile test)
+2. ABAC attribute'ları: company_scope, assignment_scope, function_location_scope, confidentiality_clearance
+3. `getAllowedLevels(clearance)` — NORMAL < SENSITIVE < STRICTLY_CONFIDENTIAL
+4. Admin-only rol → vaka sorgularında deny-all scope
+5. Service katmanında ad-hoc `where` yasak — PolicyScope zorunlu pattern (`04` PolicyScope bölümü)
+
+**Minimum bağlam:**
+
+- `Docs/07_SECURITY_IMPLEMENTATION.md` §3.1 ABAC koşulları
+- `Docs/04_BACKEND_SPEC.md` — PolicyScope query builder örneği
+- `Docs/01_DOMAIN_MODEL.md` — rol semantiği (rapporteur, action_owner)
+
+**Bu iterasyonda yok:** Field masking, DocumentPolicy impl, frontend, gerçek case CRUD (Faz 5).
+
+**Stop:** [ ] Unit test: rapporteur yalnız assigned scope; action_owner company scope; clearance yetersiz → filtered out; [ ] admin → deny-all. PR/onay → İterasyon 4.
+
+---
+
+### İterasyon 4 — FieldMasking + DocumentPolicy Skeleton
+
+**Hedef:** Response interceptor pattern ile alan maskeleme; doküman grant iskeleti.
+
+**Yapılacaklar:**
+
+1. `field-masking.service.ts` — rol + clearance bazlı alan çıkarma (`07` §3.6)
+2. Response transform interceptor entegrasyonu veya servis seviyesi `mask()` API
+3. Admin: `report_text`, `incident_description` vb. yanıtta **hiç dönmez** (null değil — alan yok)
+4. `document-policy.service.ts` skeleton — grant check interface; Faz 7'de doldurulacak
+5. Unit test: mock case DTO × rol matrisi (FieldMaskingPolicy senaryoları)
+
+**Minimum bağlam:**
+
+- `Docs/07_SECURITY_IMPLEMENTATION.md` §3.2 Katman 3, §3.6 Field Visibility, §3.7 DocumentPolicy
+- `Docs/04_BACKEND_SPEC.md` — field-masking.service.ts, document-policy.service.ts
+- `Docs/08_TESTING_STRATEGY.md` — FieldMaskingPolicy test referansı
+
+**Bu iterasyonda yok:** Gerçek document upload/download (Faz 7), frontend PermissionGate, crypto decrypt.
+
+**Stop:** [ ] Admin role mock response'da içerik alanları yok; [ ] council_secretary tüm alanları görür; [ ] DocumentPolicy stub grant deny döner. PR/onay → İterasyon 5.
+
+---
+
+### İterasyon 5 — Frontend Guards & PermissionGate
+
+**Hedef:** Route ve UI element koruma — UX katmanı; backend tek kaynak.
+
+**Yapılacaklar:**
+
+1. `RoleGuard.tsx` — route-level rol kontrolü; yetersiz → `/403`
+2. `usePermissions()` hook — `/auth/me` roles + permission set türetme (backend'ten veya policy pkg read-only mirror UX için)
+3. `<PermissionGate permission="case:list">` — children gizleme
+4. `InternalLayout` sidebar: menü item'ları PermissionGate ile sarmala
+5. Admin route: `RoleGuard` admin rolü zorunlu
+
+**Minimum bağlam:**
+
+- `Docs/05_FRONTEND_SPEC.md` — Route grupları, guards/, InternalLayout
+- `Docs/06_SCREEN_CATALOG.md` — InternalLayout auth guard notları, global navigation
+- `Docs/10_IMPLEMENTATION_ROADMAP.md` §Faz 2 Frontend
+
+**Bu iterasyonda yok:** S-FORBIDDEN polish (Faz 10), case/task ekranları, backend değişikliği.
+
+**Stop:** [ ] Rolsüz kullanıcı sidebar'da internal menü görmez; [ ] admin menü item'ları yalnız admin rolünde; [ ] FE test veya manual: PermissionGate hide. PR/onay → İterasyon 6.
+
+---
+
+### İterasyon 6 — Seed, Integration Test & Coverage
+
+**Hedef:** Her rol için test kullanıcısı; authorization modülü ≥%90 coverage; human gate.
+
+**Yapılacaklar:**
+
+1. Prisma seed genişletme: 7 rol × test kullanıcı (sentetik email, clearance varyasyonu)
+2. Integration test: endpoint × rol matrix (authorized 200, unauthorized 403/404)
+3. Negatif deny zorunlu: clearance yetersiz, rolsüz, yanlış company scope
+4. Coverage gate: authorization modülü ≥%90 line (`08` threshold)
+5. Spot check: tüm mevcut controller method'larında `@RequirePolicy` veya `@Public()`
+
+**Minimum bağlam:**
+
+- `Docs/08_TESTING_STRATEGY.md` — authorization coverage, negatif deny
+- `Docs/09_DEV_WORKFLOW.md` §8 CI
+- `Docs/10_IMPLEMENTATION_ROADMAP.md` §Faz 2 Deliverable, Human Gate
+
+**Bu iterasyonda yok:** Case workflow testleri (Faz 5), audit outbox (Faz 3), admin CRUD (Faz 9).
+
+**Stop:** [ ] Authz modülü coverage ≥%90; [ ] CI green; [ ] Human Gate checklist tamam. Faz 2 Done.
+
+---
+
+## Required Context
+
+- `Docs/07_SECURITY_IMPLEMENTATION.md` §3 Yetkilendirme (tam bölüm)
+- `Docs/04_BACKEND_SPEC.md` — authorization/, middleware zinciri §9, PolicyScope örneği
+- `Docs/03_API_CONTRACTS.md` — Error Taxonomy (`AUTHZ_FORBIDDEN`, `AUTHZ_NOT_FOUND`)
+- `Docs/05_FRONTEND_SPEC.md` — guards/, route grupları
+- `Docs/06_SCREEN_CATALOG.md` — InternalLayout navigation
+- `Docs/08_TESTING_STRATEGY.md` — authorization coverage ≥%90
+- `Docs/10_IMPLEMENTATION_ROADMAP.md` §Faz 2
+
+Auto-attached glob rules: `12-authorization-policy`, `10-backend-architecture`, `14-backend-controllers`, `23-frontend-queries`, `24-frontend-components`, `43-add-new-permission`, `03-security-baseline`, `04-quality-gates`
+
+## Scope
+
+```
+packages/policy/src/     permissions, role-permission-map, abac-rules, field-visibility-defaults
+apps/api/src/authorization/   policy-guard, policy-scope, field-masking, document-policy (skeleton)
+apps/api/src/common/     require-policy.decorator, policy.guard.ts
+apps/web/src/routes/guards/   RoleGuard (genişletme)
+apps/web/src/features/auth/   usePermissions, PermissionGate
+apps/web/src/layouts/    InternalLayout sidebar gating
+```
+
+Tam yapı: `Docs/04_BACKEND_SPEC.md` Klasör Yapısı.
+
+### Files NOT touched
+
+- `apps/api/src/modules/case-management/**` — Faz 5 (PolicyScope case query Faz 5'te bağlanır)
+- `crypto/**`, `audit/**` full impl — Faz 3
+- Admin panel CRUD — Faz 9
+- Document upload/download — Faz 7
+
+## Constraints
+
+### Use
+
+- Tek merkez: PolicyGuard + PolicyScope + FieldMaskingService + DocumentPolicy
+- `@RequirePolicy('resource:action')` — `packages/policy` enum değerleri
+- Clearance: `user.clearance_level >= resource.confidentiality_level`
+- Yetkisiz kaynak erişimi → 404 (bilgi sızıntısı önleme)
+- Frontend PermissionGate yalnızca UX
+
+### Avoid
+
+- Controller/service içinde ad-hoc `if (user.role === ...)` 
+- Frontend-only permission check
+- PolicyGuard bypass decorator (`@SkipGuard` yasak — `07` §6.4)
+- Incomplete permission enum placeholder bırakmak
+- Field masking'i controller if/else ile yapmak
+
+## Done Definition
+
+### packages/policy
+
+- [ ] Tüm MVP permission'lar enum'da tanımlı
+- [ ] Role-permission map `07` §3.5 ile uyumlu
+- [ ] field-visibility-defaults `07` §3.6 ile uyumlu
+
+### Backend
+
+- [ ] PolicyGuard RBAC + ABAC + clearance tek noktada
+- [ ] PolicyScope scope builder unit test green
+- [ ] FieldMasking: admin içerik alanlarını göremez
+- [ ] DocumentPolicy skeleton mevcut
+- [ ] Mevcut internal endpoint'ler `@RequirePolicy` veya exempt
+- [ ] Authorization modülü coverage ≥%90
+
+### Frontend
+
+- [ ] RoleGuard route koruması çalışıyor
+- [ ] PermissionGate sidebar menü gizliyor
+- [ ] usePermissions hook mevcut
+
+### Seed & Test
+
+- [ ] Her rol için test kullanıcı seed'de
+- [ ] Integration: pozitif + negatif deny senaryoları
+- [ ] Rolsüz kullanıcı deny-by-default
+
+### Human Gate
+
+- [ ] Clearance: SENSITIVE vaka + NORMAL clearance → deny (unit/integration)
+- [ ] ABAC company scope spot-check
+- [ ] Backend enforcement frontend'ten bağımsız doğrulandı
+- [ ] PR squash merge → develop
+
+### Manual smoke test
+
+```bash
+pnpm dev
+# Rolsüz JIT login → /app/dashboard → 403 veya kısıtlı görünüm
+# council_secretary seed login → internal menü görünür
+# admin login → admin menü; vaka içeriği API'de maskeli
+```
+
+## Explicit Don'ts
+
+- Permission check yalnızca frontend'te
+- PolicyGuard'ı clearance'tan ayrı paralel guard olarak yazmak
+- `@RequirePolicy` unutulan yeni endpoint
+- Admin rolüne vaka içeriği açmak
+- Case/workflow modülü implementasyonu (Faz 5)
+- CryptoService / audit outbox (Faz 3)
+- `main`'e direct push
+
+## Kısıtlar & Riskler
+
+| Risk | Önlem |
+| --- | --- |
+| Agent FE-only authz | Done Definition backend integration zorunlu |
+| Incomplete permission enum | İterasyon 1 full liste; spot-check `07` matrisi |
+| Field masking controller'da | FieldMaskingService + interceptor pattern |
+| Case endpoint yokken scope test edilemez | Unit test mock Prisma where; Faz 5'te integration bağlanır |
+| `@RequirePermission` vs `@RequirePolicy` | Proje standardı: `@RequirePolicy` (`04`, `43`) |
+
+---
+
+Phase done → `Docs/10_IMPLEMENTATION_ROADMAP.md` Faz 2 durumunu güncelle.

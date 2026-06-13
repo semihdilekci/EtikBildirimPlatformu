@@ -1,0 +1,55 @@
+---
+description: Frontend forms — multi-step wizard, Zod validation, dynamic category fields
+globs:
+  - "apps/web/src/**/*Form*.tsx"
+  - "apps/web/src/features/**/pages/**"
+  - "apps/web/src/features/**/schemas/**"
+  - "apps/web/src/features/**/hooks/use*Form*.ts"
+---
+
+# Form Pattern'leri
+
+React Hook Form + Zod resolver. Schema kaynağı: `packages/dto`.
+
+## Multi-Step Wizard (S-REPORT-FORM)
+
+- Step state hook (`useReportForm`) — geri/ileri veri korunur
+- Her step submit'te partial Zod validate
+- Kategori seçimi → `DynamicCategoryFields` (JSONB shape `packages/dto`'dan)
+- KVKK consent version kaydı zorunlu
+
+## Tracking Form
+
+- Tracking code + parola → verify API
+- Başarılı verify sonrası credentials **in-memory context** (TrackingContext)
+- Her API çağrısında header'a ekle — cookie yok
+
+## Admin Config Formları
+
+- Dirty diff gösterimi
+- Destructive action: "ONAYLIYORUM" confirmation pattern (KVKK publish)
+- Maker-checker pending state UI
+
+## Validation UX
+
+- Inline field error (400 `VALIDATION_FAILED`)
+- Submit disabled loading state
+- File upload: boyut/tip client-side pre-check (backend authoritative)
+
+```tsx
+// ✓ Doğru
+const form = useForm({ resolver: zodResolver(createReportSchema) });
+
+// ✗ Yanlış
+const [errors, setErrors] = useState({}); // manual validation
+```
+
+## Anti-pattern'ler
+
+- Kategori alanlarını hard-code (config/schema driven olmalı)
+- Form state localStorage'a persist (tracking anonimlik ihlali)
+- `dangerouslySetInnerHTML` KVKK metni render
+
+---
+
+Detay: `Docs/06_SCREEN_CATALOG.md` S-REPORT-FORM, S-TRACKING-LOGIN; `Docs/05_FRONTEND_SPEC.md` forms

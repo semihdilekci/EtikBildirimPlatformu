@@ -1,0 +1,43 @@
+---
+description: Step-by-step for adding RBAC permission. Use when extending packages/policy or RequirePolicy decorators.
+---
+
+# Yeni Permission Prosedürü
+
+## Step 1: Permission Tanımı
+
+`packages/policy/permissions.ts` — `resource:action` format, MVP enum'a ekle.
+
+## Step 2: Role Map
+
+`packages/policy/role-permission-map.ts` — `Docs/07_SECURITY_IMPLEMENTATION.md` yetki matrisi ile birebir.
+
+## Step 3: ABAC (Gerekirse)
+
+`packages/policy/abac-rules.ts` — company/assignment/clearance koşulu.
+
+## Step 4: Field Visibility (Gerekirse)
+
+`packages/policy/field-visibility-defaults.ts` — yeni alan masking kuralları.
+
+## Step 5: Backend Enforcement
+
+- `@RequirePolicy('new:permission')` endpoint'lerde
+- PolicyGuard integration test: pozitif + negatif her rol
+
+## Step 6: Frontend UX
+
+`usePermissions()` + `<PermissionGate>` — yalnızca UX.
+
+## Step 7: Seed
+
+Test kullanıcıları her rol için permission set ile seed/factory güncelle.
+
+## Step 8: Dokümantasyon
+
+- [ ] `Docs/07_SECURITY_IMPLEMENTATION.md` matris güncellendi
+- [ ] `Docs/03_API_CONTRACTS.md` endpoint permission sütunu
+
+---
+
+Detay: `Docs/07_SECURITY_IMPLEMENTATION.md` §3; `packages/policy/`

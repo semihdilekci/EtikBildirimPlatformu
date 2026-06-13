@@ -1,0 +1,55 @@
+---
+description: React frontend architecture — Vite SPA, MUI, state strategy, Axios client
+globs:
+  - "apps/web/src/**/*.{ts,tsx}"
+---
+
+# Frontend Mimarisi
+
+React 19 + Vite SPA. SSR/Next.js yok. TypeScript strict; `any` yasak.
+
+## State Stratejisi
+
+| Concern | Araç |
+| --- | --- |
+| Server state | TanStack Query |
+| Auth session | Zustand `useAuthStore` |
+| Form state | React Hook Form + Zod (`packages/dto`) |
+| Tracking auth | In-memory context (cookie yok) |
+
+## HTTP Client
+
+Axios + interceptors:
+- Session cookie otomatik (withCredentials)
+- CSRF token header mutating isteklerde
+- 401 → `/auth/login` redirect (internal)
+- Error code map → Türkçe toast
+
+```typescript
+// ✓ Doğru — shared Zod schema
+import { createReportSchema } from '@ethics/dto/intake/create-report.schema';
+
+// ✗ Yanlış — duplicate schema frontend'te
+const schema = z.object({ ... }); // packages/dto'da olmalı
+```
+
+## Layout Grupları
+
+- `PublicIntakeLayout` — dış form
+- `AnonymousFollowupLayout` — tracking (header auth her istekte)
+- `InternalLayout` — sidebar + topbar
+- `AdminLayout` — admin nav (içerik göremez prensibi)
+
+## Güvenlik Yüzeyi
+
+- `localStorage` / `sessionStorage` token saklama yasak
+- Dış CDN script/style yasak — tüm asset build'de
+- Env secret frontend'e inject edilmez
+
+## Feature Klasör Yapısı
+
+`features/<domain>/pages|components|hooks|schemas/` — cross-feature import minimal.
+
+---
+
+Detay: `Docs/05_FRONTEND_SPEC.md` Bölüm 1–4; `Docs/06_SCREEN_CATALOG.md` §Layout

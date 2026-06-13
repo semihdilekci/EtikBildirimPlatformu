@@ -45,3 +45,44 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+  test:
+    name: Unit, Integration & Auth Coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build workspace packages
+        run: pnpm --filter @ethics/shared build && pnpm --filter @ethics/dto build && pnpm --filter @ethics/test-fixtures build
+
+      - name: Generate Prisma client
+        run: pnpm --filter @ethics/api prisma:generate
+
+      - name: Unit tests
+        run: pnpm --filter @ethics/api test:unit
+
+      - name: Integration tests (Testcontainers)
+        run: pnpm --filter @ethics/api test:integration
+
+      - name: Auth module coverage gate
+        run: pnpm --filter @ethics/api test:coverage
+
+      - name: Web tests
+        run: pnpm --filter @ethics/web test

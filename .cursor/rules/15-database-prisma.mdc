@@ -1,0 +1,50 @@
+---
+description: Database and Prisma — schema conventions, migrations, transactions, encryption fields
+globs:
+  - "apps/api/prisma/**"
+  - "apps/api/src/prisma/**"
+  - "apps/api/src/**/*.service.ts"
+  - "apps/worker/src/**/*.service.ts"
+---
+
+# Veritabanı & Prisma
+
+PostgreSQL 16. Schema tek kaynak: `apps/api/prisma/schema.prisma` — `Docs/02_DATABASE_SCHEMA.md` ile sync.
+
+## Konvansiyonlar
+
+- Tablo: snake_case plural (`case_transitions`)
+- Model: PascalCase (`CaseTransition`)
+- Standart alanlar: `id`, `created_at`, `updated_at` (append-only tablolarda update yok)
+- Soft delete: yalnızca master data; audit/case_transition append-only
+
+## Encryption Alanları
+
+Hassas kolonlar ciphertext (ByteA/JSONB encrypted). Service katmanında CryptoService encrypt/decrypt — Prisma raw plaintext yazma yasak.
+
+Encrypted örnekler: `incident_description`, `category_specific_data`, `reporter_identity_*`, `reason_text_masked`.
+
+## Migration
+
+- Dev: `prisma migrate dev` · Prod: `prisma migrate deploy` only
+- Naming: `YYYYMMDDHHMMSS_kebab_description`
+- Her migration PR: rollback/forward plan + sentetik test
+- Schema drift CI'da denetlenir
+
+## Transaction Kuralları
+
+Interactive `$transaction` — kısmi commit yasak. Optimistic lock: `optimistic_lock_version` increment.
+
+## Append-Only Tablolar
+
+`audit_logs`, `case_transitions`, `task_events` — DB trigger ile UPDATE/DELETE engeli. Application'da update denemesi yasak.
+
+## Anti-pattern'ler
+
+- Production'da ddl-auto / manuel SQL hotfix
+- Migration without doc update (`Docs/02`)
+- N+1 query — list endpoint'lerde include/select planla
+
+---
+
+Detay: `Docs/02_DATABASE_SCHEMA.md`; `Docs/09_DEV_WORKFLOW.md` §8.3–8.4

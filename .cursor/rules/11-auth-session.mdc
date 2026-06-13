@@ -1,0 +1,50 @@
+---
+description: Auth — OIDC PKCE session, tracking header auth, no JWT to frontend
+globs:
+  - "apps/api/src/modules/auth/**"
+  - "apps/api/src/common/guards/session.guard.ts"
+  - "apps/api/src/common/guards/auth.guard.ts"
+  - "apps/api/src/common/guards/csrf.guard.ts"
+  - "apps/api/src/modules/tracking/**"
+---
+
+# Kimlik Doğrulama
+
+## İç Kullanıcı — OIDC + Session
+
+- `passport-openidconnect` + Authorization Code Flow + PKCE
+- Token exchange backend'de kalır; frontend yalnızca session cookie alır
+- Session: `express-session` + `connect-pg-simple` (server-side DB store)
+- Cookie: HttpOnly, Secure, SameSite=Strict
+- Logout: server-side session sil + cookie Max-Age=0
+
+```typescript
+// ✓ Doğru — JIT yalnızca kayıt oluşturur
+const user = await tx.user.upsert({ where: { oidcSub }, create: { email, oidcSub }, update: {} });
+// Rol atama YOK
+
+// ✗ Yanlış
+await tx.userRole.create({ data: { userId: user.id, role: 'council_secretary' } }); // JIT'te yasak
+```
+
+## Anonim Tracking
+
+- Header: `X-Tracking-Code` + `X-Tracking-Password`
+- Her istek yeniden doğrulanır — **Set-Cookie yasak**
+- Parola: argon2id verify; bcrypt/md5 yasak
+- Brute-force: IP + tracking_code rate limit → lockout + audit
+
+## CSRF
+
+Mutating endpoint'lerde double-submit: cookie token = header `X-CSRF-Token`. GET exempt.
+
+## Anti-pattern'ler
+
+- JWT/access token frontend'e response body veya localStorage
+- Custom session mekanizması (express-session zorunlu)
+- Tracking doğrulama sonrası session açma
+- MFA kodu uygulama katmanında (IdP sorumluluğu)
+
+---
+
+Detay: `Docs/07_SECURITY_IMPLEMENTATION.md` §1; `Docs/04_BACKEND_SPEC.md` auth/tracking modülleri

@@ -1,0 +1,51 @@
+---
+description: Frontend accessibility — WCAG, MUI a11y, keyboard nav, form labels
+globs:
+  - "apps/web/**/*.tsx"
+---
+
+# Erişilebilirlik (a11y)
+
+Hedef: Lighthouse a11y ≥90. MUI built-in a11y üzerine ek kontroller.
+
+## Zorunlu Kontroller
+
+- [ ] Tüm form input'larda `<label>` veya `aria-label`
+- [ ] Error mesajları `aria-describedby` ile input'a bağlı
+- [ ] Focus visible — keyboard navigation tüm interaktif elementlerde
+- [ ] Modal: focus trap + restore focus on close
+- [ ] Renk kontrastı WCAG AA (4.5:1 body text)
+- [ ] Icon-only button'larda `aria-label`
+
+## Form & Wizard
+
+- Multi-step: step indicator `aria-current="step"`
+- Required alanlar `aria-required`
+- Validation error announce (`role="alert"` veya live region)
+
+## Data Tables
+
+- `<th scope="col">` header'lar
+- Sortable column: `aria-sort`
+
+## Testing
+
+Vitest + Testing Library — kritik form/guard için a11y smoke (`getByRole` tercih et).
+
+```tsx
+// ✓ Doğru
+<button aria-label="Bildirimi gönder" type="submit">...</button>
+
+// ✗ Yanlış
+<div onClick={submit}>Gönder</div> // keyboard inaccessible
+```
+
+## Anti-pattern'ler
+
+- onClick-only div/span (button kullan)
+- Placeholder as sole label
+- Auto-play media
+
+---
+
+Detay: `Docs/05_FRONTEND_SPEC.md` a11y; `Docs/08_TESTING_STRATEGY.md` frontend unit
