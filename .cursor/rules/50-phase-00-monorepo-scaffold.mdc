@@ -1,0 +1,187 @@
+---
+description: '[Faz 0] Monorepo scaffold — 2 iterasyon/chat (workspaces+tooling → docker+CI+hooks). Mesajda "Faz 0 — İterasyon M" belirt.'
+---
+
+# Faz 0: Monorepo Scaffold
+
+## Goal
+
+pnpm workspaces + Turborepo ile monorepo iskeleti kurulur: `apps/{api,web,worker}`, `packages/{shared,dto,policy}`, paylaşımlı ESLint/Prettier/TypeScript config, Docker Compose (PostgreSQL 16, MinIO, ClamAV), Husky + commitlint + lint-staged, minimal CI pipeline. NestJS/React implementasyonu yok — yalnızca placeholder entrypoint'ler. Faz sonunda `pnpm install`, `pnpm lint`, `pnpm typecheck` green; `docker compose up` servisleri healthy.
+
+Detay: `Docs/10_IMPLEMENTATION_ROADMAP.md` §Faz 0.
+
+## Feature branch (zorunlu)
+
+Faz koduna **main üzerinde başlanmaz**. İlk commit/dosya değişikliği öncesi `48-git-phase-branch.mdc` uygula.
+
+**Bu faz branch adı:** `feature/F0-monorepo-scaffold`
+
+**Stop (İterasyon 1, kod öncesi):** [ ] `develop` (veya ilk faz ise mevcut default branch) güncel; [ ] faz branch oluşturuldu; [ ] `git push -u origin HEAD` (remote varsa).
+
+## Bu fazın çalışma modeli (iterasyonlar)
+
+Tek sohbette tamamlanmaz. Her session: `@50-phase-00-monorepo-scaffold` + mesajda **「Faz 0 — İterasyon M」**. Branch açmadan kod yok.
+
+---
+
+### İterasyon 1 — Workspaces & Tooling
+
+**Hedef:** Monorepo omurgası çalışır; boş app/package'ler lint ve typecheck geçer.
+
+**Yapılacaklar:**
+
+1. Kök: `package.json`, `pnpm-workspace.yaml`, `turbo.json`, `.nvmrc` (22), `.editorconfig`, `.gitignore` (node_modules, dist, .env.local, …)
+2. `apps/api`, `apps/web`, `apps/worker` — minimal `package.json` + placeholder `src/index.ts` (veya eşdeğeri)
+3. `packages/shared`, `packages/dto`, `packages/policy` — `@ethics/*` scope, `index.ts` export
+4. `packages/eslint-config` → `@ethics/eslint-config` paylaşımlı ESLint + Prettier root config
+5. Root scripts: `dev`, `build`, `lint`, `typecheck`, `test` (turbo pipeline)
+6. TypeScript: strict base `tsconfig.json` + app/package extend
+
+**Minimum bağlam:**
+
+- `Docs/04_BACKEND_SPEC.md` — Framework ve Runtime, workspace tablosu
+- `Docs/09_DEV_WORKFLOW.md` §6–7 (tooling, local setup özet)
+- `Docs/10_IMPLEMENTATION_ROADMAP.md` §Faz 0 Kapsam
+
+**Bu iterasyonda yok:** Docker Compose, Husky, CI workflow, NestJS/React boilerplate, Prisma.
+
+**Stop:** [ ] `pnpm install` başarılı; [ ] `pnpm lint` green; [ ] `pnpm typecheck` green; [ ] `@ethics/*` scope tutarlı. PR/onay → İterasyon 2.
+
+---
+
+### İterasyon 2 — Docker, Hooks & CI
+
+**Hedef:** Dev altyapısı ve kalite gate'leri aktif; onboarding dokümantasyonu hazır.
+
+**Yapılacaklar:**
+
+1. `docker-compose.yml` — postgres:16, minio, **clamav** (zorunlu — unutma)
+2. Husky: pre-commit (lint-staged) + commit-msg (commitlint)
+3. `commitlint.config.js` — Conventional Commits (`Docs/09` §2)
+4. `.github/workflows/pr-check.yml` — install, lint, typecheck, build (minimal)
+5. `.env.example` kök + `apps/api/.env.example` + `apps/web/.env.example` (değer yok, isim+açıklama)
+6. `README.md` — clone, install, docker compose, pnpm scripts özeti
+
+**Minimum bağlam:**
+
+- `Docs/09_DEV_WORKFLOW.md` §6 Local Setup, §7 Tooling, §8.1 CI Pipeline (minimal subset)
+- `Docs/10_IMPLEMENTATION_ROADMAP.md` §Faz 0 Deliverable, Human Gate, Vibe Coding Risk
+
+**Bu iterasyonda yok:** NestJS bootstrap, React App, Prisma schema, gerçek `pnpm dev` server start.
+
+**Stop:** [ ] `docker compose up -d` + `docker compose ps` healthy; [ ] CI workflow dosyası geçerli YAML; [ ] örnek conventional commit commitlint'ten geçer (developer doğrular). PR/onay → İterasyon 3.
+
+---
+
+### İterasyon 3 — Human Gate & Kapanış
+
+**Hedef:** Faz 0 human gate tamamlanır; PR merge'e hazır.
+
+**Yapılacaklar:**
+
+1. `.vscode/extensions.json` + `.vscode/settings.json` (Docs/09 §7)
+2. CI'ya `pnpm format` adımı ekle
+3. `develop` branch oluştur (yoksa) + PR: `feature/F0-monorepo-scaffold` → `develop`
+4. Human gate checklist doğrulama (developer)
+
+**Bu iterasyonda yok:** NestJS, Prisma, Faz 1 kodu.
+
+**Stop:** [ ] PR açık; [ ] CI green; [ ] developer human gate onayı; [ ] squash merge → `develop`. Faz 0 Done.
+
+---
+
+## Required Context
+
+- `Docs/04_BACKEND_SPEC.md` — workspace tablosu, monorepo yapısı
+- `Docs/09_DEV_WORKFLOW.md` §1–3, §6–8
+- `Docs/10_IMPLEMENTATION_ROADMAP.md` §Faz 0
+
+Auto-attached glob rules: `30-infrastructure`, `04-quality-gates`, `02-language-naming`
+
+## Scope
+
+```
+apps/api/          placeholder
+apps/web/          placeholder
+apps/worker/       placeholder
+packages/shared/   @ethics/shared
+packages/dto/      @ethics/dto
+packages/policy/   @ethics/policy
+packages/eslint-config/
+turbo.json, pnpm-workspace.yaml, docker-compose.yml
+.github/workflows/pr-check.yml
+```
+
+Tam klasör ağacı: `Docs/04_BACKEND_SPEC.md` Bölüm Klasör Yapısı (Faz 1'de doldurulur).
+
+### Files NOT touched
+
+- `apps/api/prisma/**` — Faz 1
+- NestJS/React feature kodu — Faz 1+
+- `infra/` AWS IaC — Faz 13
+
+## Constraints
+
+### Use
+
+- pnpm workspaces + Turborepo (Nx/Lerna yasak)
+- Package scope: `@ethics/*` (tutarlı)
+- Node 22 LTS (`.nvmrc`)
+
+### Avoid
+
+- 6 ortamlı aşırı CI, dummy package fazlası
+- ClamAV'sız docker-compose
+- npm/yarn
+- `@ethics-platform/*` gibi tutarsız scope
+
+## Done Definition
+
+### Monorepo
+
+- [ ] Workspace tablosu `Docs/04` ile uyumlu (api, web, worker, shared, dto, policy)
+- [ ] `pnpm install` + `pnpm lint` + `pnpm typecheck` green
+- [ ] `turbo.json`: build, lint, typecheck, test, dev pipeline tanımlı
+- [ ] Her internal package `@ethics/*`
+
+### DevOps & Tooling
+
+- [ ] Docker: postgres + minio + clamav healthy
+- [ ] Husky + commitlint + lint-staged aktif
+- [ ] `.env.example` kök + api + web
+- [ ] `pr-check.yml` minimal CI tanımlı
+- [ ] README onboarding bölümü
+
+### Human Gate
+
+- [ ] Developer: `docker compose up` + commitlint örnek commit doğruladı
+- [ ] İlk PR squash merge → develop (insan onayı)
+
+### Manual smoke test
+
+```bash
+pnpm install
+pnpm lint && pnpm typecheck
+docker compose up -d && docker compose ps
+```
+
+## Explicit Don'ts
+
+- Nx, Lerna veya alternatif monorepo tool seçme
+- ClamAV container'ını atlama
+- Faz 1 kodunu (NestJS, Prisma, OIDC) bu faza ekleme
+- `main`'e direct push
+- Gerçek secret değeri `.env.example`'a yazma
+
+## Kısıtlar & Riskler
+
+| Risk | Önlem |
+| --- | --- |
+| Agent Nx/Lerna seçer | Prompt + Explicit Don'ts; Turborepo zorunlu |
+| Scope tutarsızlığı | `@ethics/*` tek convention |
+| ClamAV unutulur | Done Definition + İterasyon 2 checklist |
+| Aşırı boilerplate | Minimal CI; placeholder app'ler |
+
+---
+
+Phase done → `Docs/10_IMPLEMENTATION_ROADMAP.md` Faz 0 durumunu güncelle.

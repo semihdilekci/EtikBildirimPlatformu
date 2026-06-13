@@ -200,14 +200,15 @@ Tek session yeterli. Prompt: "Bu dokümana uygun monorepo iskeleti kur. Apps ve 
 
 - **Rule:** `.cursor/rules/50-phase-00-monorepo-scaffold.mdc`
 - **Branch:** `feature/F0-monorepo-scaffold` (`48-git-phase-branch.mdc`)
-- **Durum:** tamamlandı (human gate bekliyor)
+- **Durum:** tamamlandı
 
 #### İterasyon planı (agent)
 
 | #   | Hedef                                                                                      | Stop                                                           |
 | --- | ------------------------------------------------------------------------------------------ | -------------------------------------------------------------- |
 | 1   | pnpm workspaces + Turborepo + apps/packages iskeleti + root tooling (ESLint, Prettier, TS) | `pnpm install` + `pnpm lint` + `pnpm typecheck` green          |
-| 2   | Docker Compose (postgres, minio, clamav) + Husky/commitlint + CI + README + `.env.example` | `docker compose up` healthy + CI workflow tanımlı + human gate |
+| 2   | Docker Compose (postgres, minio, clamav) + Husky/commitlint + CI + README + `.env.example` | `docker compose up` healthy + CI workflow tanımlı              |
+| 3   | Human gate kapanışı: `.vscode`, CI format check, `develop` branch, PR                      | PR açık + human gate checklist + squash merge → `develop`      |
 
 ---
 

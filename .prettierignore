@@ -3,3 +3,9 @@ dist
 .turbo
 pnpm-lock.yaml
 coverage
+
+# Docs & agent config — ayrı review döngüsü
+.cursor/
+Docs/
+CLAUDE.md
+örnek Implementation.md
