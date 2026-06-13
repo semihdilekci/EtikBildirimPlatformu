@@ -14,7 +14,15 @@ export default defineConfig({
     fileParallelism: false,
     coverage: {
       provider: 'v8',
-      include: ['src/modules/auth/**/*.ts'],
+      include: [
+        'src/modules/auth/**/*.ts',
+        'src/crypto/**/*.ts',
+        'src/audit/**/*.ts',
+        'src/common/interceptors/audit.interceptor.ts',
+        'src/common/decorators/audit-action.decorator.ts',
+        'src/common/constants/audit-action.metadata.ts',
+        'src/modules/dev-crypto-audit/**/*.ts',
+      ],
       exclude: [
         'src/modules/auth/**/*.spec.ts',
         'src/modules/auth/**/*.integration.spec.ts',
@@ -22,6 +30,16 @@ export default defineConfig({
         'src/modules/auth/auth.module.ts',
         'src/modules/auth/types/**',
         'src/modules/auth/session/pg-session.store.ts',
+        'src/crypto/**/*.spec.ts',
+        'src/crypto/**/__tests__/**',
+        'src/crypto/crypto.module.ts',
+        'src/audit/**/*.spec.ts',
+        'src/audit/**/__tests__/**',
+        'src/audit/audit.module.ts',
+        'src/modules/dev-crypto-audit/**/*.spec.ts',
+        'src/modules/dev-crypto-audit/**/__tests__/**',
+        'src/modules/dev-crypto-audit/dev-crypto-audit.module.ts',
+        'src/modules/dev-crypto-audit/dto/**',
       ],
       thresholds: {
         lines: 90,

@@ -1,5 +1,5 @@
 import { Controller, Get, HttpStatus, type INestApplication } from '@nestjs/common';
-import { APP_FILTER, APP_GUARD, Reflector } from '@nestjs/core';
+import { APP_GUARD, Reflector } from '@nestjs/core';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { ClearanceLevel, ErrorCode, Role } from '@ethics/shared';
 import { PermissionCode } from '@ethics/policy';
@@ -16,6 +16,16 @@ import { PolicyGuard } from '../policy.guard.js';
 import { SessionAuthGuard } from '../../../modules/auth/guards/session-auth.guard.js';
 import { AuthService } from '../../../modules/auth/auth.service.js';
 import type { AuthenticatedUser } from '../../types/authenticated-user.type.js';
+
+function createSafeLoggerMock() {
+  return {
+    debug: () => undefined,
+    info: () => undefined,
+    warn: () => undefined,
+    error: () => undefined,
+    fatal: () => undefined,
+  };
+}
 
 @Controller('test-policy')
 class PolicyTestController {
@@ -100,15 +110,11 @@ describe('PolicyGuard', () => {
           provide: APP_GUARD,
           useExisting: PolicyGuard,
         },
-        {
-          provide: APP_FILTER,
-          useClass: GlobalExceptionFilter,
-        },
       ],
     }).compile();
 
     app = moduleRef.createNestApplication();
-    app.useGlobalFilters(new GlobalExceptionFilter());
+    app.useGlobalFilters(new GlobalExceptionFilter(createSafeLoggerMock() as never));
 
     app.use((req: Request, _res: Response, next: NextFunction) => {
       if (activeUser !== null) {

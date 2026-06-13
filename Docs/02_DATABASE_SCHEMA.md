@@ -20,7 +20,7 @@ Veritabanı şeması sekiz mantıksal gruba ayrılır. Tüm tablolar aynı Postg
 | Case Management | `cases`, `case_transitions`, `decision_votes` |
 | Task | `tasks`, `task_events` |
 | Document | `documents`, `document_versions`, `document_access_grants` |
-| Audit & Notification | `audit_events`, `audit_seals`, `notification_events`, `notification_templates` |
+| Audit & Notification | `audit_outbox`, `audit_events`, `audit_seals`, `notification_events`, `notification_templates` |
 | Config & Admin | `sla_policy_configs`, `business_calendar_entries`, `system_settings`, `action_matrix_configs`, `field_visibility_configs`, `kvkk_consent_versions` |
 
 ---
@@ -430,6 +430,40 @@ Bildirimci ↔ kurul sekreterliği güvenli mesajlaşma. E-posta'ya taşınmaz.
 | `created_at` | TIMESTAMPTZ | No | now() | — | — |
 
 **Index'ler:** `idx_sm_report_id`, `idx_sm_direction`, `idx_sm_created_at`.
+
+---
+
+### audit_outbox
+
+Fail-closed transactional outbox. Domain mutation ile aynı Prisma `$transaction` içinde yazılır; worker dispatcher `PENDING` kayıtları `audit_events` sink'ine aktarır.
+
+| Kolon | Tip | Null | Default | Kısıt | Açıklama |
+|---|---|---|---|---|---|
+| `id` | TEXT | No | cuid() | PK | — |
+| `occurred_at` | TIMESTAMPTZ | No | — | — | Olay zamanı |
+| `event_type` | TEXT | No | — | CHECK (merkezi enum) | AuditEventType katalog |
+| `event_category` | TEXT | No | — | CHECK | AUTH, AUTHZ, WORKFLOW, DOCUMENT, CONFIG, TRACKING, SYSTEM |
+| `severity` | TEXT | No | — | CHECK | INFO, WARN, HIGH, CRITICAL |
+| `actor_type` | TEXT | No | — | CHECK | USER, SYSTEM, ANONYMOUS |
+| `actor_id` | TEXT | Yes | — | — | Aktör kimliği |
+| `action` | TEXT | No | — | — | İşlem adı |
+| `outcome` | TEXT | No | — | CHECK | ALLOWED, DENIED, SUCCESS, FAILURE |
+| `resource_type` | TEXT | Yes | — | — | Kaynak tipi |
+| `resource_id` | TEXT | Yes | — | — | Kaynak ID |
+| `case_id` | TEXT | Yes | — | — | İlişkili vaka |
+| `company_id` | TEXT | Yes | — | — | İlişkili şirket |
+| `correlation_id` | TEXT | Yes | — | — | İstek zinciri |
+| `idempotency_key` | TEXT | Yes | — | UNIQUE | Tekrar işlemeyi engeller |
+| `metadata_json` | JSONB | Yes | — | — | Maskeli metadata; plaintext içerik yasak |
+| `dispatch_status` | TEXT | No | PENDING | CHECK | PENDING, SENT, FAILED, RETRYING, PERMANENTLY_FAILED |
+| `retry_count` | INTEGER | No | 0 | — | Worker yeniden deneme sayısı |
+| `error_code` | TEXT | Yes | — | — | Son hata kodu |
+| `processed_at` | TIMESTAMPTZ | Yes | — | — | Dispatcher işlem zamanı |
+| `created_at` | TIMESTAMPTZ | No | now() | — | — |
+
+**Kritik kurallar:** Plaintext etik içerik, parola, token veya decrypt edilmiş veri `metadata_json`'a yazılmaz. Outbox yazımı domain transaction dışında yapılamaz (fail-closed).
+
+**Index'ler:** `idx_audit_outbox_dispatch_status`, `idx_audit_outbox_correlation_id`, `idx_audit_outbox_created_at`, `idx_audit_outbox_event_type`.
 
 ---
 

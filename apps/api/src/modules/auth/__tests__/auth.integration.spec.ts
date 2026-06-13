@@ -18,6 +18,16 @@ import { SessionAuthGuard } from '../guards/session-auth.guard.js';
 import { LoginAttemptService } from '../login-attempt.service.js';
 import { AuthSessionSerializer } from '../session/auth-session.serializer.js';
 
+function createSafeLoggerMock() {
+  return {
+    debug: () => undefined,
+    info: () => undefined,
+    warn: () => undefined,
+    error: () => undefined,
+    fatal: () => undefined,
+  };
+}
+
 describe('Auth integration (OIDC mock flow)', () => {
   let app: INestApplication;
   let authService: AuthService;
@@ -78,7 +88,7 @@ describe('Auth integration (OIDC mock flow)', () => {
 
     app = moduleRef.createNestApplication();
     app.setGlobalPrefix('api/v1');
-    app.useGlobalFilters(new GlobalExceptionFilter());
+    app.useGlobalFilters(new GlobalExceptionFilter(createSafeLoggerMock() as never));
 
     app.use(
       session({

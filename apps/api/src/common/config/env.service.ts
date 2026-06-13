@@ -83,4 +83,28 @@ export class EnvService {
   get logLevel(): EnvConfig['LOG_LEVEL'] {
     return this.config.LOG_LEVEL;
   }
+
+  get logRedactionEnabled(): boolean {
+    return this.config.LOG_REDACTION_ENABLED;
+  }
+
+  get cryptoKeyManagementProvider(): EnvConfig['CRYPTO_KEY_MANAGEMENT_PROVIDER'] {
+    return this.config.CRYPTO_KEY_MANAGEMENT_PROVIDER;
+  }
+
+  get cryptoLocalKekField(): string {
+    return this.config.CRYPTO_LOCAL_KEK_FIELD ?? '';
+  }
+
+  get cryptoLocalKekDocument(): string {
+    return this.config.CRYPTO_LOCAL_KEK_DOCUMENT ?? '';
+  }
+
+  get awsKmsKeyAliasField(): string | undefined {
+    return this.config.AWS_KMS_KEY_ALIAS_FIELD;
+  }
+
+  get awsKmsKeyAliasDocument(): string | undefined {
+    return this.config.AWS_KMS_KEY_ALIAS_DOCUMENT;
+  }
 }

@@ -34,7 +34,9 @@ export class FieldMaskingService {
     const allowedManagedKeys = this.resolveAllowedManagedKeys(user, data);
 
     const result = {} as T;
-    for (const [key, value] of Object.entries(data) as Array<[keyof T & string, T[keyof T]]>) {
+    for (const key of Object.keys(data) as Array<keyof T & string>) {
+      const value = data[key];
+
       if (this.contextPropertyKeys.has(key)) {
         continue;
       }

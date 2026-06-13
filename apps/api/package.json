@@ -9,7 +9,7 @@
     "typecheck": "prisma generate --schema=prisma/schema.prisma && tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "test:unit": "vitest run --exclude 'src/**/*.db.integration.spec.ts'",
-    "test:integration": "vitest run src/modules/auth/__tests__/auth.db.integration.spec.ts",
+    "test:integration": "vitest run src/modules/auth/__tests__/auth.db.integration.spec.ts src/audit/__tests__/audit.db.integration.spec.ts src/modules/dev-crypto-audit/__tests__/dev-crypto-audit.db.integration.spec.ts",
     "test:coverage": "vitest run --coverage",
     "dev": "dotenv -e .env.local -- tsx watch src/main.ts",
     "dev:run": "dotenv -e .env.local -- node --watch dist/main.js",
@@ -17,7 +17,8 @@
     "prisma:generate": "prisma generate --schema=prisma/schema.prisma",
     "prisma:migrate:dev": "dotenv -e .env.local -- prisma migrate dev --schema=prisma/schema.prisma",
     "prisma:migrate:deploy": "dotenv -e .env.local -- prisma migrate deploy --schema=prisma/schema.prisma",
-    "prisma:seed": "dotenv -e .env.local -- tsx prisma/seed.ts"
+    "prisma:seed": "dotenv -e .env.local -- tsx prisma/seed.ts",
+    "smoke:faz3": "dotenv -e .env.local -- tsx scripts/smoke-faz3.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
