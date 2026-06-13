@@ -1,5 +1,11 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
-import { ErrorCode, SlaUnit, type SlaUnitCode, type TaskTypeCode } from '@ethics/shared';
+import {
+  ErrorCode,
+  SlaUnit,
+  SLA_UNIT_VALUES,
+  type SlaUnitCode,
+  type TaskTypeCode,
+} from '@ethics/shared';
 import type { Prisma } from '@prisma/client';
 
 import { DomainException } from '../../../common/exceptions/domain.exception.js';
@@ -68,6 +74,14 @@ export class SlaCalculatorService {
     assignedAt: Date,
   ): Promise<Date> {
     const slaUnit = policy.slaUnit as SlaUnitCode;
+
+    if (!SLA_UNIT_VALUES.includes(slaUnit)) {
+      throw new DomainException(
+        ErrorCode.SLA_POLICY_NOT_FOUND,
+        'Görev tipi için geçersiz SLA politikası yapılandırması.',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
 
     if (slaUnit === SlaUnit.CALENDAR_HOURS) {
       return new Date(assignedAt.getTime() + policy.slaDuration * 60 * 60 * 1000);

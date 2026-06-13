@@ -1,7 +1,12 @@
 import { TaskStatus, TaskType } from '@ethics/shared';
 import { describe, expect, it } from 'vitest';
 
-import { deriveSlaStatus, toTaskDetail, toTaskListItem } from '../task.mapper.js';
+import {
+  deriveSlaStatus,
+  toTaskDetail,
+  toTaskListItem,
+  type TaskWithCase,
+} from '../task.mapper.js';
 
 describe('task.mapper', () => {
   const baseTask = {
@@ -11,13 +16,19 @@ describe('task.mapper', () => {
     status: TaskStatus.PENDING,
     assignedRole: 'council_secretary',
     assignedUserId: null,
+    assignedCompanyId: null,
+    assignedFunctionId: null,
     delegatedFromTaskId: null,
     dueAt: new Date('2026-06-20T12:00:00.000Z'),
     slaPolicyId: 'sla-1',
+    slaPausedAt: null,
+    slaPauseReason: null,
     outcome: null,
     completedAt: null,
     completedByUserId: null,
+    visibilityPolicyId: null,
     createdByTransitionId: 'transition-1',
+    createdBy: null,
     createdAt: new Date('2026-06-01T12:00:00.000Z'),
     updatedAt: new Date('2026-06-01T12:00:00.000Z'),
     case: {
@@ -28,7 +39,7 @@ describe('task.mapper', () => {
       optimisticLockVersion: 0,
       company: { id: 'company-1', name: 'Test Şirket' },
     },
-  };
+  } as TaskWithCase;
 
   it('deriveSlaStatus returns null for completed tasks', () => {
     expect(
