@@ -1,0 +1,24 @@
+{
+  "name": "@ethics/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node -e \"process.exit(0)\"",
+    "dev": "node --watch dist/index.js"
+  },
+  "dependencies": {
+    "@ethics/dto": "workspace:*",
+    "@ethics/policy": "workspace:*",
+    "@ethics/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@ethics/eslint-config": "workspace:*",
+    "@types/node": "^22.10.2",
+    "eslint": "^9.17.0",
+    "typescript": "^5.7.2"
+  }
+}
