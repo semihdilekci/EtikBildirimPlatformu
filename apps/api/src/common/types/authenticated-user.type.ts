@@ -8,6 +8,8 @@ export type AuthenticatedUser = {
   clearanceLevel: ClearanceLevel;
   companyId: string | null;
   companyName: string | null;
+  functionId: string | null;
+  locationId: string | null;
   isGeneralSecretary: boolean;
 };
 

@@ -192,6 +192,9 @@ importers:
       '@ethics/dto':
         specifier: workspace:*
         version: link:../../packages/dto
+      '@ethics/policy':
+        specifier: workspace:*
+        version: link:../../packages/policy
       '@ethics/shared':
         specifier: workspace:*
         version: link:../../packages/shared

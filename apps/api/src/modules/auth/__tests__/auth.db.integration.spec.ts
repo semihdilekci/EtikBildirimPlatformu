@@ -1,12 +1,15 @@
 import { HttpStatus, type INestApplication } from '@nestjs/common';
+import { APP_GUARD, Reflector } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
 import { ErrorCode } from '@ethics/shared';
 import { UserFactory } from '@ethics/test-fixtures';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { PolicyGuardService } from '../../../authorization/policy-guard.service.js';
 import { EnvService } from '../../../common/config/env.service.js';
 import { GlobalExceptionFilter } from '../../../common/filters/global-exception.filter.js';
+import { PolicyGuard } from '../../../common/guards/policy.guard.js';
 import {
   createPostgresTestEnvironment,
   type PostgresTestEnvironment,
@@ -45,7 +48,18 @@ describe('Auth DB integration (Testcontainers)', () => {
         { provide: AuthService, useValue: authService },
         { provide: LoginAttemptService, useValue: loginAttemptService },
         { provide: EnvService, useValue: envService },
+        Reflector,
+        PolicyGuardService,
+        PolicyGuard,
         SessionAuthGuard,
+        {
+          provide: APP_GUARD,
+          useExisting: SessionAuthGuard,
+        },
+        {
+          provide: APP_GUARD,
+          useExisting: PolicyGuard,
+        },
         AuthSessionSerializer,
       ],
     }).compile();

@@ -158,6 +158,8 @@ export class AuthService {
     displayName: string;
     clearanceLevel: string;
     companyId: string | null;
+    functionId: string | null;
+    locationId: string | null;
     isGeneralSecretary: boolean;
     company: { name: string } | null;
     rolesAssigned: Array<{ roleCode: string }>;
@@ -178,6 +180,8 @@ export class AuthService {
       clearanceLevel,
       companyId: user.companyId,
       companyName: user.company?.name ?? null,
+      functionId: user.functionId,
+      locationId: user.locationId,
       isGeneralSecretary: user.isGeneralSecretary,
     };
   }

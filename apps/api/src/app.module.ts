@@ -9,6 +9,7 @@ import { CommonModule } from './common/common.module.js';
 import { EnvModule } from './common/config/env.module.js';
 import { EnvService } from './common/config/env.service.js';
 import { CORRELATION_ID_HEADER } from './common/interceptors/correlation.interceptor.js';
+import { AuthorizationModule } from './authorization/authorization.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
@@ -17,13 +18,18 @@ import { PrismaModule } from './prisma/prisma.module.js';
   imports: [
     EnvModule,
     CommonModule,
-    ThrottlerModule.forRoot([
-      {
-        name: 'default',
-        ttl: 60_000,
-        limit: 100,
-      },
-    ]),
+    ThrottlerModule.forRootAsync({
+      imports: [EnvModule],
+      inject: [EnvService],
+      useFactory: (envService: EnvService) => [
+        {
+          name: 'default',
+          ttl: 60_000,
+          // Dev ortamında OIDC debug denemeleri hızla limit doldurur; prod profili korunur.
+          limit: envService.isProduction ? 100 : 1_000,
+        },
+      ],
+    }),
     LoggerModule.forRootAsync({
       imports: [EnvModule],
       inject: [EnvService],
@@ -50,6 +56,7 @@ import { PrismaModule } from './prisma/prisma.module.js';
     PrismaModule,
     HealthModule,
     AuthModule,
+    AuthorizationModule,
   ],
   providers: [
     {

@@ -1,4 +1,5 @@
 import { HttpStatus, type INestApplication } from '@nestjs/common';
+import { APP_GUARD, Reflector } from '@nestjs/core';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { ErrorCode } from '@ethics/shared';
 import session from 'express-session';
@@ -6,6 +7,8 @@ import passport from 'passport';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
+import { PolicyGuardService } from '../../../authorization/policy-guard.service.js';
+import { PolicyGuard } from '../../../common/guards/policy.guard.js';
 import { EnvService } from '../../../common/config/env.service.js';
 import { GlobalExceptionFilter } from '../../../common/filters/global-exception.filter.js';
 import { DomainException } from '../../../common/exceptions/domain.exception.js';
@@ -57,7 +60,18 @@ describe('Auth integration (OIDC mock flow)', () => {
             isProduction: false,
           },
         },
+        Reflector,
+        PolicyGuardService,
+        PolicyGuard,
         SessionAuthGuard,
+        {
+          provide: APP_GUARD,
+          useExisting: SessionAuthGuard,
+        },
+        {
+          provide: APP_GUARD,
+          useExisting: PolicyGuard,
+        },
         AuthSessionSerializer,
       ],
     }).compile();
@@ -112,6 +126,8 @@ describe('Auth integration (OIDC mock flow)', () => {
       clearanceLevel: 'NORMAL',
       companyId: null,
       companyName: null,
+      functionId: null,
+      locationId: null,
       isGeneralSecretary: false,
     });
 

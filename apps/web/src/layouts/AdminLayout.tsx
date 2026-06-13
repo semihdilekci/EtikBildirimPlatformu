@@ -1,37 +1,31 @@
-import AccountCircleOutlinedIcon from '@mui/icons-material/AccountCircleOutlined';
 import LogoutOutlinedIcon from '@mui/icons-material/LogoutOutlined';
 import MenuIcon from '@mui/icons-material/Menu';
 import {
   AppBar,
   Box,
-  Divider,
   Drawer,
   IconButton,
   List,
   ListItemButton,
   ListItemIcon,
   ListItemText,
-  ListSubheader,
   Toolbar,
   Typography,
 } from '@mui/material';
-import { Role } from '@ethics/shared';
 import { useState } from 'react';
 import { Link as RouterLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 
-import { adminNavItems, adminSectionIcon, internalNavItems } from '@/config/internal-navigation';
+import { adminNavItems } from '@/config/internal-navigation';
 import { PermissionGate } from '@/features/auth/components/PermissionGate';
 import { useLogout } from '@/features/auth/hooks/useLogout';
-import { usePermissions } from '@/features/auth/hooks/usePermissions';
 import { useAuthStore } from '@/stores/useAuthStore';
 
 const DRAWER_WIDTH = 240;
 
-export function InternalLayout() {
+export function AdminLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
-  const { isAdmin } = usePermissions();
   const logoutMutation = useLogout();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -49,56 +43,29 @@ export function InternalLayout() {
     void navigate('/auth/login', { replace: true });
   };
 
-  const renderNavItem = (item: (typeof internalNavItems)[number]) => (
-    <PermissionGate key={item.path} permission={item.permission}>
-      <ListItemButton
-        component={RouterLink}
-        to={item.path}
-        selected={location.pathname === item.path}
-        onClick={() => {
-          setMobileOpen(false);
-        }}
-      >
-        <ListItemIcon>{item.icon}</ListItemIcon>
-        <ListItemText primary={item.label} />
-      </ListItemButton>
-    </PermissionGate>
-  );
-
   const drawer = (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <Toolbar>
         <Typography variant="subtitle1" fontWeight={600} noWrap>
-          Etik Bildirim
+          Yönetim Konsolu
         </Typography>
       </Toolbar>
       <List sx={{ flex: 1, px: 1 }}>
-        {internalNavItems.map(renderNavItem)}
-
-        {isAdmin ? (
-          <>
-            <Divider sx={{ my: 1 }} />
-            <ListSubheader component="div" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              {adminSectionIcon}
-              Yönetim
-            </ListSubheader>
-            {adminNavItems.map((item) => (
-              <PermissionGate key={item.path} permission={item.permission} roles={[Role.ADMIN]}>
-                <ListItemButton
-                  component={RouterLink}
-                  to={item.path}
-                  selected={location.pathname.startsWith(item.path)}
-                  onClick={() => {
-                    setMobileOpen(false);
-                  }}
-                >
-                  <ListItemIcon>{item.icon}</ListItemIcon>
-                  <ListItemText primary={item.label} />
-                </ListItemButton>
-              </PermissionGate>
-            ))}
-          </>
-        ) : null}
+        {adminNavItems.map((item) => (
+          <PermissionGate key={item.path} permission={item.permission}>
+            <ListItemButton
+              component={RouterLink}
+              to={item.path}
+              selected={location.pathname === item.path}
+              onClick={() => {
+                setMobileOpen(false);
+              }}
+            >
+              <ListItemIcon>{item.icon}</ListItemIcon>
+              <ListItemText primary={item.label} />
+            </ListItemButton>
+          </PermissionGate>
+        ))}
       </List>
     </Box>
   );
@@ -125,22 +92,19 @@ export function InternalLayout() {
             <MenuIcon />
           </IconButton>
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            İç Operasyon
+            Admin
           </Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <AccountCircleOutlinedIcon fontSize="small" />
-            <Typography variant="body2" sx={{ display: { xs: 'none', md: 'block' } }}>
-              {user?.displayName ?? user?.email}
-            </Typography>
-            <IconButton
-              color="inherit"
-              onClick={() => void handleLogout()}
-              disabled={logoutMutation.isPending}
-              aria-label="Çıkış yap"
-            >
-              <LogoutOutlinedIcon />
-            </IconButton>
-          </Box>
+          <Typography variant="body2" sx={{ display: { xs: 'none', md: 'block' }, mr: 1 }}>
+            {user?.displayName ?? user?.email}
+          </Typography>
+          <IconButton
+            color="inherit"
+            onClick={() => void handleLogout()}
+            disabled={logoutMutation.isPending}
+            aria-label="Çıkış yap"
+          >
+            <LogoutOutlinedIcon />
+          </IconButton>
         </Toolbar>
       </AppBar>
 

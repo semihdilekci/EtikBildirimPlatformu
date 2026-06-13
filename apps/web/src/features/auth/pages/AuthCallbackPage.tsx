@@ -22,9 +22,12 @@ export function AuthCallbackPage() {
 
   useEffect(() => {
     if (isError) {
+      if (error instanceof ApiError && error.status === 429) {
+        return;
+      }
       setHasFailed(true);
     }
-  }, [isError]);
+  }, [error, isError]);
 
   if (hasFailed) {
     const message = error instanceof ApiError ? error.message : 'Giriş başarısız. Tekrar deneyin.';

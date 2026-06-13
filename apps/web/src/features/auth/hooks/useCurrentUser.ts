@@ -20,7 +20,16 @@ export function useCurrentUser(options?: { enabled?: boolean }) {
       if (error instanceof ApiError && error.status === 401) {
         return false;
       }
+      if (error instanceof ApiError && error.status === 429) {
+        return failureCount < 3;
+      }
       return failureCount < 1;
+    },
+    retryDelay: (attemptIndex, error) => {
+      if (error instanceof ApiError && error.status === 429) {
+        return Math.min(15_000 * (attemptIndex + 1), 60_000);
+      }
+      return 1_000;
     },
     enabled: options?.enabled ?? true,
   });
@@ -32,6 +41,11 @@ export function useCurrentUser(options?: { enabled?: boolean }) {
     }
 
     if (query.isError) {
+      if (query.error instanceof ApiError && query.error.status === 429) {
+        setStatus('loading');
+        return;
+      }
+
       setUser(null);
       setStatus('unauthenticated');
       return;
@@ -39,7 +53,7 @@ export function useCurrentUser(options?: { enabled?: boolean }) {
 
     setUser(query.data);
     setStatus('authenticated');
-  }, [query.data, query.isError, query.isPending, setStatus, setUser]);
+  }, [query.data, query.error, query.isError, query.isPending, setStatus, setUser]);
 
   return query;
 }

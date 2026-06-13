@@ -25,9 +25,28 @@ export function AuthGuard() {
 
   if (isError) {
     const isUnauthorized = error instanceof ApiError && error.status === 401;
+    const isRateLimited = error instanceof ApiError && error.status === 429;
+
     if (isUnauthorized) {
       const returnUrl = encodeURIComponent(`${location.pathname}${location.search}`);
       return <Navigate to={`/auth/login?returnUrl=${returnUrl}`} replace />;
+    }
+
+    if (isRateLimited) {
+      return (
+        <Box
+          sx={{
+            minHeight: '100vh',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            px: 2,
+            textAlign: 'center',
+          }}
+        >
+          <CircularProgress aria-label="İstek limiti bekleniyor" />
+        </Box>
+      );
     }
 
     return <Navigate to="/auth/login" replace />;

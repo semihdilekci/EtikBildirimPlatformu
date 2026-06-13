@@ -8,13 +8,14 @@ import {
   Query,
   Req,
   Res,
-  UseGuards,
 } from '@nestjs/common';
 import { ErrorCode } from '@ethics/shared';
 import type { Request, Response } from 'express';
 import passport from 'passport';
 
+import { Authenticated } from '../../common/decorators/authenticated.decorator.js';
 import { CurrentUser } from '../../common/decorators/current-user.decorator.js';
+import { Public } from '../../common/decorators/public.decorator.js';
 import { DomainException } from '../../common/exceptions/domain.exception.js';
 import type {
   AuthenticatedUser,
@@ -22,7 +23,6 @@ import type {
 } from '../../common/types/authenticated-user.type.js';
 import { EnvService } from '../../common/config/env.service.js';
 import { AuthService } from './auth.service.js';
-import { SessionAuthGuard } from './guards/session-auth.guard.js';
 import { LoginAttemptService } from './login-attempt.service.js';
 import { extractClientIp, resolveSessionExpiresAt } from './utils/request.util.js';
 
@@ -34,6 +34,7 @@ export class AuthController {
     @Inject(EnvService) private readonly envService: EnvService,
   ) {}
 
+  @Public()
   @Get('oidc/login')
   async oidcLogin(
     @Req() request: Request,
@@ -62,6 +63,7 @@ export class AuthController {
     });
   }
 
+  @Public()
   @Get('oidc/callback')
   async oidcCallback(@Req() request: Request, @Res() response: Response): Promise<void> {
     const ipAddress = extractClientIp(request);
@@ -112,9 +114,9 @@ export class AuthController {
     });
   }
 
+  @Authenticated()
   @Post('logout')
   @HttpCode(HttpStatus.OK)
-  @UseGuards(SessionAuthGuard)
   async logout(@Req() request: Request, @Res({ passthrough: true }) response: Response) {
     const idpLogoutUrl = this.authService.buildIdpLogoutUrl();
 
@@ -142,7 +144,7 @@ export class AuthController {
       path: '/',
       httpOnly: true,
       secure: this.envService.isProduction,
-      sameSite: 'strict',
+      sameSite: 'lax',
     });
 
     return {
@@ -153,8 +155,8 @@ export class AuthController {
     };
   }
 
+  @Authenticated()
   @Get('me')
-  @UseGuards(SessionAuthGuard)
   me(@Req() request: Request, @CurrentUser() user: AuthenticatedUser) {
     const sessionExpiresAt = resolveSessionExpiresAt(request);
 
