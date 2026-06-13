@@ -7,7 +7,7 @@
     "build": "tsc -p tsconfig.json --noEmit && vite build",
     "lint": "eslint .",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node -e \"process.exit(0)\"",
+    "test": "vitest run",
     "dev": "vite"
   },
   "dependencies": {
@@ -27,11 +27,15 @@
   },
   "devDependencies": {
     "@ethics/eslint-config": "workspace:*",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.2.0",
     "@types/react": "^19.0.12",
     "@types/react-dom": "^19.0.4",
     "@vitejs/plugin-react": "^4.3.4",
     "eslint": "^9.17.0",
+    "jsdom": "^26.0.0",
     "typescript": "^5.7.2",
-    "vite": "^6.2.3"
+    "vite": "^6.2.3",
+    "vitest": "^3.2.4"
   }
 }

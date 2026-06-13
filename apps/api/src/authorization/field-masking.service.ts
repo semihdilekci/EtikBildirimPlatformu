@@ -43,7 +43,7 @@ export class FieldMaskingService {
         continue;
       }
 
-      result[key] = value;
+      (result as Record<string, unknown>)[key] = value;
     }
 
     return result;

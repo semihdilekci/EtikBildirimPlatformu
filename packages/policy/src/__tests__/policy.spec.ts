@@ -9,6 +9,7 @@ import {
   PermissionCode,
   PERMISSION_CODE_VALUES,
   ROLE_PERMISSION_MAP,
+  getAllowedClearanceLevels,
   getClearanceRank,
   getFieldVisibility,
   isClearanceSufficient,
@@ -92,6 +93,16 @@ describe('ABAC clearance hierarchy', () => {
     expect(isClearanceSufficient('NORMAL', 'SENSITIVE')).toBe(false);
     expect(isClearanceSufficient('STRICTLY_CONFIDENTIAL', 'SENSITIVE')).toBe(true);
   });
+
+  it('should return cumulative allowed clearance levels for query filtering', () => {
+    expect(getAllowedClearanceLevels('NORMAL')).toEqual(['NORMAL']);
+    expect(getAllowedClearanceLevels('SENSITIVE')).toEqual(['NORMAL', 'SENSITIVE']);
+    expect(getAllowedClearanceLevels('STRICTLY_CONFIDENTIAL')).toEqual([
+      'NORMAL',
+      'SENSITIVE',
+      'STRICTLY_CONFIDENTIAL',
+    ]);
+  });
 });
 
 describe('ROLE_RESOURCE_ABAC_RULES', () => {
@@ -113,6 +124,24 @@ describe('ROLE_RESOURCE_ABAC_RULES', () => {
 
   it('should allow admin case metadata scope without deny-all', () => {
     const rule = resolveEffectiveAbacRule([Role.ADMIN], PolicyResourceType.CASE);
+    expect(rule?.denyAll).not.toBe(true);
+  });
+
+  it('should propagate deny-all when admin is combined with operational roles on tasks', () => {
+    const rule = resolveEffectiveAbacRule(
+      [Role.ADMIN, Role.COUNCIL_SECRETARY],
+      PolicyResourceType.TASK,
+    );
+    expect(rule?.denyAll).toBe(true);
+  });
+
+  it('should merge scopes from multiple operational roles on cases', () => {
+    const rule = resolveEffectiveAbacRule(
+      [Role.RAPPORTEUR, Role.ACTION_OWNER],
+      PolicyResourceType.CASE,
+    );
+    expect(rule?.scopes).toContain('assignment_scope');
+    expect(rule?.scopes).toContain('company_scope');
     expect(rule?.denyAll).not.toBe(true);
   });
 });

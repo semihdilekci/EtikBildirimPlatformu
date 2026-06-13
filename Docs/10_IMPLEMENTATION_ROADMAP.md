@@ -389,7 +389,7 @@ Session'lara bölünmeli — tek session'da yazılamaz:
 
 - **Rule:** `.cursor/rules/52-phase-02-authorization.mdc`
 - **Branch:** `feature/F2-authorization` (`48-git-phase-branch.mdc`)
-- **Durum:** planlandı
+- **Durum:** tamamlandı (human gate bekliyor — squash merge → develop)
 
 #### İterasyon planı (agent)
 
@@ -464,6 +464,23 @@ Session'lara bölünmeli — tek session'da yazılamaz:
 #### Tahmini İterasyon
 
 8–12 agent session (~5–7 gün developer time).
+
+#### Cursor faz kuralı
+
+- **Rule:** `.cursor/rules/53-phase-03-crypto-audit.mdc`
+- **Branch:** `feature/F3-crypto-audit` (`48-git-phase-branch.mdc`)
+- **Durum:** planlandı
+
+#### İterasyon planı (agent)
+
+| #   | Hedef                                                                                         | Stop                                                                 |
+| --- | --------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| 1   | `CryptoService` + `KeyManagementAdapter` (dev lokal key, prod KMS mock)                       | encrypt→decrypt roundtrip; DEK alan başına ayrı; unit test green     |
+| 2   | `AuditEventPublisher` + outbox pattern + `@AuditAction` / audit interceptor iskeleti           | Fail-closed: outbox fail → domain tx rollback (integration)          |
+| 3   | `audit_events` şema genişletme + DB trigger (chain hash + append-only)                        | `UPDATE`/`DELETE` audit_events → DB error; chain hash trigger aktif  |
+| 4   | `SafeLoggerService` + `RedactionService`                                                      | Log çıktısında PII masked; audit snapshot redaction unit test        |
+| 5   | Worker: outbox consumer + `audit-chain-verify.job.ts` placeholder                             | Outbox PENDING→processed; chain verify job çalışır (cron Faz 8)    |
+| 6   | crypto + audit modülleri ≥%90 coverage + integration deny/redaction testleri + human gate     | CI green; Human Gate checklist tamam                                 |
 
 ---
 

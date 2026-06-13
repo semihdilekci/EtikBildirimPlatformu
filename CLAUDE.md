@@ -79,7 +79,7 @@ Mesajda **「Faz N — İterasyon M」** belirt. Kod öncesi `48-git-phase-branc
 | 0 Monorepo Scaffold | `50-phase-00-monorepo-scaffold` | hazır |
 | 1 DB + Auth | `51-phase-01-database-auth` | hazır |
 | 2 Authorization | `52-phase-02-authorization` | hazır |
-| 3 Crypto + Audit | `53-phase-03-crypto-audit` | phase-creator ile üretilecek |
+| 3 Crypto + Audit | `53-phase-03-crypto-audit` | hazır |
 | 4 Intake + Tracking | `54-phase-04-intake-tracking` | phase-creator ile üretilecek |
 | 5 Case + Workflow | `55-phase-05-case-workflow` | phase-creator ile üretilecek |
 | 6 Task + SLA | `56-phase-06-task-sla` | phase-creator ile üretilecek |

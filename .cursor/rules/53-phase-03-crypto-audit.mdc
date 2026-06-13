@@ -1,0 +1,305 @@
+---
+description: '[Faz 3] CryptoService + Audit foundation — 6 iterasyon/chat (CryptoService → audit outbox → DB triggers → SafeLogger → worker → test+coverage). Mesajda "Faz 3 — İterasyon M" belirt.'
+---
+
+# Faz 3: CryptoService + Audit Foundation
+
+## Goal
+
+Merkezi şifreleme ve denetim altyapısı kurulur: `CryptoService` (AES-256-GCM, alan başına DEK), `KeyManagementAdapter` (dev lokal key / prod AWS KMS), per-document envelope encryption iskeleti. `AuditEventPublisher` fail-closed outbox pattern ile domain transaction'a bağlanır. Chain hash ve append-only koruması **DB trigger** seviyesinde. `SafeLoggerService` ve `RedactionService` PII sızıntısını önler. Worker: outbox consumer + `audit-chain-verify.job.ts` (cron schedule Faz 8).
+
+Detay: `Docs/10_IMPLEMENTATION_ROADMAP.md` §Faz 3.
+
+**Bağımlılık:** Faz 2 tamamlanmış olmalı (PolicyGuard, `@RequirePolicy`; audit event policy decision referansı).
+
+## Feature branch (zorunlu)
+
+Faz koduna **main üzerinde başlanmaz**. İlk commit/dosya değişikliği öncesi `48-git-phase-branch.mdc` uygula.
+
+**Bu faz branch adı:** `feature/F3-crypto-audit`
+
+**Stop (İterasyon 1, kod öncesi):** [ ] Faz 2 merge edilmiş / `develop` güncel; [ ] faz branch oluşturuldu; [ ] `git push -u origin HEAD` (remote varsa).
+
+## Bu fazın çalışma modeli (iterasyonlar)
+
+Tek sohbette tamamlanmaz. Her session: `@53-phase-03-crypto-audit` + mesajda **「Faz 3 — İterasyon M」**. Branch açmadan kod yok.
+
+---
+
+### İterasyon 1 — CryptoService + KeyManagementAdapter
+
+**Hedef:** Merkezi şifreleme servisi; alan başına ayrı DEK; dev/prod KMS adapter interface.
+
+**Yapılacaklar:**
+
+1. `apps/api/src/crypto/crypto.module.ts`, `crypto.service.ts`
+2. `key-management.adapter.ts` — interface + `LocalKeyManagementAdapter` (dev `.env` KEK)
+3. `KmsKeyManagementAdapter` stub/mock — prod AWS KMS wrap/unwrap (henüz test ortamı yok)
+4. `encryptField` / `decryptField` — AES-256-GCM, random IV (12 byte), auth tag
+5. Her encryption çağrısında yeni DEK; sabit DEK tüm alanlar için yasak
+6. `encryptDocument` / `decryptDocument` envelope iskeleti (Faz 7'de doldurulacak)
+7. Unit test: encrypt→decrypt roundtrip; farklı alanlar farklı DEK; KMS mock
+
+**Minimum bağlam:**
+
+- `Docs/07_SECURITY_IMPLEMENTATION.md` §8.2–8.4
+- `Docs/04_BACKEND_SPEC.md` — crypto/ dizini, CryptoService erişim kuralı
+- `.cursor/rules/16-audit-crypto.mdc`
+
+**Bu iterasyonda yok:** Audit modülü, DB trigger, worker, domain entity encrypt bağlantısı (Faz 4+).
+
+**Stop:** [ ] Servis dışında `import { createCipheriv } from 'crypto'` yok; [ ] DEK alan başına ayrı unit test; [ ] `pnpm --filter @ethics/api test crypto` green. PR/onay → İterasyon 2.
+
+---
+
+### İterasyon 2 — AuditEventPublisher + Outbox Pattern
+
+**Hedef:** Fail-closed audit outbox; mutating işlemlerde domain tx ile aynı transaction.
+
+**Yapılacaklar:**
+
+1. `apps/api/src/audit/audit.module.ts`, `audit-event.publisher.ts`
+2. Outbox pattern: `audit_events` tablosuna PENDING kayıt (`Docs/04` §Outbox pattern)
+3. `publish(tx, event)` — Prisma interactive transaction içinde çağrılır
+4. `@AuditAction('ACTION_CODE')` decorator + `audit.interceptor.ts` iskeleti
+5. Event payload: resource ID, action, actor, policy decision, correlation ID — **içerik kopyalamaz**
+6. Merkezi event type enum/katalog (`07` §12.3 kategori referansı)
+7. Integration test: domain op + audit outbox aynı tx; outbox fail → rollback
+
+**Minimum bağlam:**
+
+- `Docs/07_SECURITY_IMPLEMENTATION.md` §12.1–12.6
+- `Docs/04_BACKEND_SPEC.md` — audit/ dizini, transaction örneği, Audit interceptor §9
+- `Docs/02_DATABASE_SCHEMA.md` — `audit_events` tablo yapısı
+
+**Bu iterasyonda yok:** Chain hash trigger, append-only trigger, worker consumer, tam 48 alan migration (İterasyon 3).
+
+**Stop:** [ ] Fail-closed integration test green; [ ] audit event'te report_text/incident_description yok; [ ] interceptor `@AuditAction` olmayan endpoint'te sessiz. PR/onay → İterasyon 3.
+
+---
+
+### İterasyon 3 — DB Triggers (Chain Hash + Append-Only)
+
+**Hedef:** Tamper-evidence DB seviyesinde; audit kayıtları immutable.
+
+**Yapılacaklar:**
+
+1. Prisma migration: `audit_events` Faz 1 placeholder → `02` §audit_events tam şema (kademeli genişletme)
+2. SQL migration: `prev_hash` / `event_hash` chain hash trigger — **application code'da compute etme**
+3. SQL migration: append-only trigger — `UPDATE`/`DELETE`/`TRUNCATE` on `audit_events` → error
+4. `audit_seals` tablosu migration (manifest iskeleti)
+5. `audit-seal.service.ts` — seal manifest okuma/yazma iskeleti (verify logic worker'da)
+6. Integration test: `DELETE FROM audit_events` → fail; `UPDATE audit_events SET ...` → fail
+
+**Minimum bağlam:**
+
+- `Docs/02_DATABASE_SCHEMA.md` — `audit_events`, `audit_seals`, append-only kuralları
+- `Docs/07_SECURITY_IMPLEMENTATION.md` §12.5 Tamper-Evidence
+- `Docs/10_IMPLEMENTATION_ROADMAP.md` §Faz 3 Vibe Coding Risk (chain hash application'da yasak)
+
+**Bu iterasyonda yok:** Worker chain verify cron, SafeLogger, gerçek domain audit wiring (Faz 4+ endpoint'ler).
+
+**Stop:** [ ] Chain hash trigger migration uygulandı; [ ] append-only integration test green; [ ] application layer'da hash compute kodu yok. PR/onay → İterasyon 4.
+
+---
+
+### İterasyon 4 — SafeLogger + RedactionService
+
+**Hedef:** Structured logging PII redaction; audit snapshot maskeleme kuralları.
+
+**Yapılacaklar:**
+
+1. `safe-logger.service.ts` — Pino wrapper; otomatik redaction hook
+2. `redaction.service.ts` — pattern kuralları: email → `***@***.com`, phone → `***`, password/token/secret alanları
+3. Audit `before_masked` / `after_masked` / `metadata_json` — RedactionService üzerinden
+4. Encrypted alanlar audit snapshot'ta `[REDACTED]`
+5. `main.ts` / global logger bootstrap SafeLogger kullanır
+6. Unit test: log output'ta email/phone plaintext yok; redaction edge case'ler
+
+**Minimum bağlam:**
+
+- `Docs/04_BACKEND_SPEC.md` — SafeLogger, RedactionService bölümü
+- `Docs/07_SECURITY_IMPLEMENTATION.md` §12.4 Maskeleme, §10.2 PII Alan Listesi, §14 Uygulama Log Güvenliği
+- `Docs/08_TESTING_STRATEGY.md` — redaction test ailesi
+
+**Bu iterasyonda yok:** Worker jobs, tam audit event 48 alan doldurma (domain bağlandıkça genişler).
+
+**Stop:** [ ] Unit test: sensitive field log'a sızmıyor; [ ] RedactionService audit snapshot test green; [ ] `pnpm dev` log grep ile PII spot-check. PR/onay → İterasyon 5.
+
+---
+
+### İterasyon 5 — Worker Outbox Consumer + Chain Verify Job
+
+**Hedef:** Outbox PENDING kayıtları işlenir; chain verify job placeholder.
+
+**Yapılacaklar:**
+
+1. `apps/worker/src/jobs/audit-outbox-dispatch.job.ts` — PENDING audit outbox poll + immutable sink'e yaz
+2. `audit-chain-verify.job.ts` — hash zinciri bütünlük doğrulama; bozulma → alarm/log (cron schedule Faz 8)
+3. Worker idempotency: `idempotency_key` tekrar işleme engeli
+4. Outbox status: PENDING → SENT / FAILED
+5. Integration test: outbox yaz → worker consume → `audit_events` finalized + chain hash set
+
+**Minimum bağlam:**
+
+- `Docs/04_BACKEND_SPEC.md` — Worker jobs, outbox pattern §Worker
+- `Docs/07_SECURITY_IMPLEMENTATION.md` §12.7 Audit Chain Verification
+- `Docs/10_IMPLEMENTATION_ROADMAP.md` §Faz 3 Worker notu
+
+**Bu iterasyonda yok:** Notification outbox (Faz 8), cron scheduler prod config (Faz 8), gerçek alarm kanalları.
+
+**Stop:** [ ] Outbox consumer integration test green; [ ] chain verify job manuel çalıştırılabilir; [ ] duplicate idempotency_key işlenmiyor. PR/onay → İterasyon 6.
+
+---
+
+### İterasyon 6 — Coverage, Integration Test & Human Gate
+
+**Hedef:** crypto + audit modülleri ≥%90 coverage; human gate checklist.
+
+**Yapılacaklar:**
+
+1. Negatif test zorunlu: fail-closed rollback, append-only violation, redaction bypass denemesi
+2. Crypto: wrong key decrypt fail, tampered ciphertext fail
+3. Audit: denied action audit kaydı (outcome=denied); içerik kopyalamama assertion
+4. Coverage gate: crypto + audit modülleri ≥%90 line (`08` threshold)
+5. `@AuditAction` + CryptoService kullanım örneği: mevcut bir mutating endpoint'e bağla (ör. seed/admin stub)
+6. Human Gate checklist (`Docs/10` §Faz 3 Human Gate)
+
+**Minimum bağlam:**
+
+- `Docs/08_TESTING_STRATEGY.md` — crypto/audit coverage, negatif deny, audit integrity tests
+- `Docs/09_DEV_WORKFLOW.md` §8 CI
+- `Docs/10_IMPLEMENTATION_ROADMAP.md` §Faz 3 Deliverable, Human Gate, Vibe Coding Risk
+
+**Bu iterasyonda yok:** Intake/report encrypt (Faz 4), case field encrypt (Faz 5), document upload (Faz 7).
+
+**Stop:** [ ] crypto + audit coverage ≥%90; [ ] CI green; [ ] Human Gate checklist tamam. Faz 3 Done.
+
+---
+
+## Required Context
+
+- `Docs/07_SECURITY_IMPLEMENTATION.md` §8 Encryption, §12 Audit Log (tam bölüm)
+- `Docs/04_BACKEND_SPEC.md` — crypto/, audit/, transaction pattern, worker jobs
+- `Docs/02_DATABASE_SCHEMA.md` — `audit_events`, `audit_seals`, append-only kuralları
+- `Docs/08_TESTING_STRATEGY.md` — crypto/audit coverage ≥%90, redaction, audit integrity
+- `Docs/10_IMPLEMENTATION_ROADMAP.md` §Faz 3
+
+Auto-attached glob rules: `16-audit-crypto`, `10-backend-architecture`, `15-database-prisma`, `03-security-baseline`, `04-quality-gates`
+
+## Scope
+
+```
+apps/api/src/crypto/          crypto.module, crypto.service, key-management.adapter
+apps/api/src/audit/           audit.module, audit-event.publisher, audit-seal.service,
+                              safe-logger.service, redaction.service
+apps/api/src/common/          audit-action.decorator, audit.interceptor
+apps/worker/src/jobs/         audit-outbox-dispatch.job, audit-chain-verify.job
+apps/api/prisma/migrations/   audit_events genişletme, trigger SQL
+```
+
+Tam yapı: `Docs/04_BACKEND_SPEC.md` Klasör Yapısı.
+
+### Files NOT touched
+
+- `apps/api/src/modules/intake/**` — Faz 4 (report encrypt burada bağlanır)
+- `apps/api/src/modules/case-management/**` — Faz 5
+- Document upload/download — Faz 7
+- Notification outbox/worker — Faz 8
+- Admin audit viewer UI — Faz 9
+
+## Constraints
+
+### Use
+
+- Tek şifreleme noktası: `CryptoService` inject; servislerde doğrudan `crypto` modülü yok
+- DEK alan başına ayrı; IV her encryption random
+- Audit outbox domain `$transaction` içinde — fail-closed
+- Chain hash DB trigger; application'da hash compute yok
+- Audit event: metadata + policy decision; plaintext etik içerik yok
+- SafeLogger tüm API log çıktısında
+
+### Avoid
+
+- Audit transaction dışında yazmak
+- Chain hash application layer'da hesaplamak
+- Sabit DEK tüm alanlar için
+- KMS adapter'ı "later" bırakmak — interface + lokal mock ilk günden
+- `audit_logs` tablo adı — canonical: `audit_events` (`02`)
+- Encrypt/decrypt controller'da
+
+## Done Definition
+
+### CryptoService
+
+- [ ] `encryptField` / `decryptField` roundtrip çalışıyor
+- [ ] DEK alan başına ayrı (unit test)
+- [ ] KeyManagementAdapter interface; dev lokal + KMS mock
+- [ ] Envelope encryption iskeleti mevcut
+
+### Audit
+
+- [ ] AuditEventPublisher fail-closed (integration test)
+- [ ] `@AuditAction` + interceptor iskeleti
+- [ ] Chain hash DB trigger aktif
+- [ ] Append-only: UPDATE/DELETE audit_events → DB error
+- [ ] Worker outbox consumer çalışıyor
+- [ ] `audit-chain-verify.job.ts` placeholder mevcut
+
+### Logging & Redaction
+
+- [ ] SafeLogger PII redaction aktif
+- [ ] RedactionService audit snapshot maskeleme
+- [ ] Log/audit'te report_text, parola, token yok
+
+### Test & Coverage
+
+- [ ] crypto modülü coverage ≥%90
+- [ ] audit modülü coverage ≥%90
+- [ ] Negatif deny/redaction/tamper testleri mevcut
+- [ ] CI green
+
+### Human Gate
+
+- [ ] AES-256-GCM: random IV, alan başına DEK spot-check
+- [ ] KMS adapter tek dosya değişimiyle swap edilebilir
+- [ ] Chain hash DB seviyesinde (code review)
+- [ ] Fail-closed integration test green
+- [ ] `pnpm dev` log grep — PII yok
+- [ ] PR squash merge → develop
+
+### Manual smoke test
+
+```bash
+pnpm dev
+# Mutating stub endpoint → audit_events kaydı + chain hash
+# DELETE FROM audit_events → psql error
+# Log çıktısında email/phone masked
+pnpm --filter @ethics/worker start  # outbox consumer manuel
+```
+
+## Explicit Don'ts
+
+- Doğrudan `crypto` modülü import (CryptoService dışında)
+- Audit outbox domain transaction dışında
+- Chain hash application code'da
+- Audit event'e etik içerik / decrypt plaintext kopyalama
+- Sabit DEK tüm alanlar için
+- KMS adapter "later" — interface day 1
+- Intake/case/document modül implementasyonu (Faz 4–7)
+- `main`'e direct push
+
+## Kısıtlar & Riskler
+
+| Risk | Önlem |
+| --- | --- |
+| Agent chain hash'i app'te compute eder | İterasyon 3 DB trigger zorunlu; code review |
+| Agent audit tx dışında yazar | Fail-closed integration test İterasyon 2 |
+| Agent her serviste ayrı crypto | CryptoService tek injection; lint/grep |
+| Agent sabit DEK | Unit test farklı alan → farklı wrapped DEK |
+| Agent KMS'yi later bırakır | Done Definition adapter interface day 1 |
+| Faz 1 audit_events placeholder yetersiz | İterasyon 3 migration genişletme |
+
+---
+
+Phase done → `Docs/10_IMPLEMENTATION_ROADMAP.md` Faz 3 durumunu güncelle.

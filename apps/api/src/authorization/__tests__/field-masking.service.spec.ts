@@ -81,6 +81,16 @@ describe('[AUTH-006] FieldMaskingPolicy', () => {
     expect(masked).not.toHaveProperty('secure_messages');
     expect(masked).not.toHaveProperty('assigned_rapporteur_id');
     expect(masked).not.toHaveProperty('assigned_action_owner_id');
+    expect(masked.report_text).toBeUndefined();
+  });
+
+  it('çoklu rolde operasyonel rol görünürlüğü admin kısıtını geçersiz kılar', () => {
+    const user = buildUser({ roles: [Role.ADMIN, Role.COUNCIL_SECRETARY] });
+    const source = buildMockCase();
+    const masked = service.applyCaseFieldPolicy(user, source);
+
+    expect(masked.report_text).toBe(source.report_text);
+    expect(masked.secure_messages).toEqual(source.secure_messages);
   });
 
   it('council_secretary tüm vaka alanlarını görür', () => {
@@ -94,6 +104,28 @@ describe('[AUTH-006] FieldMaskingPolicy', () => {
     expect(masked.rapporteur_report).toBe(source.rapporteur_report);
     expect(masked.secure_messages).toEqual(source.secure_messages);
     expect(masked).not.toHaveProperty('assigned_rapporteur_id');
+  });
+
+  it('council_chair reporter_contact ve secure_messages alanlarını yanıta eklemez', () => {
+    const user = buildUser({ roles: [Role.COUNCIL_CHAIR] });
+    const source = buildMockCase();
+    const masked = service.applyCaseFieldPolicy(user, source);
+
+    expect(masked.report_text).toBe(source.report_text);
+    expect(masked.reporter_identity).toEqual(source.reporter_identity);
+    expect(masked).not.toHaveProperty('reporter_contact');
+    expect(masked).not.toHaveProperty('secure_messages');
+  });
+
+  it('board_chair council_decision_draft alanını yanıta eklemez', () => {
+    const user = buildUser({ roles: [Role.BOARD_CHAIR] });
+    const source = buildMockCase();
+    const masked = service.applyCaseFieldPolicy(user, source);
+
+    expect(masked.council_decision_final).toBe(source.council_decision_final);
+    expect(masked).not.toHaveProperty('council_decision_draft');
+    expect(masked).not.toHaveProperty('reporter_identity');
+    expect(masked).not.toHaveProperty('secure_messages');
   });
 
   it('council_member reporter_identity alanını yanıta eklemez', () => {

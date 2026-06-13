@@ -5,7 +5,7 @@ import { ClearanceLevel, ErrorCode, Role } from '@ethics/shared';
 import { PermissionCode } from '@ethics/policy';
 import type { NextFunction, Request, Response } from 'express';
 import request from 'supertest';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { Authenticated } from '../../decorators/authenticated.decorator.js';
 import { Public } from '../../decorators/public.decorator.js';
@@ -40,6 +40,11 @@ class PolicyTestController {
   @RequirePolicy(PermissionCode.SECURE_MESSAGE_READ)
   @Get('secure-message')
   secureMessageRoute() {
+    return { data: { ok: true } };
+  }
+
+  @Get('undecorated')
+  undecoratedRoute() {
     return { data: { ok: true } };
   }
 }
@@ -161,5 +166,85 @@ describe('PolicyGuard', () => {
     const response = await request(app.getHttpServer()).get('/test-policy/authenticated');
 
     expect(response.status).toBe(HttpStatus.OK);
+  });
+
+  it('session userId var ama AuthenticatedUser yüklenemedi → AUTH_SESSION_REQUIRED', async () => {
+    const moduleRef: TestingModule = await Test.createTestingModule({
+      controllers: [PolicyTestController],
+      providers: [
+        Reflector,
+        PolicyGuardService,
+        PolicyGuard,
+        {
+          provide: AuthService,
+          useValue: {
+            loadAuthenticatedUser: () => Promise.resolve(null),
+          },
+        },
+        {
+          provide: APP_GUARD,
+          useExisting: PolicyGuard,
+        },
+        {
+          provide: APP_FILTER,
+          useClass: GlobalExceptionFilter,
+        },
+      ],
+    }).compile();
+
+    app = moduleRef.createNestApplication();
+    app.useGlobalFilters(new GlobalExceptionFilter());
+
+    app.use((req: Request, _res: Response, next: NextFunction) => {
+      req.user = { userId: 'missing-user' };
+      next();
+    });
+
+    await app.init();
+
+    const response = await request(app.getHttpServer()).get('/test-policy/admin-only');
+
+    expect(response.status).toBe(HttpStatus.UNAUTHORIZED);
+    expect(response.body.error.code).toBe(ErrorCode.AUTH_SESSION_REQUIRED);
+  });
+
+  it('req.user geçersiz shape ile AUTH_SESSION_REQUIRED döner', async () => {
+    const moduleRef: TestingModule = await Test.createTestingModule({
+      controllers: [PolicyTestController],
+      providers: [
+        Reflector,
+        PolicyGuardService,
+        PolicyGuard,
+        {
+          provide: AuthService,
+          useValue: {
+            loadAuthenticatedUser: vi.fn(),
+          },
+        },
+        {
+          provide: APP_GUARD,
+          useExisting: PolicyGuard,
+        },
+        {
+          provide: APP_FILTER,
+          useClass: GlobalExceptionFilter,
+        },
+      ],
+    }).compile();
+
+    app = moduleRef.createNestApplication();
+    app.useGlobalFilters(new GlobalExceptionFilter());
+
+    app.use((req: Request, _res: Response, next: NextFunction) => {
+      req.user = { userId: 123 } as never;
+      next();
+    });
+
+    await app.init();
+
+    const response = await request(app.getHttpServer()).get('/test-policy/admin-only');
+
+    expect(response.status).toBe(HttpStatus.UNAUTHORIZED);
+    expect(response.body.error.code).toBe(ErrorCode.AUTH_SESSION_REQUIRED);
   });
 });

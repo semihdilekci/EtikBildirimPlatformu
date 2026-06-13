@@ -1,10 +1,9 @@
 import { PrismaClient } from '@prisma/client';
-import { PERMISSION_CODE_VALUES, ROLE_VALUES, Role } from '@ethics/policy';
+import { PERMISSION_CODE_VALUES, ROLE_VALUES } from '@ethics/policy';
+import { seedRoleTestUsers } from '@ethics/test-fixtures';
 
 const prisma = new PrismaClient();
 
-const SUPERADMIN_EMAIL = 'superadmin@ethics.local';
-const SUPERADMIN_DISPLAY_NAME = 'Platform Superadmin';
 const SUPERADMIN_OIDC_SUB = process.env['SEED_SUPERADMIN_OIDC_SUB'] ?? 'seed-superadmin-oidc-sub';
 
 const KVKK_VERSION_CODE = '1.0';
@@ -97,56 +96,17 @@ async function seedSystemSettings(): Promise<void> {
   }
 }
 
-async function seedSuperadmin(): Promise<void> {
-  const superadmin = await prisma.user.upsert({
-    where: { email: SUPERADMIN_EMAIL },
-    create: {
-      email: SUPERADMIN_EMAIL,
-      displayName: SUPERADMIN_DISPLAY_NAME,
-      oidcSubjectId: SUPERADMIN_OIDC_SUB,
-      clearanceLevel: 'STRICTLY_CONFIDENTIAL',
-      isGeneralSecretary: true,
-      provisionedAt: new Date(),
-      lastLoginAt: null,
-    },
-    update: {
-      displayName: SUPERADMIN_DISPLAY_NAME,
-      oidcSubjectId: SUPERADMIN_OIDC_SUB,
-      isActive: true,
-      clearanceLevel: 'STRICTLY_CONFIDENTIAL',
-      isGeneralSecretary: true,
-    },
-  });
-
-  const existingAdminRole = await prisma.userRole.findFirst({
-    where: {
-      userId: superadmin.id,
-      roleCode: Role.ADMIN,
-      isActive: true,
-    },
-  });
-
-  if (!existingAdminRole) {
-    await prisma.userRole.create({
-      data: {
-        userId: superadmin.id,
-        roleCode: Role.ADMIN,
-        assignedBy: superadmin.id,
-        reason: 'Initial seed — platform superadmin bootstrap',
-      },
-    });
-  }
-}
-
 async function main(): Promise<void> {
   await seedKvkkConsentVersion();
   await seedSystemSettings();
-  await seedSuperadmin();
+  await seedRoleTestUsers(prisma, { superadminOidcSub: SUPERADMIN_OIDC_SUB });
 }
 
 main()
   .then(() => {
-    console.warn('[seed] Faz 1 seed tamamlandı (superadmin, KVKK v1, system_settings).');
+    console.warn(
+      '[seed] Faz 2 seed tamamlandı (7 rol test kullanıcısı, sentetik şirket, KVKK v1, system_settings).',
+    );
   })
   .catch((error: unknown) => {
     console.error('[seed] Seed başarısız:', error);

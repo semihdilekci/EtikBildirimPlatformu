@@ -3,7 +3,11 @@ import { Reflector } from '@nestjs/core';
 import { ErrorCode } from '@ethics/shared';
 import type { Request } from 'express';
 
-import { getRequiredPolicy, isPublicRoute } from '../constants/auth-route.metadata.js';
+import {
+  getRequiredPolicy,
+  isAuthenticatedRoute,
+  isPublicRoute,
+} from '../constants/auth-route.metadata.js';
 import { DomainException } from '../exceptions/domain.exception.js';
 import type { AuthenticatedUser } from '../types/authenticated-user.type.js';
 import { PolicyGuardService } from '../../authorization/policy-guard.service.js';
@@ -20,9 +24,17 @@ export class PolicyGuard implements CanActivate {
       return true;
     }
 
+    if (isAuthenticatedRoute(this.reflector, context)) {
+      return true;
+    }
+
     const permission = getRequiredPolicy(this.reflector, context);
     if (permission === undefined) {
-      return true;
+      throw new DomainException(
+        ErrorCode.AUTHZ_FORBIDDEN,
+        'Bu işlem için yetkiniz yok.',
+        HttpStatus.FORBIDDEN,
+      );
     }
 
     const request = context.switchToHttp().getRequest<Request>();
