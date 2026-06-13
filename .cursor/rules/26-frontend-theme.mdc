@@ -1,0 +1,58 @@
+---
+description: MUI theme — Yıldız Holding brand colors, Poppins typography, theme.ts
+globs:
+  - "apps/web/src/styles/**"
+---
+
+# Theme & Brand Tokens
+
+Tek doğruluk kaynağı: `apps/web/src/styles/brand-tokens.ts` + `theme.ts`. Docs: `Docs/design-system/`.
+
+## Dosya yapısı
+
+| Dosya | Rol |
+| --- | --- |
+| `brand-tokens.ts` | Renk, spacing, radius, shadow sabitleri |
+| `theme.ts` | MUI `createTheme` + `components` override |
+| `global.css` | Reset, font smoothing |
+
+## Override edilen MUI bileşenleri
+
+`MuiButton`, `MuiLink`, `MuiAppBar`, `MuiToolbar`, `MuiPaper`, `MuiCard`, `MuiOutlinedInput`, `MuiInputLabel`, `MuiStepLabel`, `MuiStepIcon`, `MuiChip`, `MuiAlert`, `MuiDivider`, `MuiCssBaseline`.
+
+Kurumsal kalıplar:
+- Primary buton hover → outline invert (beyaz zemin, kırmızı border)
+- Buton radius → **0** (keskin köşe; site `.btn`)
+- Kart → flat + `outlined`, gölge yok
+- Input focus → kırmızı border + focus ring
+- AppBar → beyaz + hafif gölge
+
+## Renk paleti (özet)
+
+| Token | Hex | MUI |
+| --- | --- | --- |
+| Primary kırmızı | `#EB1C2E` | `palette.primary.main` |
+| Metin | `#000000` | `palette.text.primary` |
+| Paper | `#FFFFFF` | `palette.background.paper` |
+| Sayfa zemin | `#F8F8F8` | `palette.background.default` |
+| İkincil metin | `#636466` | `palette.text.secondary` |
+| Divider | `#E3E3E3` | `palette.divider` |
+
+## Tipografi
+
+`@fontsource/poppins` — `main.tsx` import 400/500/600/700. Detay: `Docs/design-system/tokens/typography.md`.
+
+## Branded wrapper'lar
+
+`@/components/brand`: `YildizHoldingLogo`, `PageHeader`. Yeni wrapper → önce `Docs/design-system/components/`.
+
+## Yasaklar
+
+- Hardcoded hex component içinde
+- Google Fonts CDN
+- Legacy palette (`#1a3a6b`, `#c8a951`)
+- Ağır Material elevation (kartlarda shadow)
+
+---
+
+Detay: `Docs/design-system/README.md`; `Docs/05_FRONTEND_SPEC.md` §Brand & Theme

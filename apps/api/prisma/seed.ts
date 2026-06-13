@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { PERMISSION_CODE_VALUES, ROLE_VALUES } from '@ethics/policy';
-import { seedRoleTestUsers } from '@ethics/test-fixtures';
+import { Role } from '@ethics/shared';
+import { seedRoleTestUsers, seedWorkflowCaseStub } from '@ethics/test-fixtures';
 
 const prisma = new PrismaClient();
 
@@ -99,13 +100,23 @@ async function seedSystemSettings(): Promise<void> {
 async function main(): Promise<void> {
   await seedKvkkConsentVersion();
   await seedSystemSettings();
-  await seedRoleTestUsers(prisma, { superadminOidcSub: SUPERADMIN_OIDC_SUB });
+  const { companyId, usersByRole } = await seedRoleTestUsers(prisma, {
+    superadminOidcSub: SUPERADMIN_OIDC_SUB,
+  });
+
+  const secretary = usersByRole[Role.COUNCIL_SECRETARY];
+  if (companyId && secretary) {
+    await seedWorkflowCaseStub(prisma, {
+      companyId,
+      createdByUserId: secretary.id,
+    });
+  }
 }
 
 main()
   .then(() => {
     console.warn(
-      '[seed] Faz 2 seed tamamlandı (7 rol test kullanıcısı, sentetik şirket, KVKK v1, system_settings).',
+      '[seed] Faz 5 seed tamamlandı (7 rol test kullanıcısı, sentetik şirket, KVKK v1, system_settings, workflow case stub).',
     );
   })
   .catch((error: unknown) => {

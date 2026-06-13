@@ -1,27 +1,18 @@
 import LogoutOutlinedIcon from '@mui/icons-material/LogoutOutlined';
 import MailOutlineIcon from '@mui/icons-material/MailOutline';
 import MessageOutlinedIcon from '@mui/icons-material/MessageOutlined';
-import {
-  Alert,
-  Box,
-  Button,
-  Card,
-  CardContent,
-  Skeleton,
-  Stack,
-  Tab,
-  Tabs,
-  Typography,
-} from '@mui/material';
+import { Alert, Box, Button, Card, CardContent, Skeleton, Stack, Typography } from '@mui/material';
 import { ErrorCode, type ReportStatusCode } from '@ethics/shared';
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { StatusBadge } from '@/features/tracking/components/StatusBadge';
+import { TrackingSubNav } from '@/features/tracking/components/TrackingSubNav';
 import { useTrackingAuth } from '@/features/tracking/hooks/useTrackingAuth';
 import { useTrackingStatusQuery } from '@/features/tracking/hooks/useTrackingStatus';
 import { maskTrackingCode } from '@/features/tracking/utils/mask-tracking-code.util';
 import { getTrackingErrorMessage } from '@/features/tracking/utils/tracking-error.util';
+import { FormPanel, PageHeader } from '@/components/brand';
 import { ApiError } from '@/types/api.types';
 
 function formatTrackingDate(isoDate: string): string {
@@ -63,13 +54,13 @@ export function TrackingStatusPage() {
 
   if (statusQuery.isPending) {
     return (
-      <Box sx={{ maxWidth: 640, mx: 'auto' }}>
+      <FormPanel maxWidth={640}>
         <Stack spacing={3}>
           <Skeleton variant="rounded" height={72} />
           <Skeleton variant="rounded" height={160} />
           <Skeleton variant="rounded" height={48} width="40%" sx={{ mx: 'auto' }} />
         </Stack>
-      </Box>
+      </FormPanel>
     );
   }
 
@@ -102,30 +93,19 @@ export function TrackingStatusPage() {
   const statusData = statusQuery.data;
 
   return (
-    <Box sx={{ maxWidth: 640, mx: 'auto' }}>
+    <FormPanel maxWidth={640}>
       <Stack spacing={3}>
-        <Stack spacing={0.5} textAlign="center">
-          <Typography variant="h4" component="h1">
-            Bildirim Durumu
-          </Typography>
-          <Typography variant="body2" color="text.secondary" fontFamily="monospace">
-            {maskedCode}
-          </Typography>
-        </Stack>
+        <PageHeader
+          align="center"
+          title="Bildirim Durumu"
+          subtitle={
+            <Typography variant="body1" color="text.secondary" fontFamily="monospace">
+              {maskedCode}
+            </Typography>
+          }
+        />
 
-        <Tabs
-          value="status"
-          onChange={(_, value) => {
-            if (value === 'messages') {
-              void navigate('/tracking/messages');
-            }
-          }}
-          variant="fullWidth"
-          aria-label="Takip navigasyonu"
-        >
-          <Tab label="Durum" value="status" aria-current="page" />
-          <Tab label="Mesajlar" value="messages" />
-        </Tabs>
+        <TrackingSubNav activeTab="status" />
 
         <Card variant="outlined">
           <CardContent>
@@ -193,6 +173,6 @@ export function TrackingStatusPage() {
           </Button>
         </Stack>
       </Stack>
-    </Box>
+    </FormPanel>
   );
 }

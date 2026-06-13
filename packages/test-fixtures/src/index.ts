@@ -7,3 +7,8 @@ export {
   type RoleTestUserDefinition,
   type SeedRoleTestUsersResult,
 } from './seed/role-test-users.js';
+export {
+  SEED_WORKFLOW_CASE,
+  seedWorkflowCaseStub,
+  type SeedWorkflowCaseStubResult,
+} from './seed/case-seed.js';

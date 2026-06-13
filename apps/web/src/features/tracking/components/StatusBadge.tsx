@@ -18,6 +18,7 @@ export function StatusBadge({ status, label }: StatusBadgeProps) {
         icon={<Icon aria-hidden />}
         label={label}
         color={config.color}
+        variant="outlined"
         size="medium"
         sx={{
           fontSize: '1rem',

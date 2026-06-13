@@ -26,6 +26,7 @@ export const AUDIT_OUTBOX_DISPATCH_ADVISORY_LOCK_KEY = 8_739_282;
 
 export const AUDIT_EVENT_CATEGORY_BY_TYPE: Record<AuditEventTypeCode, AuditEventCategoryCode> = {
   [AuditEventType.CASE_TRANSITION]: AuditEventCategory.WORKFLOW,
+  [AuditEventType.CASE_CONFIDENTIALITY_CHANGED]: AuditEventCategory.WORKFLOW,
   [AuditEventType.CASE_VIEWED]: AuditEventCategory.WORKFLOW,
   [AuditEventType.DOCUMENT_DOWNLOADED]: AuditEventCategory.DOCUMENT,
   [AuditEventType.DOCUMENT_UPLOADED]: AuditEventCategory.DOCUMENT,
@@ -51,6 +52,7 @@ export const AUDIT_EVENT_CATEGORY_BY_TYPE: Record<AuditEventTypeCode, AuditEvent
 
 export const AUDIT_EVENT_DEFAULT_SEVERITY: Record<AuditEventTypeCode, AuditSeverityCode> = {
   [AuditEventType.CASE_TRANSITION]: AuditSeverity.INFO,
+  [AuditEventType.CASE_CONFIDENTIALITY_CHANGED]: AuditSeverity.HIGH,
   [AuditEventType.CASE_VIEWED]: AuditSeverity.INFO,
   [AuditEventType.DOCUMENT_DOWNLOADED]: AuditSeverity.INFO,
   [AuditEventType.DOCUMENT_UPLOADED]: AuditSeverity.INFO,

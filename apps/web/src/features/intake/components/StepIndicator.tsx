@@ -2,6 +2,9 @@ import { Box, Step, StepButton, StepLabel, Stepper, Typography } from '@mui/mate
 
 import { REPORT_FORM_STEP_LABELS } from '@/features/intake/constants/enum-labels';
 
+/** MUI StepIcon default 24px + %20 */
+const STEP_ICON_SIZE_PX = 24 * 1.2;
+
 type StepIndicatorProps = {
   activeStep: number;
   maxCompletedStep: number;
@@ -25,6 +28,15 @@ export function StepIndicator({
         alternativeLabel
         nonLinear
         aria-label="Bildirim formu adımları"
+        sx={{
+          '& .MuiStepIcon-root': {
+            width: STEP_ICON_SIZE_PX,
+            height: STEP_ICON_SIZE_PX,
+          },
+          '& .MuiStepIcon-text': {
+            fontSize: `${String(0.75 * 1.2)}rem`,
+          },
+        }}
       >
         {REPORT_FORM_STEP_LABELS.map((label, index) => {
           const isSkipped = skippedSteps.includes(index);

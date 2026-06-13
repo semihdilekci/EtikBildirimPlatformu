@@ -44,6 +44,8 @@ Her liste/detail component üç state'i handle eder — tutarlı skeleton/empty 
 - Component içinde doğrudan axios (hook/service layer)
 - Admin viewer'da masked alanları raw gösterme
 - Inline style-heavy — MUI theme/sx kullan
+- Hardcoded hex renk — `theme.palette.primary.main` vb. kullan (bkz. `26-frontend-theme.mdc`)
+- Roboto/default MUI palette — marka teması `theme.ts` zorunlu
 
 ---
 

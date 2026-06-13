@@ -50,6 +50,21 @@ const schema = z.object({ ... }); // packages/dto'da olmalı
 
 `features/<domain>/pages|components|hooks|schemas/` — cross-feature import minimal.
 
+## Brand & Theme (Yıldız Holding)
+
+Kurumsal kimlik: kırmızı / siyah / beyaz / gri + **Poppins**. Kaynak: yildizholding.com.tr.
+
+| Kural | Uygulama |
+| --- | --- |
+| Renk kaynağı | `apps/web/src/styles/theme.ts` — hardcoded hex yasak |
+| Primary | `#EB1C2E` → `palette.primary` |
+| Font | `@fontsource/poppins` (CDN yasak) |
+| Stil | MUI `sx` / `color="primary"` — inline hex yasak |
+
+Token detay: `Docs/design-system/tokens/colors.md`, `typography.md`; spec: `Docs/05_FRONTEND_SPEC.md` §Brand & Theme.
+
+Tema dosyası edit → `26-frontend-theme.mdc` de okunur.
+
 ---
 
 Detay: `Docs/05_FRONTEND_SPEC.md` Bölüm 1–4; `Docs/06_SCREEN_CATALOG.md` §Layout

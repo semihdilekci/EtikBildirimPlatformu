@@ -72,6 +72,41 @@ export type {
 } from './enums/secure-message.enum.js';
 export type { MalwareScanStatusCode } from './enums/malware-scan-status.enum.js';
 
+export { CaseState, CASE_STATE_VALUES } from './enums/case-state.enum.js';
+export type { CaseStateCode } from './enums/case-state.enum.js';
+
+export { WorkflowCommand, WORKFLOW_COMMAND_VALUES } from './enums/workflow-command.enum.js';
+export type { WorkflowCommandCode } from './enums/workflow-command.enum.js';
+
+export { WORKFLOW_VERSION } from './constants/workflow.constants.js';
+
+export { CASE_STATE_LABELS, getCaseStateLabel } from './constants/case-state-labels.js';
+
+export {
+  WORKFLOW_COMMAND_LABELS,
+  REASON_REQUIRED_COMMANDS,
+  getWorkflowCommandLabel,
+} from './constants/workflow-command-labels.js';
+
+export {
+  NotificationChannel,
+  NOTIFICATION_CHANNEL_VALUES,
+} from './enums/notification-channel.enum.js';
+export type { NotificationChannelCode } from './enums/notification-channel.enum.js';
+
+export {
+  NotificationEventType,
+  NOTIFICATION_EVENT_TYPE_VALUES,
+} from './enums/notification-event-type.enum.js';
+export type { NotificationEventTypeCode } from './enums/notification-event-type.enum.js';
+
+export {
+  NOTIFICATION_DISPATCH_PENDING,
+  NOTIFICATION_DISPATCH_SENT,
+  NOTIFICATION_DISPATCH_FAILED,
+  NOTIFICATION_DISPATCH_RETRYING,
+} from './constants/notification.constants.js';
+
 export {
   ALLOWED_UPLOAD_RULES,
   MAX_SINGLE_FILE_BYTES,

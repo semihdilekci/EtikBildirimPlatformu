@@ -13,10 +13,12 @@ import { AuthorizationModule } from './authorization/authorization.module.js';
 import { AuditModule } from './audit/audit.module.js';
 import { buildPinoRedactPaths } from './audit/redaction.constants.js';
 import { CryptoModule } from './crypto/crypto.module.js';
+import { NotificationModule } from './notification/notification.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { DevCryptoAuditModule } from './modules/dev-crypto-audit/dev-crypto-audit.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { IntakeModule } from './modules/intake/intake.module.js';
+import { CaseManagementModule } from './modules/case-management/case-management.module.js';
 import { TrackingModule } from './modules/tracking/tracking.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 
@@ -62,10 +64,12 @@ import { PrismaModule } from './prisma/prisma.module.js';
     PrismaModule,
     CryptoModule,
     AuditModule,
+    NotificationModule,
     HealthModule,
     DevCryptoAuditModule,
     AuthModule,
     IntakeModule,
+    CaseManagementModule,
     TrackingModule,
     AuthorizationModule,
   ],

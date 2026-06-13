@@ -11,4 +11,10 @@ export const queryKeys = {
     status: () => ['tracking', 'status'] as const,
     messages: () => ['tracking', 'messages'] as const,
   },
+  cases: {
+    all: () => ['cases'] as const,
+    list: (filters: unknown) => ['cases', 'list', filters] as const,
+    detail: (caseId: string) => ['cases', 'detail', caseId] as const,
+    transitions: (caseId: string) => ['cases', 'transitions', caseId] as const,
+  },
 } as const;

@@ -5,6 +5,8 @@ import { AdminPlaceholderPage } from '@/features/admin/pages/AdminPlaceholderPag
 import { AuthCallbackPage } from '@/features/auth/pages/AuthCallbackPage';
 import { DashboardPage } from '@/features/auth/pages/DashboardPage';
 import { LoginPage } from '@/features/auth/pages/LoginPage';
+import { CaseDetailPage } from '@/features/cases/pages/CaseDetailPage';
+import { CaseListPage } from '@/features/cases/pages/CaseListPage';
 import { ReportFormPage } from '@/features/intake/pages/ReportFormPage';
 import { ReportSuccessPage } from '@/features/intake/pages/ReportSuccessPage';
 import { TrackingLoginPage } from '@/features/tracking/pages/TrackingLoginPage';
@@ -51,6 +53,8 @@ export function AppRoutes() {
         <Route path="/app" element={<InternalLayout />}>
           <Route index element={<Navigate to="/app/dashboard" replace />} />
           <Route path="dashboard" element={<DashboardPage />} />
+          <Route path="cases" element={<CaseListPage />} />
+          <Route path="cases/:id" element={<CaseDetailPage />} />
         </Route>
 
         <Route element={<RoleGuard roles={[Role.ADMIN]} />}>

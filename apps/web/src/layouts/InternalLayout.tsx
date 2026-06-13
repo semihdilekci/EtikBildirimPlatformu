@@ -20,6 +20,7 @@ import { useState } from 'react';
 import { Link as RouterLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 
 import { adminNavItems, adminSectionIcon, internalNavItems } from '@/config/internal-navigation';
+import { YildizHoldingLogo } from '@/components/brand';
 import { PermissionGate } from '@/features/auth/components/PermissionGate';
 import { useLogout } from '@/features/auth/hooks/useLogout';
 import { usePermissions } from '@/features/auth/hooks/usePermissions';
@@ -107,6 +108,7 @@ export function InternalLayout() {
     <Box sx={{ display: 'flex', minHeight: '100vh' }}>
       <AppBar
         position="fixed"
+        color="default"
         sx={{
           width: { sm: `calc(100% - ${String(DRAWER_WIDTH)}px)` },
           ml: { sm: `${String(DRAWER_WIDTH)}px` },
@@ -119,12 +121,13 @@ export function InternalLayout() {
             onClick={() => {
               setMobileOpen((open) => !open);
             }}
-            sx={{ mr: 2, display: { sm: 'none' } }}
+            sx={{ mr: 1, display: { sm: 'none' } }}
             aria-label="Menüyü aç"
           >
             <MenuIcon />
           </IconButton>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+          <YildizHoldingLogo to="/app/dashboard" height={20} marginRight={1} />
+          <Typography variant="subtitle2" color="text.secondary" sx={{ flexGrow: 1 }}>
             İç Operasyon
           </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>

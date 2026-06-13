@@ -588,7 +588,7 @@ Session'lara bölünmeli — tek session'da yazılamaz:
 
 ### Faz 5 — Case Management + Workflow Engine
 
-- **Durum:** planlandı (Cursor faz kuralı hazır)
+- **Durum:** tamamlandı (İterasyon 8 — transition matrix + coverage gate green)
 
 #### Kapsam
 
@@ -666,7 +666,7 @@ Session'lara bölünmeli — tek session'da yazılamaz:
 
 - **Rule:** `.cursor/rules/55-phase-05-case-workflow.mdc`
 - **Branch:** `feature/F5-case-workflow` (`48-git-phase-branch.mdc`)
-- **Durum:** planlandı
+- **Durum:** tamamlandı
 
 #### İterasyon planı (agent)
 

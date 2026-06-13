@@ -1,3 +1,4 @@
+import { PageHeader } from '@/components/brand';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import SendIcon from '@mui/icons-material/Send';
@@ -832,12 +833,10 @@ export function ReportFormPage() {
 
   return (
     <Box component="form" onSubmit={(event) => void submitReport(event)} noValidate>
-      <Typography variant="h4" component="h1" gutterBottom>
-        Etik Bildirim Formu
-      </Typography>
-      <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-        Bildiriminizi adım adım doldurun. Tüm bilgiler gizli tutulur.
-      </Typography>
+      <PageHeader
+        title="Etik Bildirim Formu"
+        subtitle="Bildiriminizi adım adım doldurun. Tüm bilgiler gizli tutulur."
+      />
 
       {isBootstrapping ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>

@@ -1,8 +1,8 @@
-import AccountBalanceOutlinedIcon from '@mui/icons-material/AccountBalanceOutlined';
 import LoginOutlinedIcon from '@mui/icons-material/LoginOutlined';
-import { Box, Button, Card, CardContent, Container, Stack, Typography } from '@mui/material';
+import { Box, Button, Card, CardContent, Container, Stack } from '@mui/material';
 import { useSearchParams } from 'react-router-dom';
 
+import { PageHeader, YildizHoldingLogo } from '@/components/brand';
 import { buildOidcLoginUrl } from '@/features/auth/api/auth.api';
 
 export function LoginPage() {
@@ -20,23 +20,22 @@ export function LoginPage() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'linear-gradient(160deg, #f4f6f9 0%, #e8edf5 100%)',
+        bgcolor: 'background.default',
         px: 2,
+        py: 4,
       }}
     >
       <Container maxWidth="sm">
-        <Card elevation={3}>
+        <Card variant="outlined">
           <CardContent sx={{ p: { xs: 3, sm: 5 } }}>
-            <Stack spacing={3} alignItems="center" textAlign="center">
-              <AccountBalanceOutlinedIcon sx={{ fontSize: 48, color: 'primary.main' }} />
-              <Stack spacing={1}>
-                <Typography variant="h4" component="h1">
-                  Etik Bildirim Platformu
-                </Typography>
-                <Typography variant="body1" color="text.secondary">
-                  Kurumsal hesabınızla giriş yaparak iç operasyon ekranlarına erişebilirsiniz.
-                </Typography>
-              </Stack>
+            <Stack spacing={3} alignItems="center">
+              <YildizHoldingLogo height={22} />
+              <PageHeader
+                align="center"
+                dense
+                title="Etik Bildirim Platformu"
+                subtitle="Kurumsal hesabınızla giriş yaparak iç operasyon ekranlarına erişebilirsiniz."
+              />
               <Button
                 variant="contained"
                 size="large"

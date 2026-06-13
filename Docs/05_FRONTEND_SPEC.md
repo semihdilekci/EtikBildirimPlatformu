@@ -8,7 +8,42 @@ TypeScript strict mode zorunludur; `any` tipi tüm frontend kodunda yasaktır. `
 
 Build toolchain Vite'tır; CRA (Create React App) veya Webpack kullanılmaz. Production build `vite build` ile üretilir; output `dist/` klasörüne statik dosyalar olarak yazılır ve CDN veya static hosting üzerinden sunulur. Dış CDN'den runtime script/style yüklenmez — tüm asset'ler build içinde paketlenir.
 
-UI component kütüphanesi olarak **MUI (Material UI)** veya kurumun onaylı design system'i kullanılır. Harici CDN üzerinden component yüklenmez. Erişilebilirlik kontrolleri MUI'nin built-in a11y desteği üzerine ek kontroller ile güçlendirilir.
+UI component kütüphanesi olarak **MUI (Material UI)** kullanılır; tema Yıldız Holding kurumsal kimliğine hizalanır. Harici CDN üzerinden component veya font yüklenmez. Erişilebilirlik kontrolleri MUI'nin built-in a11y desteği üzerine ek kontroller ile güçlendirilir.
+
+---
+
+## Brand & Theme
+
+Renk ve tipografi token'ları [yildizholding.com.tr](https://www.yildizholding.com.tr/) kurumsal sitesinden alınır.
+
+- Design system: `Docs/design-system/README.md`
+- Token'lar: `Docs/design-system/tokens/colors.md`, `typography.md`, `spacing.md`, `effects.md`
+- Bileşen spec: `Docs/design-system/components/button.md`
+
+### Renk paleti (özet)
+
+| Rol | Hex | MUI |
+| --- | --- | --- |
+| Primary kırmızı | `#EB1C2E` | `palette.primary.main` |
+| Metin siyah | `#000000` | `palette.text.primary` |
+| Beyaz yüzey | `#FFFFFF` | `palette.background.paper` |
+| Gri arka plan | `#F8F8F8` / `#F3F1F2` | `palette.background.default`, alternatif yüzey |
+| İkincil metin | `#636466` | `palette.text.secondary` |
+
+PWA/tile referans rengi: `#D30E1D` (meta `theme-color`; UI primary `#EB1C2E`).
+
+### Tipografi
+
+- Birincil font: **Poppins** (400, 500, 600, 700).
+- Bundle: `@fontsource/poppins` — `main.tsx` import; Google Fonts CDN yasak.
+- Monospace: tracking code alanları (`fontFamily: monospace` variant).
+
+### Uygulama kuralları
+
+1. Tüm renkler `apps/web/src/styles/theme.ts` üzerinden; bileşenlerde hardcoded hex yasak.
+2. Yapıcı aksiyonlar `color="primary"`; destructive onay `color="error"` (aynı marka kırmızısı).
+3. Inline `style={{ color: '#…' }}` yasak — MUI `sx` + theme token.
+4. Kontrast WCAG AA — bkz. §Accessibility Color contrast.
 
 ---
 

@@ -1,9 +1,5 @@
-import TrackChangesOutlinedIcon from '@mui/icons-material/TrackChangesOutlined';
-import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined';
-import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import {
   Alert,
-  Box,
   Button,
   Card,
   CardContent,
@@ -18,10 +14,13 @@ import {
 import { zodResolver } from '@hookform/resolvers/zod';
 import { trackingLoginSchema, type TrackingLoginValues } from '@ethics/dto';
 import { ErrorCode } from '@ethics/shared';
+import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined';
+import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Link as RouterLink, useLocation } from 'react-router-dom';
 
+import { FormPanel, PageHeader } from '@/components/brand';
 import { useTrackingVerify } from '@/features/tracking/hooks/useTrackingVerify';
 import {
   getTrackingErrorMessage,
@@ -83,20 +82,13 @@ export function TrackingLoginPage() {
   const inputsDisabled = isLoading || isLocked;
 
   return (
-    <Box sx={{ maxWidth: 480, mx: 'auto' }}>
+    <FormPanel>
       <Stack spacing={3}>
-        <Stack spacing={1} textAlign="center">
-          <TrackChangesOutlinedIcon
-            sx={{ fontSize: 48, color: 'primary.main', mx: 'auto' }}
-            aria-hidden
-          />
-          <Typography variant="h4" component="h1">
-            Bildirim Takip
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            Bildiriminizi takip etmek için takip kodunuzu ve şifrenizi giriniz.
-          </Typography>
-        </Stack>
+        <PageHeader
+          align="center"
+          title="Bildirim Takip"
+          subtitle="Bildiriminizi takip etmek için takip kodunuzu ve şifrenizi giriniz."
+        />
 
         {sessionExpiredAlert ? (
           <Alert severity="warning" role="alert">
@@ -116,7 +108,7 @@ export function TrackingLoginPage() {
         ) : null}
 
         <Card variant="outlined">
-          <CardContent>
+          <CardContent sx={{ p: { xs: 2.5, sm: 3 } }}>
             <Stack
               component="form"
               spacing={2.5}
@@ -186,6 +178,7 @@ export function TrackingLoginPage() {
                 type="submit"
                 variant="contained"
                 size="large"
+                fullWidth
                 disabled={inputsDisabled}
                 startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : undefined}
               >
@@ -202,6 +195,6 @@ export function TrackingLoginPage() {
           </Link>
         </Typography>
       </Stack>
-    </Box>
+    </FormPanel>
   );
 }

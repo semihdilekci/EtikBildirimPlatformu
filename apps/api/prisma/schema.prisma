@@ -40,6 +40,10 @@ model User {
   rolesApproved   UserRole[] @relation("UserRoleApprovedBy")
   loginAttempts   LoginAttempt[]
 
+  casesAsRapporteur  Case[] @relation("CaseRapporteur")
+  casesAsActionOwner Case[] @relation("CaseActionOwner")
+  caseTransitions    CaseTransition[]
+
   @@index([companyId], map: "idx_users_company_id")
   @@index([isActive], map: "idx_users_is_active")
   @@map("users")
@@ -116,6 +120,7 @@ model Company {
   positions Position[]
   users     User[]
   reports   Report[]
+  cases     Case[]
 
   @@index([isActive], map: "idx_companies_is_active")
   @@map("companies")
@@ -167,6 +172,7 @@ model Report {
   updatedAt                  DateTime  @updatedAt @map("updated_at")
 
   company Company @relation(fields: [companyId], references: [id])
+  caseRecord Case?
   attachments ReportAttachment[]
   secureMessages SecureMessage[]
 
@@ -370,4 +376,86 @@ model AuditEvent {
   @@index([correlationId], map: "idx_ae_correlation_id")
   @@index([eventCategory], map: "idx_ae_event_category")
   @@map("audit_events")
+}
+
+// ─── Notification outbox stub (Faz 5 İterasyon 5 — Faz 8 dispatch) ───────────
+
+model NotificationEvent {
+  id                    String    @id @default(cuid())
+  eventType             String    @map("event_type")
+  channel               String
+  recipientUserId       String?   @map("recipient_user_id")
+  recipientTrackingCode String?   @map("recipient_tracking_code")
+  templateId            String?   @map("template_id")
+  caseId                String?   @map("case_id")
+  dispatchStatus        String    @default("PENDING") @map("dispatch_status")
+  retryCount            Int       @default(0) @map("retry_count")
+  sentAt                DateTime? @map("sent_at")
+  errorCode             String?   @map("error_code")
+  correlationId         String?   @map("correlation_id")
+  idempotencyKey        String?   @unique @map("idempotency_key")
+  metadataJson          Json?     @map("metadata_json")
+  createdAt             DateTime  @default(now()) @map("created_at")
+
+  @@index([dispatchStatus], map: "idx_notification_events_dispatch_status")
+  @@index([correlationId], map: "idx_notification_events_correlation_id")
+  @@index([caseId], map: "idx_notification_events_case_id")
+  @@map("notification_events")
+}
+
+// ─── Case Management (Faz 5 — İterasyon 1) ───────────────────────────────────
+
+model Case {
+  id                    String    @id @default(cuid())
+  reportId              String    @unique @map("report_id")
+  currentState          String    @map("current_state")
+  workflowVersion       String    @map("workflow_version") @db.VarChar(20)
+  confidentialityLevel  String    @default("SENSITIVE") @map("confidentiality_level")
+  companyId             String    @map("company_id")
+  assignedRapporteurId  String?   @map("assigned_rapporteur_id")
+  assignedActionOwnerId String?   @map("assigned_action_owner_id")
+  openedAt              DateTime  @default(now()) @map("opened_at")
+  closedAt              DateTime? @map("closed_at")
+  optimisticLockVersion Int       @default(0) @map("optimistic_lock_version")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+  createdBy             String    @map("created_by")
+
+  report              Report           @relation(fields: [reportId], references: [id])
+  company             Company          @relation(fields: [companyId], references: [id])
+  assignedRapporteur  User?            @relation("CaseRapporteur", fields: [assignedRapporteurId], references: [id])
+  assignedActionOwner User?            @relation("CaseActionOwner", fields: [assignedActionOwnerId], references: [id])
+  transitions         CaseTransition[]
+
+  @@index([currentState], map: "idx_cases_current_state")
+  @@index([companyId], map: "idx_cases_company_id")
+  @@index([confidentialityLevel], map: "idx_cases_confidentiality_level")
+  @@index([assignedRapporteurId], map: "idx_cases_assigned_rapporteur")
+  @@index([assignedActionOwnerId], map: "idx_cases_assigned_action_owner")
+  @@index([openedAt], map: "idx_cases_opened_at")
+  @@map("cases")
+}
+
+model CaseTransition {
+  id                 String   @id @default(cuid())
+  caseId             String   @map("case_id")
+  fromState          String   @map("from_state")
+  toState            String   @map("to_state")
+  command            String
+  actorType          String   @map("actor_type")
+  performedByUserId  String?  @map("performed_by_user_id")
+  reasonTextMasked   String?  @map("reason_text_masked")
+  encryptionMetadata Json?    @map("encryption_metadata")
+  idempotencyKey     String   @unique @map("idempotency_key")
+  auditEventId       String?  @map("audit_event_id")
+  transitionedAt     DateTime @default(now()) @map("transitioned_at")
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  case            Case  @relation(fields: [caseId], references: [id])
+  performedByUser User? @relation(fields: [performedByUserId], references: [id])
+
+  @@index([caseId], map: "idx_ct_case_id")
+  @@index([transitionedAt], map: "idx_ct_transitioned_at")
+  @@index([toState], map: "idx_ct_to_state")
+  @@map("case_transitions")
 }

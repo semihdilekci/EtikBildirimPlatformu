@@ -46,6 +46,7 @@ Tam metin: `.cursor/rules/00-*.mdc` … `04-*.mdc`.
 | `*Form*.tsx`, `features/**/pages/**`, `schemas/**` | `22-frontend-forms` |
 | `**/hooks/use*.ts`, `features/**/hooks/**` | `23-frontend-queries` |
 | `components/**`, `features/**/components/**` | `24-frontend-components` |
+| `apps/web/src/styles/**` | `26-frontend-theme` |
 | `apps/web/**/*.tsx` | `25-frontend-a11y` |
 | `infra/**`, `.github/**`, `turbo.json` | `30-infrastructure` |
 | `**/*.{test,spec}.{ts,tsx}`, `packages/test-fixtures/**` | `35-testing` |
