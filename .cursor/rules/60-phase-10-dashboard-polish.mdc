@@ -1,0 +1,234 @@
+---
+description: '[Faz 10] Dashboard + Polish — 5 iterasyon/chat (dashboard BE → widgets → shell → error pages → KVKK modal+polish+gate). Mesajda "Faz 10 — İterasyon M" belirt.'
+---
+
+# Faz 10: Dashboard + Error Pages + Polish
+
+## Goal
+
+S-DASHBOARD permission-gated widget'lar (parallel lazy load, widget isolation). InternalLayout finalizasyon: sidebar tüm menüler PermissionGate, topbar NotificationBell + user menu + breadcrumb. Error pages S-FORBIDDEN, S-NOT-FOUND, S-ERROR (prod'da stack yok). S-SESSION-EXPIRED modal → re-login. KVKK consent blocking modal (ESC/outside click/X disabled). Loading/empty/error state tutarlılığı.
+
+Detay: `Docs/10_IMPLEMENTATION_ROADMAP.md` §Faz 10.
+
+**Bağımlılık:** Faz 5–9 core screens; Faz 9 KVKK publish API; Faz 8 NotificationBell.
+
+## Feature branch (zorunlu)
+
+Faz koduna **main üzerinde başlanmaz**. İlk commit/dosya değişikliği öncesi `48-git-phase-branch.mdc` uygula.
+
+**Bu faz branch adı:** `feature/F10-dashboard-polish`
+
+**Stop (İterasyon 1, kod öncesi):** [ ] Faz 9 `main`'e merge edilmiş; [ ] faz branch oluşturuldu; [ ] `git push -u origin HEAD` (remote varsa).
+
+## Bu fazın çalışma modeli (iterasyonlar)
+
+Tek sohbette tamamlanmaz. Her session: `@60-phase-10-dashboard-polish` + mesajda **「Faz 10 — İterasyon M」**. Branch açmadan kod yok.
+
+---
+
+### İterasyon 1 — Dashboard Backend
+
+**Hedef:** Aggregate metadata API; plaintext etik içerik yok; session list + revoke.
+
+**Yapılacaklar:**
+
+1. `GET /api/v1/dashboard/summary` — counts only: open cases, closed, SLA breaches, pending tasks
+2. Şirket/kategori dağılımı — metadata aggregation (no report_text)
+3. `GET /api/v1/auth/sessions`, `DELETE /api/v1/auth/sessions/:id` — own sessions revoke
+4. `@RequirePolicy`; PolicyScope on aggregates
+5. Integration test: response body grep — incident_description/report_text absent
+
+**Minimum bağlam:**
+
+- `Docs/03_API_CONTRACTS.md` §8.14 Dashboard
+- `Docs/07_SECURITY_IMPLEMENTATION.md` — dashboard no content leak
+- `.cursor/rules/12-authorization-policy.mdc`
+
+**Bu iterasyonda yok:** Frontend widgets, error pages.
+
+**Stop:** [ ] No plaintext ethical content in summary; [ ] session revoke works. PR/onay → İterasyon 2.
+
+---
+
+### İterasyon 2 — S-DASHBOARD Widgets
+
+**Hedef:** Widget-level parallel fetch; permission-gated visibility; failure isolation.
+
+**Yapılacaklar:**
+
+1. S-DASHBOARD route `/app/dashboard`
+2. Widgets: Bekleyen Görevler, Açık Vakalar, SLA Uyarıları, Son Bildirimler, Kategori Dağılımı
+3. Her widget ayrı React Query hook — parallel fetch
+4. PermissionGate per widget — permission yoksa widget render edilmez
+5. Single widget API fail → diğerleri render (error boundary per widget)
+
+**Minimum bağlam:**
+
+- `Docs/06_SCREEN_CATALOG.md` — S-DASHBOARD
+- `Docs/05_FRONTEND_SPEC.md` — dashboard widget pattern
+- `.cursor/rules/23-frontend-queries.mdc`
+
+**Bu iterasyonda yok:** Shell finalization, error pages.
+
+**Stop:** [ ] Widget isolation test (mock one fail); [ ] permission hide widget. PR/onay → İterasyon 3.
+
+---
+
+### İterasyon 3 — Sidebar + Topbar Finalizasyon
+
+**Hedef:** InternalLayout complete; tüm menu PermissionGate; breadcrumb.
+
+**Yapılacaklar:**
+
+1. Sidebar — cases, tasks, notifications, admin (conditional), dashboard
+2. Her item `<PermissionGate permission="...">`
+3. Topbar — NotificationBell (Faz 8), user menu (profile/logout), breadcrumb
+4. Active route highlight; mobile responsive drawer (MVP basic)
+5. Spot-check: rolsüz menü item gizli
+
+**Minimum bağlam:**
+
+- `Docs/05_FRONTEND_SPEC.md` — InternalLayout, navigation
+- `Docs/06_SCREEN_CATALOG.md` — global navigation
+- `.cursor/rules/21-frontend-routes.mdc`
+
+**Bu iterasyonda yok:** Error pages, KVKK modal.
+
+**Stop:** [ ] Sidebar permission matrix spot-check; [ ] breadcrumb on nested routes. PR/onay → İterasyon 4.
+
+---
+
+### İterasyon 4 — Error Pages + Session Expired
+
+**Hedef:** Polished error UX; prod'da technical detail yok; session expired auto modal.
+
+**Yapılacaklar:**
+
+1. S-FORBIDDEN (`/403`) — Türkçe mesaj, ana sayfaya dön
+2. S-NOT-FOUND (`/404`) — catch-all route
+3. S-ERROR (`/500`) — generic mesaj; dev-only detail via env flag
+4. S-SESSION-EXPIRED — modal overlay; 401 interceptor tetikler; re-login redirect
+5. E2E: session timeout → modal → OIDC re-login flow
+
+**Minimum bağlam:**
+
+- `Docs/06_SCREEN_CATALOG.md` — error screens, session expired
+- `Docs/05_FRONTEND_SPEC.md` — error boundary, API interceptor
+- `.cursor/rules/25-frontend-a11y.mdc`
+
+**Bu iterasyonda yok:** KVKK consent modal.
+
+**Stop:** [ ] Prod build no stack in S-ERROR; [ ] session expired E2E smoke. PR/onay → İterasyon 5.
+
+---
+
+### İterasyon 5 — KVKK Consent Modal + UI Polish + Human Gate
+
+**Hedef:** Blocking KVKK modal on new version publish; consistent loading/empty/error states.
+
+**Yapılacaklar:**
+
+1. KVKK consent modal — `kvkk_consent_version` mismatch → blocking overlay
+2. ESC disabled, outside click disabled, X button yok — kapatılamaz
+3. Accept → consent recorded API; decline → logout (policy per spec)
+4. Cross-app polish pass: Skeleton loaders, EmptyState, ErrorState components tutarlı
+5. Human Gate checklist (`Docs/10` §Faz 10)
+
+**Minimum bağlam:**
+
+- `Docs/07_SECURITY_IMPLEMENTATION.md` — consent versiyonlama
+- `Docs/06_SCREEN_CATALOG.md` — consent modal spec
+- Faz 9 KVKK publish API
+
+**Bu iterasyonda yok:** New feature screens.
+
+**Stop:** [ ] Modal blocking verified; [ ] Human Gate; CI green. Faz 10 Done.
+
+---
+
+## Required Context
+
+- `Docs/03_API_CONTRACTS.md` §8.14 Dashboard, §8.3 session
+- `Docs/05_FRONTEND_SPEC.md` — layout, navigation, error handling
+- `Docs/06_SCREEN_CATALOG.md` — S-DASHBOARD, error screens, consent modal
+- `Docs/07_SECURITY_IMPLEMENTATION.md` — consent, no content leak
+- `Docs/10_IMPLEMENTATION_ROADMAP.md` §Faz 10
+
+Auto-attached glob rules: `21-frontend-routes`, `23-frontend-queries`, `24-frontend-components`, `25-frontend-a11y`, `04-quality-gates`
+
+## Scope
+
+```
+apps/api/src/modules/dashboard/   dashboard.controller, dashboard.service
+apps/web/src/features/dashboard/  S-DASHBOARD widgets
+apps/web/src/layouts/             InternalLayout finalization
+apps/web/src/pages/errors/        403, 404, 500
+apps/web/src/components/          KvkkConsentModal, EmptyState, ErrorState
+```
+
+### Files NOT touched
+
+- New domain features
+- Performance optimization — Faz 11
+- Production deploy — Faz 13
+
+## Constraints
+
+### Use
+
+- Widget-level parallel fetch + isolation
+- Permission-gated widgets
+- Prod error pages — no stack trace
+- Session expired interceptor → modal
+- KVKK modal truly blocking
+- Dashboard summary — metadata only
+
+### Avoid
+
+- Single monolithic dashboard query
+- Stack trace in prod S-ERROR
+- Dismissible KVKK modal
+- Widget cascade fail (one fail kills page)
+- Ethical content in dashboard API
+
+## Done Definition
+
+### Backend
+
+- [ ] Dashboard summary API metadata-only
+- [ ] Session list + revoke
+
+### Frontend
+
+- [ ] S-DASHBOARD widgets parallel + permission-gated
+- [ ] InternalLayout sidebar/topbar complete
+- [ ] Error pages + session expired modal
+- [ ] KVKK blocking modal
+
+### Human Gate
+
+- [ ] Widget isolation verified
+- [ ] Prod no stack trace
+- [ ] PR squash merge → `main`
+
+## Explicit Don'ts
+
+- Monolithic dashboard query
+- Stack trace prod error pages
+- Dismissible KVKK consent
+- Dashboard ethical plaintext
+- New feature scope in polish phase
+- `main`'e direct push
+
+## Kısıtlar & Riskler
+
+| Risk | Önlem |
+| --- | --- |
+| Agent single big query | Widget hooks İterasyon 2 |
+| Agent stack on prod errors | env-based detail İterasyon 4 |
+| Agent dismissible KVKK modal | ESC/outside disabled test İterasyon 5 |
+| Polish phase feature creep | Explicit Don'ts — no new features |
+
+---
+
+Phase done → `Docs/10_IMPLEMENTATION_ROADMAP.md` Faz 10 durumunu güncelle.

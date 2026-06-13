@@ -1,0 +1,247 @@
+---
+description: '[Faz 12] Security Hardening — 5 iterasyon/chat (SAST/SCA → ZAP/DAST → CSP → drills → runbooks+gate). Mesajda "Faz 12 — İterasyon M" belirt.'
+---
+
+# Faz 12: Security Hardening + Penetration Test
+
+## Goal
+
+Security release gate: 0 HIGH/CRITICAL SAST/SCA/container scan. OWASP ZAP baseline + DAST staging full scan. CSP nonce-based — `unsafe-inline` yok. Secret rotation + backup restore drills staging'de başarılı. 15+ incident runbooks `docs/runbooks/`. Pen-test findings remediated (scope kararı insanın).
+
+Detay: `Docs/10_IMPLEMENTATION_ROADMAP.md` §Faz 12.
+
+**Bağımlılık:** Faz 11 complete; staging prod-parity; OWASP ASVS L3 kritik %80 hedef (`04-quality-gates`).
+
+## Feature branch (zorunlu)
+
+Faz koduna **main üzerinde başlanmaz**. İlk commit/dosya değişikliği öncesi `48-git-phase-branch.mdc` uygula.
+
+**Bu faz branch adı:** `feature/F12-security-hardening`
+
+**Stop (İterasyon 1, kod öncesi):** [ ] Faz 11 merge; [ ] staging parity verified; [ ] branch + push.
+
+## Bu fazın çalışma modeli (iterasyonlar)
+
+Tek sohbette tamamlanmaz. Her session: `@62-phase-12-security-hardening` + mesajda **「Faz 12 — İterasyon M」**. Branch açmadan kod yok.
+
+---
+
+### İterasyon 1 — SAST/SCA/Container Scan Cleanup
+
+**Hedef:** CI security pipeline 0 HIGH/CRITICAL across dependency, SAST, container scan.
+
+**Yapılacaklar:**
+
+1. Review CI pr-check security steps — Snyk/trivy/grype (mevcut tooling)
+2. Triage findings: fix, upgrade, or documented accept (LOW only with ADR)
+3. HIGH/CRITICAL → fix or block release
+4. Lockfile update if dependency bumps
+5. Re-run full CI security suite green
+
+**Minimum bağlam:**
+
+- `Docs/09_DEV_WORKFLOW.md` §8 CI pipeline
+- `Docs/08_TESTING_STRATEGY.md` — security testing
+- `.github/workflows/pr-check.yml`
+- `.cursor/rules/04-quality-gates.mdc`
+
+**Bu iterasyonda yok:** ZAP, CSP changes, runbooks.
+
+**Stop:** [ ] 0 HIGH/CRITICAL SAST/SCA/container; [ ] CI green. PR/onay → İterasyon 2.
+
+---
+
+### İterasyon 2 — OWASP ZAP + DAST
+
+**Hedef:** ZAP baseline staging; DAST full scan; critical findings remediated.
+
+**Yapılacaklar:**
+
+1. ZAP baseline scan against staging URL — auth session script for internal routes
+2. DAST full scan — public intake + authenticated flows
+3. Triage report — false positives minimal ignore list (documented)
+4. Remediate critical/high findings — root cause per finding
+5. Re-scan until baseline pass
+
+**Minimum bağlam:**
+
+- `Docs/07_SECURITY_IMPLEMENTATION.md` — full spec cross-check
+- `Docs/08_TESTING_STRATEGY.md` — DAST/ZAP section
+- `infra/` security scan configs if any
+
+**Bu iterasyonda yok:** CSP nonce implementation, runbooks.
+
+**Stop:** [ ] ZAP baseline pass; [ ] critical remediated or human-documented exception. PR/onay → İterasyon 3.
+
+---
+
+### İterasyon 3 — CSP Hardening
+
+**Hedef:** Strict CSP nonce-based scripts; remove unsafe-inline; FE build compatible.
+
+**Yapılacaklar:**
+
+1. NestJS helmet CSP config — nonce per request
+2. Vite/React — inline script elimination; nonce injection for any required inline
+3. Staging verify CSP header — browser console no violations
+4. Regression test: OIDC redirect, MUI, report form still work
+5. Document CSP policy in `07` or ADR if deviation needed (deviation yasak unless human approved)
+
+**Minimum bağlam:**
+
+- `Docs/07_SECURITY_IMPLEMENTATION.md` — CSP policy
+- `Docs/05_FRONTEND_SPEC.md` — CSP compatibility
+- `.cursor/rules/25-frontend-a11y.mdc`
+
+**Bu iterasyonda yok:** Production deploy, runbooks.
+
+**Stop:** [ ] No unsafe-inline in prod CSP; [ ] staging smoke green. PR/onay → İterasyon 4.
+
+---
+
+### İterasyon 4 — Secret Rotation + Backup Restore Drills
+
+**Hedef:** Staging drills documented; rollback path verified.
+
+**Yapılacaklar:**
+
+1. Secret rotation drill staging: session secret, OIDC client secret, DB password, KMS key
+2. RDS snapshot → restore to temp instance → test query success
+3. Document drill steps + results in runbook draft
+4. Verify app recovery after rotation (no downtime procedure or maintenance window doc)
+5. Human witness for drill (developer gate)
+
+**Minimum bağlam:**
+
+- `Docs/09_DEV_WORKFLOW.md` — deployment, rollback
+- `infra/` IaC RDS/KMS/Secrets Manager
+- `.cursor/rules/30-infrastructure.mdc`
+
+**Bu iterasyonda yok:** Production drills (Faz 13 go-live).
+
+**Stop:** [ ] Backup restore query OK; [ ] rotation drill checklist signed. PR/onay → İterasyon 5.
+
+---
+
+### İterasyon 5 — Runbooks + Pen-Test Remediation + Human Gate
+
+**Hedef:** 15+ runbooks complete; remaining pen-test items; human gate sign-off.
+
+**Yapılacaklar:**
+
+1. `docs/runbooks/` — deployment, rollback, DB restore, secret rotation, break-glass, DDoS response, data breach, audit alarm, ClamAV down, worker stuck, OIDC outage, etc. (15+)
+2. Pen-test report remediation — remaining medium/low per human priority
+3. OWASP ASVS spot-check kritik maddeler
+4. Human Gate checklist (`Docs/10` §Faz 12) — pen-test review, runbooks read-through
+
+**Minimum bağlam:**
+
+- `Docs/07_SECURITY_IMPLEMENTATION.md` — tüm bölümler
+- `Docs/09_DEV_WORKFLOW.md`
+- Pen-test report (human-provided)
+
+**Bu iterasyonda yok:** Production go-live — Faz 13.
+
+**Stop:** [ ] 15+ runbooks; [ ] Human Gate sign-off; CI green. Faz 12 Done.
+
+---
+
+## Required Context
+
+- `Docs/07_SECURITY_IMPLEMENTATION.md` — tam spec
+- `Docs/08_TESTING_STRATEGY.md` — security test
+- `Docs/09_DEV_WORKFLOW.md` — CI, deployment, runbooks
+- `Docs/10_IMPLEMENTATION_ROADMAP.md` §Faz 12
+
+Auto-attached glob rules: `03-security-baseline`, `04-quality-gates`, `30-infrastructure`, `25-frontend-a11y`
+
+## Scope
+
+```
+.github/workflows/       security scan steps
+apps/api/src/main.ts     helmet CSP nonce
+apps/web/                CSP-compatible build
+docs/runbooks/           15+ runbooks
+infra/                   scan configs, drill scripts
+```
+
+### Files NOT touched
+
+- New product features
+- Production IaC apply — Faz 13
+
+## Constraints
+
+### Use
+
+- Root cause per security finding
+- Nonce-based CSP — no unsafe-inline waiver
+- Documented false-positive ignore list (minimal)
+- Staging drills before prod
+- Human decision on pen-test scope disputes
+
+### Avoid
+
+- Quick-fix without root cause
+- unsafe-inline CSP "temporary"
+- Agent marking findings out-of-scope without human
+- Skip backup restore drill
+
+## Done Definition
+
+### CI Security
+
+- [ ] 0 HIGH/CRITICAL SAST/SCA/container scan
+- [ ] CI security pipeline green
+
+### DAST & CSP
+
+- [ ] OWASP ZAP baseline pass (minimal ignore list documented)
+- [ ] CSP strict nonce-based — no unsafe-inline staging verified
+
+### Drills
+
+- [ ] Secret rotation drill success (staging)
+- [ ] Backup restore drill: snapshot → restore → query OK
+
+### Runbooks & Pen-Test
+
+- [ ] 15+ runbooks in `docs/runbooks/`
+- [ ] Pen-test critical/high remediated or human-documented exception
+
+### Human Gate
+
+- [ ] Pen-test report human-reviewed
+- [ ] Runbooks end-to-end read-through
+- [ ] PR squash merge → `main`
+
+### Manual smoke test
+
+```bash
+# CSP header check
+curl -I https://staging.example.com | grep -i content-security-policy
+# ZAP baseline (infra script)
+./infra/security/zap-baseline.sh
+```
+
+## Explicit Don'ts
+
+- unsafe-inline CSP
+- Quick-fix security patches
+- Out-of-scope pen findings without human
+- Skip drills
+- Production changes without checklist
+- `main`'e direct push
+
+## Kısıtlar & Riskler
+
+| Risk | Önlem |
+| --- | --- |
+| Agent CSP unsafe-inline waiver | Human Gate CSP review |
+| Agent quick-fix patches | Root cause in PR template |
+| Agent dismiss pen findings | Human sign-off required |
+| Pen-test volume unpredictable | İterasyon 5 flexible scope |
+
+---
+
+Phase done → `Docs/10_IMPLEMENTATION_ROADMAP.md` Faz 12 durumunu güncelle.

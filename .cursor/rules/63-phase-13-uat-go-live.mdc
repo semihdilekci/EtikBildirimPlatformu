@@ -1,0 +1,250 @@
+---
+description: '[Faz 13] UAT + Go-Live — 5 iterasyon/chat (IaC prod → config/secrets → UAT → bugfix → rollout+gate). Mesajda "Faz 13 — İterasyon M" belirt.'
+---
+
+# Faz 13: UAT + Go-Live
+
+## Goal
+
+Production go-live: AWS topology (VPC, RDS PostgreSQL, ECS Fargate, S3, KMS CMK, CloudFront, ALB, WAF, Secrets Manager, CloudWatch) — Bilgi Güvenliği onaylı. Prod OIDC + MFA TOTP zorunlu; SMTP DKIM/SPF/DMARC. Prod seed yalnızca superadmin + roller + system settings + calendar + templates — **dev seed prod'da çalışmaz**. UAT sentetik veri ile Etik/KVKK/BG/IT; bug fixes; soft launch → full rollout; on-call rotation.
+
+Detay: `Docs/10_IMPLEMENTATION_ROADMAP.md` §Faz 13.
+
+**Bağımlılık:** Faz 12 complete; BG approved topology; UAT stakeholder sign-off; `Docs/09` release checklist.
+
+## Feature branch (zorunlu)
+
+Faz koduna **main üzerinde başlanmaz**. Production deploy **dört-göz onayı** — agent tek başına prod apply yapmaz; human gate zorunlu.
+
+**Bu faz branch adı:** `feature/F13-uat-go-live`
+
+**Stop (İterasyon 1, kod öncesi):** [ ] Faz 12 merge; [ ] release checklist okundu; [ ] branch + push; [ ] BG topology onayı documented.
+
+## Bu fazın çalışma modeli (iterasyonlar)
+
+Tek sohbette tamamlanmaz. Her session: `@63-phase-13-uat-go-live` + mesajda **「Faz 13 — İterasyon M」**. Production apply — human onay zorunlu.
+
+---
+
+### İterasyon 1 — Production IaC Apply
+
+**Hedef:** Production infrastructure modules applied; staging module parity.
+
+**Yapılacaklar:**
+
+1. Review `infra/` prod tfvars — farklı OIDC, SMTP, KMS, S3 bucket explicit
+2. IaC plan review with human — VPC, RDS, ECS, S3, KMS, ALB, WAF, CloudFront, Secrets Manager, CloudWatch
+3. Apply production stack (human-approved apply only)
+4. ClamAV ECS instance prod/dev per IaC
+5. Verify module parity checklist vs staging
+
+**Minimum bağlam:**
+
+- `infra/` IaC modules
+- `Docs/09_DEV_WORKFLOW.md` — deployment, production rules
+- `.cursor/rules/30-infrastructure.mdc`
+
+**Bu iterasyonda yok:** Application deploy, UAT execution, real user traffic.
+
+**Stop:** [ ] IaC apply success; [ ] BG approval on record; [ ] no secrets in git. PR/onay → İterasyon 2.
+
+---
+
+### İterasyon 2 — Production Config + Secrets + Seed
+
+**Hedef:** Secrets Manager populated; env-specific config; prod seed only; monitoring live.
+
+**Yapılacaklar:**
+
+1. AWS Secrets Manager — session secret, OIDC, DB creds, SMTP, KMS ARNs
+2. DNS + TLS certificate active
+3. Prod OIDC IdP + MFA TOTP enforced
+4. SMTP production relay — deliverability test pending İterasyon 5 gate
+5. `scripts/seed-prod.ts` — superadmin + roles + calendar + templates ONLY
+6. Guard: dev/synthetic seed script refuses `NODE_ENV=production`
+7. CloudWatch dashboards + alarms; PagerDuty routing
+8. Application deploy to prod ECS (blue/green or rolling per runbook)
+
+**Minimum bağlam:**
+
+- `Docs/09_DEV_WORKFLOW.md` §production deploy
+- `Docs/07_SECURITY_IMPLEMENTATION.md` — prod crypto, MFA
+- `docs/runbooks/` deployment runbook (Faz 12)
+
+**Bu iterasyonda yok:** Full user rollout, UAT sign-off.
+
+**Stop:** [ ] Prod seed isolated from dev seed; [ ] first superadmin login + MFA setup smoke; [ ] monitoring dashboard live. PR/onay → İterasyon 3.
+
+---
+
+### İterasyon 3 — UAT Execution
+
+**Hedef:** Structured UAT with Etik + KVKK + BG + IT; sentetik data only; bug list captured.
+
+**Yapılacaklar:**
+
+1. UAT scenario checklist from `Docs/08` E2E journeys + workflow matrix spot cases
+2. Environments: staging (primary) or prod pre-launch isolated — **no real ethics data**
+3. Execute scenarios with stakeholders; log bugs (severity, repro, owner)
+4. Security spot-check: admin redaction, grant model, session-less tracking
+5. UAT session notes — no PII in bug tracker titles
+
+**Minimum bağlam:**
+
+- `Docs/08_TESTING_STRATEGY.md` — E2E journeys
+- All `Docs/` mature state
+- UAT scenario template (create if missing in `Docs/09`)
+
+**Bu iterasyonda yok:** Production full rollout.
+
+**Stop:** [ ] UAT checklist executed; [ ] bug list prioritized. PR/onay → İterasyon 4.
+
+---
+
+### İterasyon 4 — UAT Bug Fixes
+
+**Hedef:** Blocker/critical UAT bugs fixed; regression on critical paths.
+
+**Yapılacaklar:**
+
+1. Triage UAT bugs — blocker/critical first
+2. Fix + test + deploy staging → verify with reporter
+3. Regression: intake → case workflow → task → document → notification critical path
+4. Re-UAT sign-off on fixed items
+5. Medium/low deferred to post-launch backlog (documented)
+
+**Minimum bağlam:**
+
+- `Docs/09_DEV_WORKFLOW.md` — hotfix process
+- `.cursor/rules/46-fix-failing-test.mdc`
+
+**Bu iterasyonda yok:** Full production traffic.
+
+**Stop:** [ ] Zero open blocker/critical; [ ] critical path regression green. PR/onay → İterasyon 5.
+
+---
+
+### İterasyon 5 — Soft Launch + Full Rollout + Human Gate
+
+**Hedef:** Pilot group live; monitor; full rollout; communication plan; MVP complete.
+
+**Yapılacaklar:**
+
+1. RDS pre-go-live snapshot
+2. Soft launch — pilot user group; monitor CloudWatch error rate, 5xx, login rate
+3. Email deliverability production test (SPF/DKIM/DMARC)
+4. Full rollout after pilot stability window
+5. On-call rotation started; communication plan to users
+6. Human Gate checklist (`Docs/10` §Faz 13) — UAT sign-off Etik+KVKK+BG
+
+**Minimum bağlam:**
+
+- `Docs/09_DEV_WORKFLOW.md` — go-live checklist
+- `Docs/10_IMPLEMENTATION_ROADMAP.md` §Faz 13 Human Gate
+- `docs/runbooks/` incident response
+
+**Stop:** [ ] Production URL live; [ ] pilot cases processing; [ ] UAT sign-off; [ ] Human Gate complete. **Faz 13 Done — MVP complete.**
+
+---
+
+## Required Context
+
+- `Docs/09_DEV_WORKFLOW.md` — deployment, release, rollback
+- `Docs/07_SECURITY_IMPLEMENTATION.md` — prod security controls
+- `Docs/08_TESTING_STRATEGY.md` — UAT journeys
+- `Docs/10_IMPLEMENTATION_ROADMAP.md` §Faz 13
+- `infra/` — IaC
+- `docs/runbooks/` — Faz 12 output
+
+Auto-attached glob rules: `30-infrastructure`, `03-security-baseline`, `09` via docs, `48-git-phase-branch`
+
+## Scope
+
+```
+infra/                    production IaC apply
+scripts/seed-prod.ts      production-only seed
+docs/runbooks/            go-live procedures
+.github/workflows/        prod deploy workflow (human-gated)
+```
+
+### Files NOT touched
+
+- New MVP features (scope frozen)
+- Non-prod synthetic seed on production
+
+## Constraints
+
+### Use
+
+- `Docs/09` release checklist every prod step
+- Four-eyes approval production apply
+- Env-specific config explicit (not staging copy-paste)
+- Prod seed script separate from dev seed
+- Sentetik veri UAT only
+- RDS snapshot before go-live
+
+### Avoid
+
+- Agent "just deploy prod" without checklist
+- Dev seed on production
+- Real ethics data in UAT notes/bugs
+- Skip UAT sign-off
+- Full rollout before pilot monitor window
+
+## Done Definition
+
+### Infrastructure
+
+- [ ] Prod IaC applied; BG approved
+- [ ] Secrets in AWS Secrets Manager (not in repo)
+- [ ] DNS + TLS certificate active
+- [ ] CloudWatch dashboards + PagerDuty routing live
+
+### Application
+
+- [ ] Prod ECS deploy success
+- [ ] Superadmin login + MFA TOTP setup works
+- [ ] Prod seed only — dev seed blocked on production
+
+### UAT & Launch
+
+- [ ] UAT checklist executed (sentetik veri)
+- [ ] Blocker/critical bugs closed
+- [ ] UAT sign-off: Etik + KVKK + Bilgi Güvenliği
+- [ ] RDS pre-go-live snapshot taken
+- [ ] Email deliverability test (SPF/DKIM/DMARC)
+- [ ] Pilot group cases processing
+- [ ] Full rollout + on-call rotation
+- [ ] Human Gate complete — **MVP live**
+
+### Manual smoke test
+
+```bash
+# Prod smoke (human-supervised)
+# 1. Superadmin OIDC login + MFA enroll
+# 2. Sentetik report → case → task flow pilot tenant
+# 3. CloudWatch: error rate, 5xx, login rate dashboards
+```
+
+## Explicit Don'ts
+
+- Prod deploy without checklist + human approval
+- Staging config blind copy to prod
+- Dev/non-prod seed on production
+- Real ethics data in non-prod UAT
+- Skip RDS pre-launch snapshot
+- Agent-only go-live decision
+- `main`'e direct push
+
+## Kısıtlar & Riskler
+
+| Risk | Önlem |
+| --- | --- |
+| Agent prod deploy unsupervised | Human gate every apply; four-eyes |
+| Agent runs dev seed on prod | prod seed guard + separate script |
+| UAT bug avalanche | İterasyon 4 priority triage; defer medium/low |
+| Env config drift | Explicit prod tfvars checklist İterasyon 1 |
+
+---
+
+Phase done → `Docs/10_IMPLEMENTATION_ROADMAP.md` Faz 13 durumunu güncelle. **MVP complete.**

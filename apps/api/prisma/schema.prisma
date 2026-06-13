@@ -82,7 +82,7 @@ model LoginAttempt {
   scopeKey        String    @unique @map("scope_key")
   ipAddressHash   String    @map("ip_address_hash")
   userId          String?   @map("user_id")
-  trackingCode    String?   @map("tracking_code") @db.VarChar(12)
+  trackingCode    String?   @map("tracking_code") @db.VarChar(14)
   failedCount     Int       @default(0) @map("failed_count")
   lockedUntil     DateTime? @map("locked_until")
   lastAttemptAt   DateTime  @map("last_attempt_at")
@@ -115,9 +115,110 @@ model Company {
   functions Function[]
   positions Position[]
   users     User[]
+  reports   Report[]
 
   @@index([isActive], map: "idx_companies_is_active")
   @@map("companies")
+}
+
+model Report {
+  id                         String    @id @default(cuid())
+  trackingCode               String    @unique @map("tracking_code") @db.VarChar(14)
+  trackingCodePasswordHash   String    @map("tracking_code_password_hash")
+  isAnonymous                Boolean   @default(true) @map("is_anonymous")
+  reporterIdentityName       String?   @map("reporter_identity_name")
+  reporterIdentityTitle      String?   @map("reporter_identity_title")
+  reporterIdentityRelation   String?   @map("reporter_identity_relation")
+  reporterContactEmail       String?   @map("reporter_contact_email")
+  reporterContactPhone       String?   @map("reporter_contact_phone")
+  reporterCountry            String?   @map("reporter_country") @db.VarChar(3)
+  reporterCity               String?   @map("reporter_city") @db.VarChar(100)
+  incidentCountry            String    @map("incident_country") @db.VarChar(3)
+  incidentCity               String    @map("incident_city") @db.VarChar(100)
+  incidentLocationDetail     String?   @map("incident_location_detail")
+  companyId                  String    @map("company_id")
+  categoryGroup              String    @map("category_group")
+  categories                 String[]  @map("categories")
+  isUncertainCategory        Boolean   @default(false) @map("is_uncertain_category")
+  incidentDescription        String    @map("incident_description")
+  incidentDateStart          DateTime? @map("incident_date_start") @db.Date
+  incidentDateEnd            DateTime? @map("incident_date_end") @db.Date
+  incidentIsOngoing          Boolean   @default(false) @map("incident_is_ongoing")
+  incidentRecurrence         String?   @map("incident_recurrence")
+  howReporterLearned         String?   @map("how_reporter_learned")
+  previouslyReported         Boolean   @default(false) @map("previously_reported")
+  previouslyReportedTo       String?   @map("previously_reported_to")
+  urgentRiskFlag             Boolean   @default(false) @map("urgent_risk_flag")
+  urgentRiskDescription      String?   @map("urgent_risk_description")
+  involvedPersons            String?   @map("involved_persons")
+  witnesses                  String?   @map("witnesses")
+  categorySpecificData       String?   @map("category_specific_data")
+  encryptionMetadata         Json      @map("encryption_metadata")
+  status                     String    @default("SUBMITTED")
+  confidentialityLevel       String    @default("SENSITIVE") @map("confidentiality_level")
+  channel                    String    @default("WEB_FORM")
+  kvkkConsentVersion         String    @map("kvkk_consent_version") @db.VarChar(20)
+  kvkkConsentAt              DateTime  @map("kvkk_consent_at")
+  language                   String    @default("tr") @db.VarChar(5)
+  submittedAt                DateTime  @map("submitted_at")
+  lastActivityAt             DateTime? @map("last_activity_at")
+  caseId                     String?   @map("case_id")
+  createdAt                  DateTime  @default(now()) @map("created_at")
+  updatedAt                  DateTime  @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id])
+  attachments ReportAttachment[]
+  secureMessages SecureMessage[]
+
+  @@index([companyId], map: "idx_reports_company_id")
+  @@index([status], map: "idx_reports_status")
+  @@index([submittedAt], map: "idx_reports_submitted_at")
+  @@index([confidentialityLevel], map: "idx_reports_confidentiality_level")
+  @@index([caseId], map: "idx_reports_case_id")
+  @@map("reports")
+}
+
+model ReportAttachment {
+  id                 String   @id @default(cuid())
+  reportId           String   @map("report_id")
+  originalFilename   String   @map("original_filename")
+  storageKey         String   @map("storage_key")
+  encryptedDek       String   @map("encrypted_dek")
+  kmsKeyId           String   @map("kms_key_id")
+  contentSha256      String   @map("content_sha256") @db.VarChar(64)
+  fileSizeBytes      BigInt   @map("file_size_bytes")
+  mimeType           String   @map("mime_type") @db.VarChar(100)
+  malwareScanStatus  String   @default("PENDING") @map("malware_scan_status")
+  uploadedAt         DateTime @default(now()) @map("uploaded_at")
+  uploadedBy         String   @map("uploaded_by") @db.VarChar(50)
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId], map: "idx_report_attachments_report_id")
+  @@index([malwareScanStatus], map: "idx_report_attachments_scan_status")
+  @@map("report_attachments")
+}
+
+model SecureMessage {
+  id                   String   @id @default(cuid())
+  reportId             String   @map("report_id")
+  direction            String
+  senderType           String   @map("sender_type")
+  senderUserId         String?  @map("sender_user_id")
+  messageBody          String   @map("message_body")
+  attachmentsMetadata  String?  @map("attachments_metadata")
+  encryptionMetadata   Json     @map("encryption_metadata")
+  isRead               Boolean  @default(false) @map("is_read")
+  createdAt            DateTime @default(now()) @map("created_at")
+
+  report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId], map: "idx_sm_report_id")
+  @@index([direction], map: "idx_sm_direction")
+  @@index([createdAt], map: "idx_sm_created_at")
+  @@map("secure_messages")
 }
 
 model Location {

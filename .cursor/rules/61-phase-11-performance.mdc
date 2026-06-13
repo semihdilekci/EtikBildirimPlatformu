@@ -1,0 +1,217 @@
+---
+description: '[Faz 11] Performance + Load Test — 4 iterasyon/chat (Lighthouse CI → bundle → DB indexes → k6+fix+gate). Mesajda "Faz 11 — İterasyon M" belirt.'
+---
+
+# Faz 11: Performance + Load Test
+
+## Goal
+
+Lighthouse CI PR gate (performance ≥80, accessibility ≥90, best practices ≥90). Initial bundle <200 KB gzipped; strategic route splitting. DB hot path `EXPLAIN ANALYZE` + index fixes. k6 scenarios: login storm (100 concurrent), case list (1000 req/min), transition burst, dashboard — P95 <500 ms @100 concurrent, 0 critical error rate.
+
+Detay: `Docs/10_IMPLEMENTATION_ROADMAP.md` §Faz 11.
+
+**Bağımlılık:** Faz 0–10 feature-complete; staging deploy green. Scale assumption: `Docs/00` yıllık 200–250 bildirim, düşük/orta eşzamanlılık.
+
+## Feature branch (zorunlu)
+
+Faz koduna **main üzerinde başlanmaz**. İlk commit/dosya değişikliği öncesi `48-git-phase-branch.mdc` uygula.
+
+**Bu faz branch adı:** `feature/F11-performance`
+
+**Stop (İterasyon 1, kod öncesi):** [ ] Faz 10 merge; [ ] staging deploy green; [ ] branch + push.
+
+## Bu fazın çalışma modeli (iterasyonlar)
+
+Tek sohbette tamamlanmaz. Her session: `@61-phase-11-performance` + mesajda **「Faz 11 — İterasyon M」**. Branch açmadan kod yok.
+
+---
+
+### İterasyon 1 — Lighthouse CI
+
+**Hedef:** PR workflow Lighthouse job; thresholds block merge on fail.
+
+**Yapılacaklar:**
+
+1. Lighthouse CI config — public `/report` + internal `/app/dashboard` (auth cookie setup)
+2. Thresholds: performance ≥80, accessibility ≥90, best-practices ≥90
+3. `.github/workflows/` — Lighthouse step in pr-check or dedicated workflow
+4. Baseline run documented; fix critical a11y blockers if any
+5. Document targets in PR template note
+
+**Minimum bağlam:**
+
+- `Docs/08_TESTING_STRATEGY.md` — performance test bölümü
+- `Docs/05_FRONTEND_SPEC.md` — Web Vitals hedefleri
+- `.cursor/rules/04-quality-gates.mdc`, `30-infrastructure.mdc`
+
+**Bu iterasyonda yok:** Bundle optimization, k6.
+
+**Stop:** [ ] Lighthouse CI job green on baseline; [ ] thresholds enforced. PR/onay → İterasyon 2.
+
+---
+
+### İterasyon 2 — Bundle Analysis + Route Splitting
+
+**Hedef:** Initial bundle <200 KB gzipped; lazy routes for heavy screens.
+
+**Yapılacaklar:**
+
+1. `vite-bundle-visualizer` or rollup analyzer report
+2. Route-level `React.lazy` — case detail, admin screens, report wizard
+3. Critical path sync: login shell, dashboard shell, case list
+4. MUI tree-shaking verify; no full lodash import
+5. Before/after bundle size in PR description
+
+**Minimum bağlam:**
+
+- `Docs/05_FRONTEND_SPEC.md` — code splitting
+- `Docs/04_QUALITY` / `04-quality-gates.mdc` — bundle <200 KB
+
+**Bu iterasyonda yok:** DB indexes, k6.
+
+**Stop:** [ ] Initial bundle <200 KB gzipped; [ ] no critical path lazy regression (LCP spot-check). PR/onay → İterasyon 3.
+
+---
+
+### İterasyon 3 — Database Query Review
+
+**Hedef:** Slow query identification; index additions; N+1 elimination on hot paths.
+
+**Yapılacaklar:**
+
+1. Enable slow query log staging; capture case list, task list, audit list
+2. `EXPLAIN ANALYZE` on top 5 queries
+3. Prisma migration: missing indexes per `02` recommendations
+4. Fix N+1: case list includes, task list assigned user
+5. Document query review findings in `Docs/08` or ADR if structural
+
+**Minimum bağlam:**
+
+- `Docs/02_DATABASE_SCHEMA.md` — index listesi
+- `Docs/04_BACKEND_SPEC.md` — query patterns, PolicyScope
+- `.cursor/rules/15-database-prisma.mdc`
+
+**Bu iterasyonda yok:** k6 full run (prep only).
+
+**Stop:** [ ] EXPLAIN docs for hot paths; [ ] migration applied staging. PR/onay → İterasyon 4.
+
+---
+
+### İterasyon 4 — k6 Load Test + Fixes + Human Gate
+
+**Hedef:** k6 scenarios green; bottleneck report; targeted fixes; re-run until P95 met.
+
+**Yapılacaklar:**
+
+1. k6 scripts: `login-storm`, `case-list`, `transition-burst`, `dashboard-aggregate`
+2. Staging run @100 VUs; capture P95/P99 histograms
+3. Bottleneck report — API, DB, or FE
+4. Targeted fixes (not premature memoization everywhere)
+5. Re-run k6 until P95 <500 ms, 0 critical errors
+6. Human Gate checklist (`Docs/10` §Faz 11)
+
+**Minimum bağlam:**
+
+- `Docs/08_TESTING_STRATEGY.md` — load test scenarios
+- `Docs/00_PROJECT_OVERVIEW.md` — scale assumptions
+- `infra/` k6 directory (create if missing)
+
+**Bu iterasyonda yok:** Production sizing final — Faz 13 (capacity notes OK).
+
+**Stop:** [ ] k6 P95 <500 ms; [ ] histogram reviewed; [ ] Human Gate. Faz 11 Done.
+
+---
+
+## Required Context
+
+- `Docs/00_PROJECT_OVERVIEW.md` — scale, success criteria
+- `Docs/02_DATABASE_SCHEMA.md` — indexes
+- `Docs/05_FRONTEND_SPEC.md` — Web Vitals, bundle
+- `Docs/08_TESTING_STRATEGY.md` — performance + load test
+- `Docs/10_IMPLEMENTATION_ROADMAP.md` §Faz 11
+
+Auto-attached glob rules: `04-quality-gates`, `30-infrastructure`, `25-frontend-a11y`, `15-database-prisma`
+
+## Scope
+
+```
+.github/workflows/          Lighthouse CI step
+apps/web/vite.config.ts     bundle analyzer
+infra/k6/                   load test scripts
+apps/api/prisma/migrations/ index optimizations
+```
+
+### Files NOT touched
+
+- Feature functionality changes (perf-only diffs)
+- Production IaC — Faz 13
+
+## Constraints
+
+### Use
+
+- Measure before optimize — bottleneck-driven fixes
+- Lighthouse CI blocking thresholds
+- Strategic lazy routes — critical path stays sync
+- k6 P95/P99 from histogram — not average only
+- Index changes via Prisma migration
+
+### Avoid
+
+- Premature React.memo everywhere
+- Critical path dynamic import
+- Optimize without measurement
+- Ignore a11y for perf wins
+
+## Done Definition
+
+### CI & Frontend
+
+- [ ] Lighthouse CI PR gate active
+- [ ] performance ≥80, accessibility ≥90, best-practices ≥90
+- [ ] Initial bundle <200 KB gzipped
+
+### Database
+
+- [ ] Hot path EXPLAIN ANALYZE documented
+- [ ] Index migration applied staging
+
+### Load Test
+
+- [ ] k6 P95 <500 ms @100 concurrent
+- [ ] 0 critical error rate
+- [ ] P95/P99 histogram reviewed (not average-only)
+
+### Human Gate
+
+- [ ] Bottleneck report attached to PR
+- [ ] PR squash merge → `main`
+
+### Manual smoke test
+
+```bash
+pnpm --filter @ethics/web build && pnpm analyze  # bundle report
+pnpm lighthouse:ci  # or CI job re-run
+k6 run infra/k6/case-list.js --env STAGING_URL=...
+```
+
+## Explicit Don'ts
+
+- Premature optimization
+- Critical path lazy load regression
+- k6 average-only metrics
+- Feature changes disguised as perf
+- Skip histogram review
+- `main`'e direct push
+
+## Kısıtlar & Riskler
+
+| Risk | Önlem |
+| --- | --- |
+| Agent memoize everything | Bottleneck report required İterasyon 4 |
+| Agent lazy-load critical path | LCP spot-check after split |
+| Agent false green k6 | P95/P99 histogram review Human Gate |
+
+---
+
+Phase done → `Docs/10_IMPLEMENTATION_ROADMAP.md` Faz 11 durumunu güncelle.

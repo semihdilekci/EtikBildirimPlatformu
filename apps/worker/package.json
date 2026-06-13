@@ -9,7 +9,7 @@
     "typecheck": "pnpm prisma:generate && tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "test:unit": "vitest run --exclude 'src/**/*.integration.spec.ts'",
-    "test:integration": "vitest run src/jobs/__tests__/audit-outbox-dispatch.job.integration.spec.ts",
+    "test:integration": "vitest run src/jobs/__tests__/audit-outbox-dispatch.job.integration.spec.ts src/jobs/__tests__/clamav-scan.job.integration.spec.ts",
     "dev": "dotenv -e ../api/.env.local -- tsx watch src/main.ts",
     "dev:once": "dotenv -e ../api/.env.local -- tsx src/main.ts --once",
     "start": "node dist/main.js",
@@ -24,6 +24,7 @@
   },
   "devDependencies": {
     "@ethics/eslint-config": "workspace:*",
+    "@ethics/test-fixtures": "workspace:*",
     "@testcontainers/postgresql": "^10.28.0",
     "@types/node": "^22.10.2",
     "dotenv-cli": "^8.0.0",

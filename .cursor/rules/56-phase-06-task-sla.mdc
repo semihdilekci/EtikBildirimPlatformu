@@ -1,0 +1,305 @@
+---
+description: '[Faz 6] Task + SLA + Decision — 6 iterasyon/chat (task lifecycle → SLA engine → delegation → DecisionVote/sessiz kabul → UI → test+gate). Mesajda "Faz 6 — İterasyon M" belirt.'
+---
+
+# Faz 6: Task Management + SLA + Decision
+
+## Goal
+
+Merkezi görev modeli workflow ile entegre edilir: transition side-effect ile task oluşur; kullanıcı tamamlar/devreder → case state ilerler. SLA engine iş günü takvimi (tatil, yarım gün) ile `sla_due_at` hesaplar. Delegation: eski task DELEGATED, yeni PENDING (`delegated_from_task_id`). `DecisionVote` + 24 saat sessiz kabul worker job (oy birliği). Frontend S-TASK-LIST (SLA badge) ve S-TASK-DETAIL.
+
+Detay: `Docs/10_IMPLEMENTATION_ROADMAP.md` §Faz 6.
+
+**Bağımlılık:** Faz 5 tamamlanmış olmalı (`WorkflowCommandHandler`, transition side-effect hook). Faz 3 audit outbox; Faz 2 authz.
+
+## Feature branch (zorunlu)
+
+Faz koduna **main üzerinde başlanmaz**. İlk commit/dosya değişikliği öncesi `48-git-phase-branch.mdc` uygula.
+
+**Bu faz branch adı:** `feature/F6-task-sla`
+
+**Stop (İterasyon 1, kod öncesi):** [ ] Faz 5 `main`'e merge edilmiş; [ ] faz branch oluşturuldu; [ ] `git push -u origin HEAD` (remote varsa).
+
+## Bu fazın çalışma modeli (iterasyonlar)
+
+Tek sohbette tamamlanmaz. Her session: `@56-phase-06-task-sla` + mesajda **「Faz 6 — İterasyon M」**. Branch açmadan kod yok.
+
+---
+
+### İterasyon 1 — Task CRUD + Lifecycle
+
+**Hedef:** Task entity, 11 görev tipi enum, lifecycle API; transition side-effect ile task oluşturma.
+
+**Yapılacaklar:**
+
+1. Prisma migration: `tasks` tablosu (`02` §tasks)
+2. Task type catalog — 11 tip enum (`01` §Task)
+3. `apps/api/src/modules/task/` — module, controller, service
+4. Lifecycle: PENDING → IN_PROGRESS → COMPLETED / CANCELLED
+5. `GET /api/v1/tasks`, `GET /api/v1/tasks/:id` — ABAC-scoped (assignee + rol)
+6. `POST /api/v1/tasks/:id/complete` — `@RequirePolicy`, `@AuditAction`; tamamlanınca ilgili case transition tetikle
+7. `TaskService.createTasksForTransition(tx, transition)` — Faz 5 handler'a bağla (aynı tx)
+8. Unit + integration: transition → task PENDING; complete → case state ilerler
+
+**Minimum bağlam:**
+
+- `Docs/03_API_CONTRACTS.md` §8.5 Tasks
+- `Docs/01_DOMAIN_MODEL.md` — Task entity, state machine, task type catalog
+- `Docs/04_BACKEND_SPEC.md` — task/ modülü, transition side-effect pattern
+- `.cursor/rules/13-workflow-engine.mdc`
+
+**Bu iterasyonda yok:** SLA hesaplama, delegation, DecisionVote, frontend.
+
+**Stop:** [ ] 11 task type enum tanımlı; [ ] transition side-effect task oluşturuyor; [ ] complete → transition integration test green. PR/onay → İterasyon 2.
+
+---
+
+### İterasyon 2 — SLA Engine
+
+**Hedef:** İş günü bazlı SLA; `sla_due_at` assignment-time hesaplama; SlaPolicyConfig seed.
+
+**Yapılacaklar:**
+
+1. Prisma migration: `sla_policy_configs`, `business_calendar_entries`
+2. `sla/sla-calculator.service.ts` — iş günü ekleme (14 iş günü vb.)
+3. `sla/business-calendar.service.ts` — hafta sonu, resmi tatil, holding tatili, yarım gün
+4. Task create'te `sla_due_at` hesapla; `sla_policy_id` FK
+5. Seed: SLA policy per task type + örnek tatil günleri
+6. Unit test: hafta sonu atlanır; resmi tatil atlanır; yarım gün edge case
+
+**Minimum bağlam:**
+
+- `Docs/04_BACKEND_SPEC.md` — sla-calculator, business-calendar
+- `Docs/02_DATABASE_SCHEMA.md` — `sla_policy_configs`, `business_calendar_entries`
+- `Docs/01_DOMAIN_MODEL.md` — SLA konfigürasyon notları
+
+**Bu iterasyonda yok:** Admin SLA PATCH UI (Faz 9); delegation; sessiz kabul; frontend badge.
+
+**Stop:** [ ] Calendar days değil business days (integration test); [ ] `sla_due_at` task create'te set. PR/onay → İterasyon 3.
+
+---
+
+### İterasyon 3 — Delegation + TaskEvent
+
+**Hedef:** Görev devri semantic; append-only TaskEvent yaşam döngüsü kaydı.
+
+**Yapılacaklar:**
+
+1. Prisma migration: `task_events`; append-only trigger
+2. `POST /api/v1/tasks/:id/delegate` — eski task → DELEGATED; yeni task → PENDING (`delegated_from_task_id`)
+3. TaskEvent: CREATE, START, COMPLETE, DELEGATE, CANCEL — append-only
+4. Delegation audit outbox aynı tx
+5. Integration test: delegate → 2 task; original DELEGATED; zincir referansı korunur
+6. Negatif: yetkisiz delegate → 403
+
+**Minimum bağlam:**
+
+- `Docs/03_API_CONTRACTS.md` §8.5 delegate endpoint
+- `Docs/01_DOMAIN_MODEL.md` — delegation semantics
+- `Docs/02_DATABASE_SCHEMA.md` — `task_events` append-only
+
+**Bu iterasyonda yok:** DecisionVote, sessiz kabul job, frontend.
+
+**Stop:** [ ] Delegation yeni task oluşturur (update değil); [ ] TaskEvent append-only test; [ ] audit tx. PR/onay → İterasyon 4.
+
+---
+
+### İterasyon 4 — DecisionVote + Sessiz Kabul
+
+**Hedef:** Kurul üye oyları; oy birliği; 24 saat sessiz kabul worker job.
+
+**Yapılacaklar:**
+
+1. Prisma migration: `decision_votes` (append-only)
+2. `apps/api/src/modules/decision/` — module, controller, service
+3. `POST /api/v1/cases/:id/votes` — onay / itiraz; `@RequirePolicy`
+4. Oy birliği (unanimity) kontrolü — majority değil
+5. `silent-acceptance.handler.ts` + `apps/worker/src/jobs/silent-acceptance.job.ts` — cron (setInterval yasak)
+6. 24 takvim saati timeout → `SILENT_ACCEPTANCE` vote + `decision_draft` transition (`actor_type=SYSTEM`)
+7. Integration test: fake clock 24h → sessiz kabul vote + state geçişi
+
+**Minimum bağlam:**
+
+- `Docs/03_API_CONTRACTS.md` §8.7 Decision Votes
+- `Docs/01_DOMAIN_MODEL.md` — DecisionVote, oy birliği, sessiz kabul
+- `Docs/04_BACKEND_SPEC.md` — decision/, silent-acceptance, worker job
+- `Docs/08_TESTING_STRATEGY.md` — fake clock sessiz kabul
+
+**Bu iterasyonda yok:** S-CASE-DETAIL Oylar tab UI detayı (minimal API first); notification dispatch (Faz 8); admin vote config.
+
+**Stop:** [ ] Unanimity test (1 itiraz → geçiş yok); [ ] fake clock 24h sessiz kabul green; [ ] worker cron (interval yok). PR/onay → İterasyon 5.
+
+---
+
+### İterasyon 5 — Frontend S-TASK-LIST + S-TASK-DETAIL
+
+**Hedef:** Görev listesi 3 tab; SLA badge; detay action paneli.
+
+**Yapılacaklar:**
+
+1. S-TASK-LIST — bekleyen / devam eden / tamamlanan tab'ları
+2. SLA badge: yeşil (>%50 kalan), sarı (≤%20 kalan), kırmızı (aşılmış)
+3. S-TASK-DETAIL — vaka bağlamı, açıklama, tamamla/devret, SLA countdown
+4. `member_approval_task` için tamamla butonu yok — oy S-CASE-DETAIL'den (`06` notu)
+5. Route: `/app/tasks`, `/app/tasks/:id`; PermissionGate
+6. React Query hooks; complete/delegate mutation
+
+**Minimum bağlam:**
+
+- `Docs/06_SCREEN_CATALOG.md` — S-TASK-LIST, S-TASK-DETAIL
+- `Docs/05_FRONTEND_SPEC.md` — task route, SLA badge pattern
+- `.cursor/rules/41-add-new-screen.mdc`, `23-frontend-queries.mdc`
+
+**Bu iterasyonda yok:** SLA admin config UI (Faz 9); sla-reminder worker (Faz 8); dashboard widgets (Faz 10).
+
+**Stop:** [ ] 3 tab liste smoke; [ ] SLA badge renkleri doğru; [ ] complete/delegate UX. PR/onay → İterasyon 6.
+
+---
+
+### İterasyon 6 — Coverage, E2E & Human Gate
+
+**Hedef:** task + SLA + decision modülleri ≥%90 coverage; E2E journey; human gate.
+
+**Yapılacaklar:**
+
+1. E2E: task oluşur (transition) → listede görünür → tamamlanır → case ilerler
+2. SLA integration: tatil + yarım gün senaryoları
+3. Delegation + sessiz kabul negatif testler
+4. Coverage gate: task + sla + decision ≥%90
+5. Human Gate checklist (`Docs/10` §Faz 6)
+6. `sla-reminder.job.ts` placeholder (Faz 8 cron schedule)
+
+**Minimum bağlam:**
+
+- `Docs/08_TESTING_STRATEGY.md` — SLA, sessiz kabul, task lifecycle
+- `Docs/09_DEV_WORKFLOW.md` §8 CI
+- `Docs/10_IMPLEMENTATION_ROADMAP.md` §Faz 6 Deliverable, Human Gate, Vibe Coding Risk
+
+**Bu iterasyonda yok:** Document precondition on task complete (Faz 7); notification e-posta (Faz 8).
+
+**Stop:** [ ] task+SLA+decision coverage ≥%90; [ ] E2E green; [ ] CI green; [ ] Human Gate tamam. Faz 6 Done.
+
+---
+
+## Required Context
+
+- `Docs/01_DOMAIN_MODEL.md` — Task, DecisionVote, delegation, sessiz kabul
+- `Docs/02_DATABASE_SCHEMA.md` — `tasks`, `task_events`, `sla_policy_configs`, `business_calendar_entries`, `decision_votes`
+- `Docs/03_API_CONTRACTS.md` §8.5 Tasks, §8.7 Decision Votes
+- `Docs/04_BACKEND_SPEC.md` — task/, decision/, worker jobs
+- `Docs/06_SCREEN_CATALOG.md` — S-TASK-LIST, S-TASK-DETAIL
+- `Docs/08_TESTING_STRATEGY.md` — SLA, fake clock sessiz kabul
+- `Docs/10_IMPLEMENTATION_ROADMAP.md` §Faz 6
+
+Auto-attached glob rules: `13-workflow-engine`, `12-authorization-policy`, `14-backend-controllers`, `16-audit-crypto`, `15-database-prisma`, `03-security-baseline`, `04-quality-gates`
+
+## Scope
+
+```
+apps/api/src/modules/task/       task.module, controller, service
+  sla/sla-calculator.service.ts, business-calendar.service.ts
+apps/api/src/modules/decision/   decision.module, controller, service, silent-acceptance.handler
+apps/worker/src/jobs/            silent-acceptance.job.ts, sla-reminder.job.ts (placeholder)
+apps/web/src/features/tasks/     list, detail, SLA badge components
+apps/api/prisma/migrations/      tasks, task_events, sla_policy_configs, business_calendar_entries, decision_votes
+packages/shared/                 TaskType, TaskStatus enums
+```
+
+Tam yapı: `Docs/04_BACKEND_SPEC.md` Klasör Yapısı.
+
+### Files NOT touched
+
+- Document upload/grant — Faz 7
+- Notification dispatcher / e-posta — Faz 8
+- Admin SLA policy PATCH UI — Faz 9
+- Dashboard SLA widgets — Faz 10
+
+## Constraints
+
+### Use
+
+- Task transition side-effect aynı `$transaction` (Faz 5 handler)
+- Task complete → ilgili case transition (workflow command)
+- Business days SLA — `BusinessCalendarService` zorunlu
+- Delegation: eski DELEGATED + yeni task (update semantic yasak)
+- TaskEvent append-only
+- DecisionVote unanimity (oy birliği)
+- Sessiz kabul: worker cron job (`silent-acceptance.job.ts`); `setInterval` yasak
+- SYSTEM actor sessiz kabul transition'da
+
+### Avoid
+
+- Calendar days SLA hesabı
+- Delegation as task field update only
+- Majority vote instead of unanimity
+- setInterval for silent acceptance
+- TaskEvent UPDATE/DELETE
+- Frontend-only task complete (backend enforcement)
+
+## Done Definition
+
+### Task Lifecycle
+
+- [ ] 11 task type enum tam
+- [ ] Transition → task PENDING (side-effect)
+- [ ] Complete → case transition tetiklenir
+- [ ] GET list/detail ABAC-scoped
+
+### SLA
+
+- [ ] `sla_due_at` assignment-time business days
+- [ ] Hafta sonu + tatil atlanıyor (integration test)
+- [ ] SlaPolicyConfig seed per task type
+
+### Delegation
+
+- [ ] Delegate → yeni task + eski DELEGATED
+- [ ] `delegated_from_task_id` zinciri
+- [ ] TaskEvent append-only
+
+### DecisionVote
+
+- [ ] Onay/itiraz API
+- [ ] Unanimity kontrolü
+- [ ] 24h sessiz kabul (fake clock test)
+- [ ] Worker cron job (interval yok)
+
+### Frontend
+
+- [ ] S-TASK-LIST 3 tab + SLA badge
+- [ ] S-TASK-DETAIL complete/delegate
+
+### Test & Coverage
+
+- [ ] task + SLA + decision ≥%90
+- [ ] E2E task → complete → case advance
+- [ ] CI green
+
+### Human Gate
+
+- [ ] PR squash merge → `main`
+
+## Explicit Don'ts
+
+- Calendar days SLA
+- Delegation update-only semantic
+- Majority vote
+- setInterval sessiz kabul
+- TaskEvent mutation
+- Document module (Faz 7)
+- Notification dispatch (Faz 8)
+- `main`'e direct push
+
+## Kısıtlar & Riskler
+
+| Risk | Önlem |
+| --- | --- |
+| Agent calendar days SLA | BusinessCalendarService + tatil integration test |
+| Agent setInterval sessiz kabul | Worker cron job zorunlu |
+| Agent delegation update | Integration: 2 task kaydı assertion |
+| Agent majority vote | Unanimity unit test + itiraz senaryosu |
+| Task complete transition dışında | WorkflowCommandHandler üzerinden |
+
+---
+
+Phase done → `Docs/10_IMPLEMENTATION_ROADMAP.md` Faz 6 durumunu güncelle.

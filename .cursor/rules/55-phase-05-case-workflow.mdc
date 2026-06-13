@@ -1,0 +1,340 @@
+---
+description: '[Faz 5] Case + Workflow — 8 iterasyon/chat (schema → handler → aşama1–4 geçişler → CRUD/ABAC → UI → matrix test). Mesajda "Faz 5 — İterasyon M" belirt.'
+---
+
+# Faz 5: Case Management + Workflow Engine
+
+## Goal
+
+Vaka yönetimi ve workflow state machine kurulur: `WorkflowCommandHandler` 17 state × 20+ geçişi command bazlı yürütür; precondition (rol, clearance, atama, görev/doküman), idempotency ve optimistic locking zorunlu. `CaseTransition` append-only; side-effect'ler (task oluşturma, audit, notification event) aynı transaction'da. Case CRUD ABAC-scoped; frontend S-CASE-LIST ve S-CASE-DETAIL timeline + action bar.
+
+Detay: `Docs/10_IMPLEMENTATION_ROADMAP.md` §Faz 5.
+
+**Bağımlılık:** Faz 2 (PolicyGuard, PolicyScope, FieldMasking) ve Faz 3 (audit outbox fail-closed) tamamlanmış olmalı. Report entity seed veya Faz 4 ile birlikte test edilir.
+
+## Feature branch (zorunlu)
+
+Faz koduna **main üzerinde başlanmaz**. İlk commit/dosya değişikliği öncesi `48-git-phase-branch.mdc` uygula.
+
+**Bu faz branch adı:** `feature/F5-case-workflow`
+
+**Stop (İterasyon 1, kod öncesi):** [ ] Faz 2–3 `main`'e merge edilmiş; [ ] faz branch oluşturuldu; [ ] `git push -u origin HEAD` (remote varsa).
+
+## Bu fazın çalışma modeli (iterasyonlar)
+
+Tek sohbette tamamlanmaz. Her session: `@55-phase-05-case-workflow` + mesajda **「Faz 5 — İterasyon M」**. Branch açmadan kod yok.
+
+---
+
+### İterasyon 1 — Prisma Schema (cases + case_transitions)
+
+**Hedef:** Case ve CaseTransition tabloları; append-only constraint hazırlığı; optimistic lock alanı.
+
+**Yapılacaklar:**
+
+1. Prisma migration: `cases`, `case_transitions` (`02` §Case Management)
+2. `current_state`, `optimistic_lock_version`, `confidentiality_level`, `report_id` FK
+3. CaseTransition: `from_state`, `to_state`, `command`, `actor`, `reason`, append-only
+4. SQL migration: `case_transitions` append-only trigger (UPDATE/DELETE → error)
+5. Seed: sentetik report → case stub (workflow test için)
+6. Integration test: case create; transition append-only violation
+
+**Minimum bağlam:**
+
+- `Docs/02_DATABASE_SCHEMA.md` — `cases`, `case_transitions`
+- `Docs/01_DOMAIN_MODEL.md` — Case entity, state enum
+- `.cursor/rules/42-add-prisma-migration.mdc`, `15-database-prisma.mdc`
+
+**Bu iterasyonda yok:** WorkflowCommandHandler, transition API, frontend, task side-effects.
+
+**Stop:** [ ] Migration uygulandı; [ ] append-only trigger test green; [ ] seed case mevcut. PR/onay → İterasyon 2.
+
+---
+
+### İterasyon 2 — WorkflowCommandHandler Pattern
+
+**Hedef:** State machine omurgası; explicit transition map; validator iskeleti; tek `$transaction` pattern.
+
+**Yapılacaklar:**
+
+1. `apps/api/src/modules/case-management/` — module yapısı
+2. `transition/transition.commands.ts` — WorkflowCommand enum + `TRANSITION_MAP` (allowed from→command→to)
+3. `transition/transition.validators.ts` — rol, clearance, atama precondition iskeleti
+4. `transition/transition.service.ts` — `execute()`: optimistic lock, idempotency_key, state update, CaseTransition create, audit outbox
+5. Map dışı geçiş → `CASE_INVALID_TRANSITION` (409)
+6. Unit test: map coverage; invalid transition reject
+
+**Minimum bağlam:**
+
+- `Docs/04_BACKEND_SPEC.md` — case-management/, transition pattern, transaction örneği
+- `Docs/01_DOMAIN_MODEL.md` — state machine genel kurallar
+- `.cursor/rules/13-workflow-engine.mdc`, `47-add-workflow-transition.mdc`
+
+**Bu iterasyonda yok:** Tam geçiş implementasyonu (aşama 1–4), case CRUD list, frontend.
+
+**Stop:** [ ] TRANSITION_MAP explicit; [ ] execute() tek transaction; [ ] invalid transition unit test. PR/onay → İterasyon 3.
+
+---
+
+### İterasyon 3 — Aşama 1 Geçişleri
+
+**Hedef:** `report_submitted` → `secretariat_review` → `pre_research` → `chair_gate` → `agenda_ready` / `not_on_agenda_closed`.
+
+**Yapılacaklar:**
+
+1. Aşama 1 geçişlerini TRANSITION_MAP + validators'a ekle (`01` geçiş tablosu)
+2. `POST /api/v1/cases/:id/transitions` — `@RequirePolicy`, `@AuditAction`, Zod DTO (`idempotency_key`, `reason`)
+3. Precondition: doğru rol, doğru state, clearance
+4. Side-effect stub: task oluşturma interface (Faz 6'da dolar; şimdilik no-op veya PENDING stub)
+5. Transition matrix test: aşama 1 geçişleri × pozitif + negatif (yanlış rol/state)
+
+**Minimum bağlam:**
+
+- `Docs/01_DOMAIN_MODEL.md` — Aşama 1 geçiş tablosu
+- `Docs/03_API_CONTRACTS.md` §8.4 Cases — transition endpoint
+- `Docs/08_TESTING_STRATEGY.md` §4 workflow transition matrix
+
+**Bu iterasyonda yok:** Aşama 2–4 geçişleri, frontend, tam task side-effects.
+
+**Stop:** [ ] Aşama 1 tüm geçişler matrix test green; [ ] idempotency duplicate command test. PR/onay → İterasyon 4.
+
+---
+
+### İterasyon 4 — Aşama 2 Geçişleri (Raportör + Üye Onay)
+
+**Hedef:** `agenda_ready` ↔ raportör döngüsü; `agenda_ready` → `member_approval`.
+
+**Yapılacaklar:**
+
+1. Raportör atama, raportör raporu, agenda_ready dönüş geçişleri
+2. Üye onay geçişi; raportör döngüsü precondition'ları
+3. `ConfidentialityLevel` güncelleme endpoint'i (council_secretary + council_chair, gerekçeli, auditli)
+4. Transition matrix test: aşama 2 tam set
+
+**Minimum bağlam:**
+
+- `Docs/01_DOMAIN_MODEL.md` — Aşama 2 geçiş tablosu, raportör döngüsü
+- `Docs/03_API_CONTRACTS.md` — confidentiality update (varsa)
+- `Docs/07_SECURITY_IMPLEMENTATION.md` §3 clearance
+
+**Bu iterasyonda yok:** Aşama 3–4, DecisionVote (Faz 6), frontend.
+
+**Stop:** [ ] Raportör döngüsü integration test; [ ] confidentiality update audit kaydı. PR/onay → İterasyon 5.
+
+---
+
+### İterasyon 5 — Aşama 3 + 4 Geçişleri
+
+**Hedef:** Karar → HYKB → uygulama → aksiyon döngüsü → kapatma/arşiv.
+
+**Yapılacaklar:**
+
+1. `member_approval` → `decision_draft` → `board_chair_review` → `board_approved` / veto → `agenda_ready`
+2. `board_approved` → `implementation_letter_prepared` → `action_assigned` → `action_response_pending` → `follow_up_decision` → `closed_archived`
+3. Veto ve aksiyon döngüsü precondition'ları
+4. Notification event outbox stub (aynı tx — Faz 8'de dispatch)
+5. Transition matrix test: aşama 3 + 4 tam set
+
+**Minimum bağlam:**
+
+- `Docs/01_DOMAIN_MODEL.md` — Aşama 3–4 geçiş tabloları
+- `Docs/04_BACKEND_SPEC.md` — side-effect orchestration, notification enqueue stub
+- `Docs/08_TESTING_STRATEGY.md` §4 — 8 test tipi per geçiş
+
+**Bu iterasyonda yok:** DecisionVote/sessiz kabul (Faz 6), task complete→transition (Faz 6), frontend.
+
+**Stop:** [ ] 17 state × tüm geçişler map'te; [ ] veto + aksiyon döngüsü test green; [ ] side-effect aynı tx assertion. PR/onay → İterasyon 6.
+
+---
+
+### İterasyon 6 — Case CRUD + ABAC Scoping
+
+**Hedef:** Case list/detail API; PolicyScope row filtering; FieldMasking; yetkisiz erişim → 404.
+
+**Yapılacaklar:**
+
+1. `GET /api/v1/cases` — paginated, ABAC-scoped (company, assignment, clearance)
+2. `GET /api/v1/cases/:id` — detail + availableActions listesi
+3. Case açma: report → case (secretariat flow)
+4. Integration test: council_secretary tüm vakalar; action_owner yalnızca atandığı; clearance deny
+5. Optimistic locking: concurrent transition → biri 200, diğeri 409
+
+**Minimum bağlam:**
+
+- `Docs/03_API_CONTRACTS.md` §8.4 Cases
+- `Docs/07_SECURITY_IMPLEMENTATION.md` §3 ABAC, §3.6 field visibility
+- `.cursor/rules/12-authorization-policy.mdc`
+
+**Bu iterasyonda yok:** Frontend ekranları, task/SLA (Faz 6), document grant (Faz 7).
+
+**Stop:** [ ] ABAC scope integration test; [ ] FieldMasking admin alan göremez; [ ] concurrent 409 test. PR/onay → İterasyon 7.
+
+---
+
+### İterasyon 7 — Frontend S-CASE-LIST + S-CASE-DETAIL
+
+**Hedef:** Vaka listesi filtreleme; detay timeline, action bar, transition dialog.
+
+**Yapılacaklar:**
+
+1. S-CASE-LIST — filtre (state, company, confidentiality, tarih); ABAC-scoped liste
+2. S-CASE-DETAIL — CaseTimeline, CaseActionBar (`availableActions`), TransitionDialog (reason + onay)
+3. Route: `/app/cases`, `/app/cases/:id` — InternalLayout; PermissionGate
+4. React Query hooks; error code mapping (`CASE_INVALID_TRANSITION` toast)
+5. Clearance yetersiz → 403 UX
+
+**Minimum bağlam:**
+
+- `Docs/06_SCREEN_CATALOG.md` — S-CASE-LIST, S-CASE-DETAIL
+- `Docs/05_FRONTEND_SPEC.md` — internal route, case detail pattern
+- `.cursor/rules/41-add-new-screen.mdc`, `23-frontend-queries.mdc`
+
+**Bu iterasyonda yok:** Task list UI (Faz 6), document sekmesi (Faz 7), notification center (Faz 8).
+
+**Stop:** [ ] List + detail smoke; [ ] transition dialog → state değişimi görünür timeline'da. PR/onay → İterasyon 8.
+
+---
+
+### İterasyon 8 — Transition Matrix Tests + Human Gate
+
+**Hedef:** workflow modülü ≥%90 coverage; tam E2E aşama 1 akışı; human gate.
+
+**Yapılacaklar:**
+
+1. Her geçiş × 8 test tipi (`08` §4): pozitif, yanlış rol, yanlış state, clearance, atama, idempotency, side-effect, precondition
+2. E2E: report_submitted → secretariat_review → pre_research → chair_gate → agenda_ready
+3. Precondition fail (görev/doküman eksik) → 422
+4. Coverage gate: workflow/case-management ≥%90
+5. Human Gate checklist (`Docs/10` §Faz 5)
+
+**Minimum bağlam:**
+
+- `Docs/08_TESTING_STRATEGY.md` §4 workflow transition matrix
+- `Docs/09_DEV_WORKFLOW.md` §8 CI
+- `Docs/10_IMPLEMENTATION_ROADMAP.md` §Faz 5 Deliverable, Human Gate, Vibe Coding Risk
+
+**Bu iterasyonda yok:** Task lifecycle (Faz 6), DecisionVote (Faz 6), document upload UI (Faz 7).
+
+**Stop:** [ ] workflow coverage ≥%90; [ ] E2E aşama 1 green; [ ] CI green; [ ] Human Gate tamam. Faz 5 Done.
+
+---
+
+## Required Context
+
+- `Docs/01_DOMAIN_MODEL.md` — Case state machine, geçiş tabloları (4 aşama)
+- `Docs/02_DATABASE_SCHEMA.md` — `cases`, `case_transitions`
+- `Docs/03_API_CONTRACTS.md` §8.4 Cases
+- `Docs/04_BACKEND_SPEC.md` — case-management/, transition service, transaction pattern
+- `Docs/06_SCREEN_CATALOG.md` — S-CASE-LIST, S-CASE-DETAIL
+- `Docs/07_SECURITY_IMPLEMENTATION.md` §3 yetkilendirme, clearance
+- `Docs/08_TESTING_STRATEGY.md` §4 transition matrix
+- `Docs/10_IMPLEMENTATION_ROADMAP.md` §Faz 5
+
+Auto-attached glob rules: `13-workflow-engine`, `12-authorization-policy`, `14-backend-controllers`, `16-audit-crypto`, `41-add-new-screen`, `47-add-workflow-transition`, `03-security-baseline`, `04-quality-gates`
+
+## Scope
+
+```
+apps/api/src/modules/case-management/
+  case-management.module.ts, case.controller.ts, case.service.ts
+  transition/transition.service.ts, transition.commands.ts, transition.validators.ts
+apps/web/src/features/cases/     list, detail, CaseTimeline, CaseActionBar, TransitionDialog
+apps/api/prisma/migrations/      cases, case_transitions, append-only trigger
+packages/dto/                    case + transition Zod schemas
+packages/shared/                 CaseState, WorkflowCommand enums
+```
+
+Tam yapı: `Docs/04_BACKEND_SPEC.md` Klasör Yapısı.
+
+### Files NOT touched
+
+- `TaskService` tam implementasyon — Faz 6 (side-effect stub OK)
+- `DecisionVote`, sessiz kabul — Faz 6
+- Document upload/grant UI — Faz 7
+- Notification dispatcher — Faz 8
+- Admin workflow config — Faz 9
+
+## Constraints
+
+### Use
+
+- Explicit `TRANSITION_MAP` — map dışı → 409
+- Idempotency_key zorunlu; duplicate → çift geçiş yok
+- Optimistic locking (`optimistic_lock_version`)
+- CaseTransition append-only — düzeltme yeni kayıt
+- Side-effects aynı `$transaction`: transition + task stub + audit outbox + notification event
+- `@RequirePolicy` + PolicyScope + FieldMasking tüm case endpoint'lerde
+- Yetkisiz case erişimi → 404
+
+### Avoid
+
+- Herhangi state → herhangi state (map bypass)
+- CaseTransition UPDATE (status düzeltme)
+- Side-effect'leri ayrı endpoint/transaction'da
+- Idempotency atlama
+- Precondition "happy path only"
+- Frontend-only transition (backend enforcement zorunlu)
+- `current_state` doğrudan SET (handler dışında)
+
+## Done Definition
+
+### Workflow Engine
+
+- [ ] 17 state × 20+ geçiş TRANSITION_MAP'te
+- [ ] Idempotent: aynı command ikinci kez → çift geçiş yok
+- [ ] Optimistic lock concurrent → 409
+- [ ] Precondition fail → 422
+- [ ] CaseTransition append-only trigger aktif
+- [ ] Her transition audit event (içerik kopyalamaz)
+
+### Case API
+
+- [ ] GET list/detail ABAC-scoped
+- [ ] POST transitions tüm geçişler
+- [ ] ConfidentialityLevel güncelleme auditli
+- [ ] action_owner yalnızca atandığı vaka
+- [ ] STRICTLY_CONFIDENTIAL + SENSITIVE clearance → 403
+
+### Frontend
+
+- [ ] S-CASE-LIST filtre + liste
+- [ ] S-CASE-DETAIL timeline + action bar + transition dialog
+
+### Test & Coverage
+
+- [ ] Her geçiş × 8 matrix test tipi
+- [ ] E2E aşama 1 akışı
+- [ ] workflow modülü coverage ≥%90
+- [ ] CI green
+
+### Human Gate
+
+- [ ] Geçiş tablosu `01` ile birebir
+- [ ] Side-effect aynı tx (integration assertion)
+- [ ] PR squash merge → `main`
+
+## Explicit Don'ts
+
+- Map dışı geçişe izin
+- CaseTransition UPDATE/DELETE
+- Side-effect ayrı transaction
+- Idempotency_key opsiyonel
+- Task/notification side-effect atlama (stub OK, skip yok)
+- Case erişimi = doküman erişimi (Faz 7 ayrı grant)
+- DecisionVote/sessiz kabul (Faz 6)
+- `main`'e direct push
+
+## Kısıtlar & Riskler
+
+| Risk | Önlem |
+| --- | --- |
+| Agent map enforce etmez | TRANSITION_MAP + invalid transition test her geçişte |
+| Agent idempotency atlar | DTO zorunlu + duplicate integration test |
+| Agent CaseTransition update eder | Append-only trigger + code review |
+| Agent side-effect ayrı tx | Transaction pattern `04`; integration assertion |
+| Agent precondition incomplete | Validator per command; matrix test 8 tip |
+| En karmaşık faz — scope creep | Iterasyon "Bu iterasyonda yok" disiplini |
+
+---
+
+Phase done → `Docs/10_IMPLEMENTATION_ROADMAP.md` Faz 5 durumunu güncelle.

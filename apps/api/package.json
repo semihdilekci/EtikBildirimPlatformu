@@ -9,8 +9,9 @@
     "typecheck": "prisma generate --schema=prisma/schema.prisma && tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "test:unit": "vitest run --exclude 'src/**/*.db.integration.spec.ts'",
-    "test:integration": "vitest run src/modules/auth/__tests__/auth.db.integration.spec.ts src/audit/__tests__/audit.db.integration.spec.ts src/modules/dev-crypto-audit/__tests__/dev-crypto-audit.db.integration.spec.ts",
+    "test:integration": "vitest run src/modules/auth/__tests__/auth.db.integration.spec.ts src/audit/__tests__/audit.db.integration.spec.ts src/modules/dev-crypto-audit/__tests__/dev-crypto-audit.db.integration.spec.ts src/modules/intake/__tests__/intake.db.integration.spec.ts src/modules/intake/__tests__/report-attachment.db.integration.spec.ts src/modules/tracking/__tests__/tracking.db.integration.spec.ts src/modules/tracking/__tests__/secure-message.db.integration.spec.ts src/modules/tracking/__tests__/intake-tracking.journey.db.integration.spec.ts",
     "test:coverage": "vitest run --config vitest.auth.config.ts --coverage && vitest run --config vitest.authz.config.ts --coverage && vitest run --coverage",
+    "test:coverage:intake-tracking": "vitest run --config vitest.intake-tracking.config.ts --coverage",
     "test:coverage:auth": "vitest run --config vitest.auth.config.ts --coverage",
     "test:coverage:authz": "vitest run --config vitest.authz.config.ts --coverage",
     "dev": "dotenv -e .env.local -- tsx watch src/main.ts",
@@ -34,6 +35,8 @@
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.0.12",
     "@nestjs/throttler": "^6.5.0",
+    "@aws-sdk/client-s3": "^3.758.0",
+    "@aws-sdk/s3-request-presigner": "^3.758.0",
     "@prisma/client": "^6.8.2",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
@@ -51,7 +54,8 @@
     "pino-http": "^11.0.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
-    "zod": "^3.24.2"
+    "zod": "^3.24.2",
+    "argon2": "^0.41.1"
   },
   "devDependencies": {
     "@ethics/eslint-config": "workspace:*",

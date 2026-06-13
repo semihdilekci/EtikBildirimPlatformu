@@ -1,0 +1,356 @@
+---
+description: '[Faz 9] Admin Panel — 10 iterasyon/chat (user → master data → maker-checker → config → SLA/KVKK → audit BE → admin UI 1–3). Mesajda "Faz 9 — İterasyon M" belirt.'
+---
+
+# Faz 9: Admin Panel
+
+## Goal
+
+Admin backend + UI tamamlanır: user/role/clearance yönetimi, master data, system settings, field visibility, action matrix, SLA/calendar, notification templates, KVKK texts, audit viewer, document-ops monitor, system health. Maker-checker backend enforced (maker ≠ checker). Admin içerik göremez — audit viewer ve tüm admin ekranlarında etik plaintext yok. `AdminLayout` + 13 S-ADMIN-* ekranı.
+
+Detay: `Docs/10_IMPLEMENTATION_ROADMAP.md` §Faz 9.
+
+**Bağımlılık:** Faz 2 (authz, FieldMasking), Faz 3 (audit), Faz 6 (SLA/calendar), Faz 7 (document ops data), Faz 8 (notification templates seed).
+
+## Feature branch (zorunlu)
+
+Faz koduna **main üzerinde başlanmaz**. İlk commit/dosya değişikliği öncesi `48-git-phase-branch.mdc` uygula.
+
+**Bu faz branch adı:** `feature/F9-admin`
+
+**Stop (İterasyon 1, kod öncesi):** [ ] Faz 8 `main`'e merge edilmiş; [ ] faz branch oluşturuldu; [ ] `git push -u origin HEAD` (remote varsa).
+
+## Bu fazın çalışma modeli (iterasyonlar)
+
+Tek sohbette tamamlanmaz. Her session: `@59-phase-09-admin` + mesajda **「Faz 9 — İterasyon M」**. Branch açmadan kod yok.
+
+---
+
+### İterasyon 1 — User/Role/Clearance CRUD
+
+**Hedef:** Admin user endpoint'leri; rol ve clearance atama; maker-checker gerektiren aksiyonlar.
+
+**Yapılacaklar:**
+
+1. `apps/api/src/modules/admin/` — admin module iskeleti
+2. `GET/POST/PATCH /api/v1/admin/users` — `@RequirePolicy('admin:users')`
+3. Rol atama/kaldırma; clearance level update (auditli)
+4. Maker-checker gerektiren clearance değişikliği proposal flow
+5. JIT provisioning ile uyum — admin rol atamaz deny-by-default ihlali yok
+6. Integration test: normal user → 403; admin → 200
+
+**Minimum bağlam:**
+
+- `Docs/03_API_CONTRACTS.md` §8.10 Admin Users & Roles
+- `Docs/07_SECURITY_IMPLEMENTATION.md` — maker-checker, clearance kuralları
+- `.cursor/rules/43-add-new-permission.mdc`
+
+**Bu iterasyonda yok:** Master data, config screens, frontend.
+
+**Stop:** [ ] Admin-only enforcement; [ ] clearance change audit event. PR/onay → İterasyon 2.
+
+---
+
+### İterasyon 2 — Master Data Generic CRUD
+
+**Hedef:** Generic admin master data endpoint — company, location, function, position.
+
+**Yapılacaklar:**
+
+1. `GET/POST/PATCH/DELETE /api/v1/admin/master-data/:type` — generic pattern
+2. `:type` enum whitelist — company, location, function, position
+3. Zod DTO per type; soft validation
+4. `@AuditAction` tüm mutating ops
+5. Integration test: CRUD per type; invalid type → 400
+
+**Minimum bağlam:**
+
+- `Docs/03_API_CONTRACTS.md` §8.11 Admin Master Data
+- `Docs/02_DATABASE_SCHEMA.md` — companies, locations, functions, positions
+
+**Bu iterasyonda yok:** 8 ayrı controller (generic pattern zorunlu), frontend.
+
+**Stop:** [ ] 4 type CRUD green; [ ] generic endpoint pattern. PR/onay → İterasyon 3.
+
+---
+
+### İterasyon 3 — System Settings + Maker-Checker
+
+**Hedef:** `config.service.ts` proposal/approve/reject; maker ≠ checker backend reject.
+
+**Yapılacaklar:**
+
+1. System settings get/list/bulk update API
+2. Maker-checker: maker creates proposal → checker approves → config active
+3. Aynı user maker+checker → 403 (backend enforced)
+4. Bulk update tek `$transaction` (atomic)
+5. Integration test: full maker-checker happy path + same-user reject
+
+**Minimum bağlam:**
+
+- `Docs/03_API_CONTRACTS.md` §8.12 Admin Config
+- `Docs/04_BACKEND_SPEC.md` — config.service.ts maker-checker
+- `Docs/07_SECURITY_IMPLEMENTATION.md` — maker-checker pattern
+
+**Bu iterasyonda yok:** Field visibility UI, frontend.
+
+**Stop:** [ ] maker=checker → 403 test; [ ] atomic bulk update test. PR/onay → İterasyon 4.
+
+---
+
+### İterasyon 4 — Field Visibility + Action Matrix
+
+**Hedef:** Field × role matrix API; action × maker/checker matrix API.
+
+**Yapılacaklar:**
+
+1. Field visibility config CRUD — `field_visibility_configs` tablosu
+2. Action matrix config CRUD — `action_matrix_configs`
+3. Update sonrası policy cache reload path (veya runtime read)
+4. `@RequirePolicy` + maker-checker where required
+5. Integration test: matrix update → FieldMasking etkisi (spot-check via API)
+
+**Minimum bağlam:**
+
+- `Docs/07_SECURITY_IMPLEMENTATION.md` §3.6 Alan Görünürlük Matrisi
+- `Docs/06_SCREEN_CATALOG.md` — S-ADMIN-FIELD-VISIBILITY, S-ADMIN-ACTION-MATRIX
+- Faz 2 `packages/policy` field-visibility-defaults
+
+**Bu iterasyonda yok:** Frontend matrix editors.
+
+**Stop:** [ ] Matrix API integration; [ ] admin role hâlâ report_text göremez. PR/onay → İterasyon 5.
+
+---
+
+### İterasyon 5 — SLA Policies + Business Calendar Admin
+
+**Hedef:** Admin SLA PATCH; business calendar CRUD → Faz 6 SLA engine etkilenir.
+
+**Yapılacaklar:**
+
+1. `PATCH /api/v1/admin/sla-policies/:taskType` — görev tipi bazlı SLA süresi
+2. Business calendar CRUD — tatil, yarım gün ekle/sil
+3. Calendar değişikliği sonrası mevcut task `sla_due_at` recalc policy (document in code)
+4. Integration test: tatil ekle → BusinessCalendarService atlar
+
+**Minimum bağlam:**
+
+- `Docs/03_API_CONTRACTS.md` — admin SLA/calendar endpoint'leri
+- Faz 6 `BusinessCalendarService`, `SlaCalculatorService`
+
+**Bu iterasyonda yok:** Frontend calendar UI.
+
+**Stop:** [ ] SLA PATCH + calendar CRUD test; [ ] tatil SLA etkisi. PR/onay → İterasyon 6.
+
+---
+
+### İterasyon 6 — Notification Templates + KVKK Texts
+
+**Hedef:** Template editor API; KVKK publish maker-checker; preview backend render.
+
+**Yapılacaklar:**
+
+1. Notification template get/update/preview/send-test API
+2. Preview backend-side render (XSS koruması)
+3. KVKK text create/update/publish — maker-checker; publish destructive
+4. Publish → yeni `kvkk_consent_version` (Faz 10 UI modal tetikler)
+5. Integration test: KVKK publish flow; template preview no script injection
+
+**Minimum bağlam:**
+
+- `Docs/03_API_CONTRACTS.md` — admin notification/kvkk endpoints
+- `Docs/07_SECURITY_IMPLEMENTATION.md` — KVKK versiyonlama
+
+**Bu iterasyonda yok:** KVKK blocking modal UI (Faz 10), template FE editor.
+
+**Stop:** [ ] KVKK publish API; [ ] preview XSS safe. PR/onay → İterasyon 7.
+
+---
+
+### İterasyon 7 — Audit Viewer + Document-Ops + System Health (Backend)
+
+**Hedef:** Audit filter + async CSV export; chain verify endpoint; document-ops monitor; system-health.
+
+**Yapılacaklar:**
+
+1. `GET /api/v1/admin/audit` — gelişmiş filtre; FieldMasking — admin `[REDACTED]`
+2. CSV export async job (>10K kayıt); presigned download URL
+3. Audit chain integrity verify endpoint
+4. Document-ops monitor — quarantine/scan queue stats
+5. System-health — worker status, outbox queue depth, DB connection
+
+**Minimum bağlam:**
+
+- `Docs/03_API_CONTRACTS.md` §8.13 Admin Monitoring
+- `Docs/07_SECURITY_IMPLEMENTATION.md` §12 Audit Log
+- `.cursor/rules/16-audit-crypto.mdc`
+
+**Bu iterasyonda yok:** Admin UI screens (İterasyon 8–10).
+
+**Stop:** [ ] Audit response redacted; [ ] CSV async job; [ ] health endpoint. PR/onay → İterasyon 8.
+
+---
+
+### İterasyon 8 — Frontend: AdminLayout + User Screens
+
+**Hedef:** AdminLayout; S-ADMIN-USER-LIST, S-ADMIN-USER-DETAIL; admin URL guard.
+
+**Yapılacaklar:**
+
+1. `AdminLayout` — admin sidebar, kısıtlı navigation
+2. S-ADMIN-USER-LIST — filtre, pagination
+3. S-ADMIN-USER-DETAIL — rol/clearance atama, maker-checker UI flow
+4. Route: `/app/admin/users`, `/app/admin/users/:id`
+5. Normal kullanıcı `/app/admin/*` → 403 redirect S-FORBIDDEN
+
+**Minimum bağlam:**
+
+- `Docs/06_SCREEN_CATALOG.md` — S-ADMIN-USER-LIST, S-ADMIN-USER-DETAIL, AdminLayout
+- `Docs/05_FRONTEND_SPEC.md` — admin route tree
+- `.cursor/rules/21-frontend-routes.mdc`
+
+**Bu iterasyonda yok:** Config/monitoring screens.
+
+**Stop:** [ ] Admin guard smoke; [ ] user CRUD UI. PR/onay → İterasyon 9.
+
+---
+
+### İterasyon 9 — Frontend: Config Screens
+
+**Hedef:** System settings, field visibility, action matrix, SLA, calendar, templates, KVKK editor screens.
+
+**Yapılacaklar:**
+
+1. S-ADMIN-SYSTEM-SETTINGS — kategori sekmeleri, dirty diff, maker-checker UI
+2. S-ADMIN-FIELD-VISIBILITY — matrix editor
+3. S-ADMIN-ACTION-MATRIX — maker/checker rol editor
+4. S-ADMIN-SLA-POLICIES, S-ADMIN-BUSINESS-CALENDAR
+5. S-ADMIN-NOTIFICATION-TEMPLATES — editor + preview + test send
+6. S-ADMIN-KVKK-TEXTS — markdown editor + publish ("ONAYLIYORUM" destructive confirm)
+
+**Minimum bağlam:**
+
+- `Docs/06_SCREEN_CATALOG.md` — ilgili S-ADMIN-* bölümleri
+- `.cursor/rules/41-add-new-screen.mdc`, `22-frontend-forms.mdc`
+
+**Bu iterasyonda yok:** Audit/health monitoring screens.
+
+**Stop:** [ ] Maker-checker UI smoke; [ ] KVKK destructive confirm. PR/onay → İterasyon 10.
+
+---
+
+### İterasyon 10 — Frontend: Monitoring + Human Gate
+
+**Hedef:** S-ADMIN-AUDIT, DOCUMENT-OPS, SYSTEM-HEALTH; E2E admin flow; human gate.
+
+**Yapılacaklar:**
+
+1. S-ADMIN-AUDIT — filtre, JSON diff viewer (redacted values)
+2. S-ADMIN-DOCUMENT-OPS — quarantine/scan monitor
+3. S-ADMIN-SYSTEM-HEALTH — worker/outbox/DB widgets
+4. E2E: admin login → user create → role assign → clearance set
+5. Human Gate checklist (`Docs/10` §Faz 9)
+
+**Minimum bağlam:**
+
+- `Docs/06_SCREEN_CATALOG.md` — monitoring screens
+- `Docs/08_TESTING_STRATEGY.md` — admin E2E
+- `Docs/10_IMPLEMENTATION_ROADMAP.md` §Faz 9 Deliverable, Human Gate, Vibe Coding Risk
+
+**Stop:** [ ] Audit viewer no plaintext etik; [ ] E2E admin flow; [ ] CI green; Human Gate. Faz 9 Done.
+
+---
+
+## Required Context
+
+- `Docs/03_API_CONTRACTS.md` §8.10–8.13 Admin
+- `Docs/06_SCREEN_CATALOG.md` — tüm S-ADMIN-* ekranları
+- `Docs/07_SECURITY_IMPLEMENTATION.md` — maker-checker, field visibility, audit, KVKK
+- `Docs/04_BACKEND_SPEC.md` — admin/, config.service
+- `Docs/02_DATABASE_SCHEMA.md` — config & admin tabloları
+- `Docs/10_IMPLEMENTATION_ROADMAP.md` §Faz 9
+
+Auto-attached glob rules: `12-authorization-policy`, `14-backend-controllers`, `16-audit-crypto`, `21-frontend-routes`, `41-add-new-screen`, `03-security-baseline`, `04-quality-gates`
+
+## Scope
+
+```
+apps/api/src/modules/admin/     admin.module, user-admin, master-data, config controllers
+apps/api/src/modules/admin/     config.service (maker-checker)
+apps/web/src/features/admin/    tüm S-ADMIN-* screens
+apps/web/src/layouts/           AdminLayout
+```
+
+### Files NOT touched
+
+- KVKK blocking consent modal — Faz 10
+- Dashboard widgets — Faz 10
+- Production deploy — Faz 13
+
+## Constraints
+
+### Use
+
+- Maker-checker backend enforced — maker ≠ checker
+- Admin FieldMasking — no report_text/incident_description
+- CSV export async job + presigned URL
+- Generic master-data `/:type` pattern
+- KVKK publish destructive confirmation
+- System settings bulk update atomic tx
+- Template preview backend render
+
+### Avoid
+
+- Maker-checker frontend-only
+- Audit viewer unredacted content
+- Client-side CSV export large datasets
+- 8 duplicate master data controllers
+- Admin viewing case ethical content
+- KVKK publish without confirmation
+
+## Done Definition
+
+### Backend Admin API
+
+- [ ] User/role/clearance CRUD
+- [ ] Master data generic CRUD
+- [ ] Maker-checker config flow
+- [ ] Field visibility + action matrix API
+- [ ] SLA + calendar admin API
+- [ ] Template + KVKK admin API
+- [ ] Audit + health + document-ops API
+
+### Frontend
+
+- [ ] AdminLayout + 13 S-ADMIN screens
+- [ ] Normal user admin URL → 403
+
+### Test & Human Gate
+
+- [ ] Maker-checker integration test
+- [ ] E2E admin user flow
+- [ ] CI green; Human Gate checklist
+
+## Explicit Don'ts
+
+- Maker-checker UI-only
+- Audit plaintext etik içerik
+- Client CSV >10K rows
+- KVKK publish reversible UX
+- Separate endpoint per master data type
+- Admin case content access
+- `main`'e direct push
+
+## Kısıtlar & Riskler
+
+| Risk | Önlem |
+| --- | --- |
+| Agent maker-checker FE only | Backend same-user 403 test İterasyon 3 |
+| Agent audit unredacted | FieldMasking admin test İterasyon 7 |
+| Agent client CSV export | Async job Done Definition |
+| Agent KVKK publish casual | Destructive "ONAYLIYORUM" UI İterasyon 9 |
+| En hacimli UI faz — scope creep | 3 UI iterasyon dalgası; "Bu iterasyonda yok" |
+
+---
+
+Phase done → `Docs/10_IMPLEMENTATION_ROADMAP.md` Faz 9 durumunu güncelle.

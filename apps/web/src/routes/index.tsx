@@ -5,18 +5,39 @@ import { AdminPlaceholderPage } from '@/features/admin/pages/AdminPlaceholderPag
 import { AuthCallbackPage } from '@/features/auth/pages/AuthCallbackPage';
 import { DashboardPage } from '@/features/auth/pages/DashboardPage';
 import { LoginPage } from '@/features/auth/pages/LoginPage';
+import { ReportFormPage } from '@/features/intake/pages/ReportFormPage';
+import { ReportSuccessPage } from '@/features/intake/pages/ReportSuccessPage';
+import { TrackingLoginPage } from '@/features/tracking/pages/TrackingLoginPage';
+import { TrackingMessagesPage } from '@/features/tracking/pages/TrackingMessagesPage';
+import { TrackingStatusPage } from '@/features/tracking/pages/TrackingStatusPage';
 import { ForbiddenPage } from '@/features/system/pages/ForbiddenPage';
 import { NotFoundPage } from '@/features/system/pages/NotFoundPage';
 import { AdminLayout } from '@/layouts/AdminLayout';
+import { AnonymousFollowupLayout } from '@/layouts/AnonymousFollowupLayout';
 import { InternalLayout } from '@/layouts/InternalLayout';
+import { PublicIntakeLayout } from '@/layouts/PublicIntakeLayout';
 import { AuthGuard } from '@/routes/guards/AuthGuard';
 import { GuestGuard } from '@/routes/guards/GuestGuard';
 import { RoleGuard } from '@/routes/guards/RoleGuard';
+import { TrackingGuard } from '@/routes/guards/TrackingGuard';
 
 export function AppRoutes() {
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/auth/login" replace />} />
+      <Route path="/" element={<Navigate to="/report" replace />} />
+
+      <Route element={<PublicIntakeLayout />}>
+        <Route path="/report" element={<ReportFormPage />} />
+        <Route path="/report/success" element={<ReportSuccessPage />} />
+      </Route>
+
+      <Route element={<AnonymousFollowupLayout />}>
+        <Route path="/tracking" element={<TrackingLoginPage />} />
+        <Route element={<TrackingGuard />}>
+          <Route path="/tracking/status" element={<TrackingStatusPage />} />
+          <Route path="/tracking/messages" element={<TrackingMessagesPage />} />
+        </Route>
+      </Route>
 
       <Route element={<GuestGuard />}>
         <Route path="/auth/login" element={<LoginPage />} />

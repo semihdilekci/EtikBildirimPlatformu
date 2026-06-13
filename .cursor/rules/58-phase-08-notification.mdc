@@ -1,0 +1,266 @@
+---
+description: '[Faz 8] Notification System — 6 iterasyon/chat (schema+service → outbox → SMTP → triggers → crons → UI+gate). Mesajda "Faz 8 — İterasyon M" belirt.'
+---
+
+# Faz 8: Notification System
+
+## Goal
+
+In-app bildirim + e-posta outbox pattern kurulur. 28 notification template seed. Domain event → decoupled `NotificationService` trigger (TASK_ASSIGNED, CASE_TRANSITION, SLA_WARNING, vb.). Worker `notification-dispatcher.job.ts`; içeriksiz e-posta şablonları. Cron: sla-reminder (5 dk), silent-acceptance schedule, audit-chain-verify (günlük), retention-purge (legal_hold check). NotificationBell (30 sn polling) + S-NOTIFICATION-CENTER.
+
+Detay: `Docs/10_IMPLEMENTATION_ROADMAP.md` §Faz 8.
+
+**Bağımlılık:** Faz 5–6 (transition/task side-effects), Faz 3 (audit worker), Faz 6 `silent-acceptance.job.ts` → bu fazda cron schedule bağlanır.
+
+## Feature branch (zorunlu)
+
+Faz koduna **main üzerinde başlanmaz**. İlk commit/dosya değişikliği öncesi `48-git-phase-branch.mdc` uygula.
+
+**Bu faz branch adı:** `feature/F8-notification`
+
+**Stop (İterasyon 1, kod öncesi):** [ ] Faz 6 `main`'e merge edilmiş; [ ] faz branch oluşturuldu; [ ] `git push -u origin HEAD` (remote varsa).
+
+## Bu fazın çalışma modeli (iterasyonlar)
+
+Tek sohbette tamamlanmaz. Her session: `@58-phase-08-notification` + mesajda **「Faz 8 — İterasyon M」**. Branch açmadan kod yok.
+
+---
+
+### İterasyon 1 — Notifications Schema + Service
+
+**Hedef:** `notifications`, `notification_templates` tabloları; CRUD API; 28 şablon seed.
+
+**Yapılacaklar:**
+
+1. Prisma migration: `notifications`, `notification_templates` (`02`)
+2. 28 template seed — event tipi × metin × aktif/pasif (`10` §Faz 8 listesi)
+3. `apps/api/src/modules/notification/` — module, controller, service
+4. `GET /api/v1/notifications` — paginated, user-scoped
+5. `POST mark-read`, `POST mark-all-read`, `GET unread-count`
+6. `@RequirePolicy`; `@AuditAction` mutating endpoint'lerde
+7. Integration test: create → list → mark-read → count decrement
+
+**Minimum bağlam:**
+
+- `Docs/02_DATABASE_SCHEMA.md` — notifications tabloları
+- `Docs/03_API_CONTRACTS.md` §8.9 Notifications
+- `Docs/04_BACKEND_SPEC.md` — notification/ modülü
+
+**Bu iterasyonda yok:** Outbox dispatch, SMTP, domain event wiring, crons, frontend.
+
+**Stop:** [ ] 28 template seed; [ ] API integration test green. PR/onay → İterasyon 2.
+
+---
+
+### İterasyon 2 — Outbox + Worker Dispatch
+
+**Hedef:** Notification outbox domain transaction içinde; worker consume; dead letter queue.
+
+**Yapılacaklar:**
+
+1. Notification outbox tablo/pattern (`04` outbox — audit pattern ile uyumlu)
+2. `notification-dispatcher.job.ts` — PENDING → SENT/FAILED
+3. Fail-closed: domain tx + notification outbox aynı `$transaction`
+4. Dead letter: failed job isolation + retry/idempotency
+5. Integration test: outbox fail → domain rollback
+
+**Minimum bağlam:**
+
+- `Docs/04_BACKEND_SPEC.md` — worker/, outbox pattern
+- `Docs/07_SECURITY_IMPLEMENTATION.md` — fail-closed audit benzeri pattern
+- `.cursor/rules/16-audit-crypto.mdc`
+
+**Bu iterasyonda yok:** SMTP send, event triggers, crons.
+
+**Stop:** [ ] Fail-closed integration test; [ ] duplicate idempotency_key işlenmiyor. PR/onay → İterasyon 3.
+
+---
+
+### İterasyon 3 — SMTP + İçeriksiz Şablonlar
+
+**Hedef:** Nodemailer; dev Mailpit; e-posta hassas veri taşımaz.
+
+**Yapılacaklar:**
+
+1. `email-relay.service.ts` — SMTP config env-based (dev Mailpit, staging/prod relay)
+2. Template render backend-side (`notification-template.service.ts`) — XSS koruması
+3. E-posta gövdesi: "Yeni bir göreviniz var — platforma giriş yapınız" seviyesi; vaka detayı yok
+4. Bildirimci anonim kanalı → e-posta yok (SECURE_MESSAGE_RECEIVED iç kullanıcı only)
+5. Integration test: dispatch → Mailpit'te email; body grep — report_text/incident yok
+
+**Minimum bağlam:**
+
+- `Docs/07_SECURITY_IMPLEMENTATION.md` — e-posta güvenliği, DKIM/SPF/DMARC notları
+- `Docs/04_BACKEND_SPEC.md` — email-relay.service
+
+**Bu iterasyonda yok:** Tüm event trigger wiring, crons, frontend.
+
+**Stop:** [ ] Mailpit email received; [ ] içeriksiz body assertion. PR/onay → İterasyon 4.
+
+---
+
+### İterasyon 4 — Event Triggers
+
+**Hedef:** Decoupled domain event → notification; tüm MVP trigger'lar wired.
+
+**Yapılacaklar:**
+
+1. `NotificationService.enqueue(event, recipients, metadata)` — inline controller trigger yasak
+2. Wire triggers: TASK_ASSIGNED, TASK_COMPLETED, CASE_TRANSITION, SLA_WARNING, SLA_BREACH, SILENT_ACCEPTANCE_WARNING, DECISION_VOTE_REQUESTED, ACTION_ASSIGNED, SECURE_MESSAGE_RECEIVED + kalan 28 template event'leri
+3. Transition side-effect'ten notification enqueue aynı tx (Faz 5 pattern)
+4. Integration test: case transition → in-app notification + email outbox
+
+**Minimum bağlam:**
+
+- `Docs/01_DOMAIN_MODEL.md` — hangi state'te hangi event
+- `Docs/10_IMPLEMENTATION_ROADMAP.md` §Faz 8 event listesi
+- `Docs/04_BACKEND_SPEC.md` — transition notification enqueue stub (Faz 5)
+
+**Bu iterasyonda yok:** SLA cron pipeline, frontend.
+
+**Stop:** [ ] Transition → notification integration test; [ ] decoupled service (not inline in controller). PR/onay → İterasyon 5.
+
+---
+
+### İterasyon 5 — Cron Jobs
+
+**Hedef:** Worker `@nestjs/schedule` cron; setInterval yasak.
+
+**Yapılacaklar:**
+
+1. `sla-reminder.job.ts` — her 5 dk; SLA ≤%20 kalan → SLA_WARNING
+2. `silent-acceptance.job.ts` — cron schedule (Faz 6 handler reuse); her 5 dk
+3. `audit-chain-verify.job.ts` — günlük (Faz 3 placeholder → schedule)
+4. `retention-purge.job.ts` — günlük; `legal_hold` olan kayıtlar skip
+5. Integration test: fake clock SLA warning; legal_hold purge skip
+
+**Minimum bağlam:**
+
+- `Docs/04_BACKEND_SPEC.md` — worker jobs listesi
+- Faz 6 `silent-acceptance.handler.ts`
+
+**Bu iterasyonda yok:** Frontend NotificationBell.
+
+**Stop:** [ ] Cron jobs registered worker'da; [ ] setInterval yok; [ ] legal_hold test. PR/onay → İterasyon 6.
+
+---
+
+### İterasyon 6 — Frontend + Human Gate
+
+**Hedef:** NotificationBell 30 sn polling; S-NOTIFICATION-CENTER; mark-read optimistic rollback.
+
+**Yapılacaklar:**
+
+1. `<NotificationBell>` topbar — unread count badge; 30 sn polling (5 sn değil)
+2. S-NOTIFICATION-CENTER — full page liste, filtre, mark-all-read
+3. Bildirim tıklama → case/task/detail navigation
+4. Mark-read optimistic UI; failure → rollback
+5. Human Gate checklist (`Docs/10` §Faz 8)
+
+**Minimum bağlam:**
+
+- `Docs/06_SCREEN_CATALOG.md` — S-NOTIFICATION-CENTER
+- `Docs/05_FRONTEND_SPEC.md` — polling pattern
+- `.cursor/rules/23-frontend-queries.mdc`
+
+**Bu iterasyonda yok:** Push notifications (MVP dışı), e-posta template admin UI (Faz 9).
+
+**Stop:** [ ] Polling interval 30s; [ ] navigation smoke; [ ] CI green; Human Gate. Faz 8 Done.
+
+---
+
+## Required Context
+
+- `Docs/02_DATABASE_SCHEMA.md` — notifications, notification_templates
+- `Docs/03_API_CONTRACTS.md` §8.9 Notifications
+- `Docs/04_BACKEND_SPEC.md` — notification/, worker jobs, email-relay
+- `Docs/06_SCREEN_CATALOG.md` — S-NOTIFICATION-CENTER
+- `Docs/07_SECURITY_IMPLEMENTATION.md` — e-posta güvenliği
+- `Docs/10_IMPLEMENTATION_ROADMAP.md` §Faz 8
+
+Auto-attached glob rules: `10-backend-architecture`, `16-audit-crypto`, `23-frontend-queries`, `03-security-baseline`, `04-quality-gates`
+
+## Scope
+
+```
+apps/api/src/modules/notification/  notification.module, controller, service,
+                                    notification-template.service, email-relay.service
+apps/worker/src/jobs/               notification-dispatcher, sla-reminder,
+                                    silent-acceptance, audit-chain-verify, retention-purge
+apps/web/src/features/notifications/ NotificationBell, notification center page
+apps/api/prisma/migrations/         notifications, notification_templates, notification_outbox
+```
+
+### Files NOT touched
+
+- Admin template editor UI — Faz 9
+- Dashboard widgets — Faz 10
+- Mobile push — MVP dışı
+
+## Constraints
+
+### Use
+
+- Outbox fail-closed same tx as domain op
+- Decoupled NotificationService enqueue
+- İçeriksiz e-posta şablonları
+- Worker cron (`@nestjs/schedule`) — not setInterval
+- 30 sn notification polling
+- legal_hold check on retention purge
+- Anonim bildirimciye e-posta yok
+
+### Avoid
+
+- E-postada vaka/bildirimci/rapor içeriği
+- Inline notification in controllers
+- setInterval crons
+- 5 sn polling
+- Retention purge without legal_hold check
+- Frontend-only mark-read (backend persistence)
+
+## Done Definition
+
+### Backend
+
+- [ ] 28 template seed
+- [ ] In-app notification CRUD + unread count
+- [ ] Outbox + worker dispatch
+- [ ] Mailpit email içeriksiz
+- [ ] Event triggers wired
+- [ ] 4 cron jobs scheduled
+
+### Frontend
+
+- [ ] NotificationBell + 30s polling
+- [ ] S-NOTIFICATION-CENTER
+- [ ] Click navigation + mark-read
+
+### Test & Human Gate
+
+- [ ] Transition → notification integration test
+- [ ] SLA cron fake clock test
+- [ ] CI green; Human Gate checklist
+
+## Explicit Don'ts
+
+- Hassas veri e-posta gövdesinde
+- setInterval cron
+- 5 sn polling
+- Inline event trigger in controllers
+- legal_hold bypass purge
+- Anonim tracking e-posta
+- `main`'e direct push
+
+## Kısıtlar & Riskler
+
+| Risk | Önlem |
+| --- | --- |
+| Agent e-postaya vaka detayı ekler | Body grep integration test İterasyon 3 |
+| Agent inline trigger | Decoupled NotificationService; code review |
+| Agent setInterval | Worker cron only; Done Definition |
+| Agent 5s polling | Explicit 30s in FE spec + review |
+| Agent legal_hold skip | Purge integration test |
+
+---
+
+Phase done → `Docs/10_IMPLEMENTATION_ROADMAP.md` Faz 8 durumunu güncelle.

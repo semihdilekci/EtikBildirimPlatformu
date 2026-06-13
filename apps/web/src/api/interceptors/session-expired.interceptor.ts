@@ -1,3 +1,4 @@
+import { ErrorCode } from '@ethics/shared';
 import type { AxiosInstance } from 'axios';
 
 import { ApiError } from '@/types/api.types';
@@ -15,7 +16,13 @@ export function attachSessionExpiredInterceptor(client: AxiosInstance): void {
     (response) => response,
     (error: unknown) => {
       if (error instanceof ApiError && error.status === 401) {
-        sessionExpiredHandler?.();
+        const isSessionError =
+          error.code === ErrorCode.AUTH_SESSION_REQUIRED ||
+          error.code === ErrorCode.AUTH_SESSION_EXPIRED;
+
+        if (isSessionError) {
+          sessionExpiredHandler?.();
+        }
       }
 
       return Promise.reject(error instanceof Error ? error : new Error(String(error)));

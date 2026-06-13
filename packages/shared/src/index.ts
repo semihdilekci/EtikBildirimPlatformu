@@ -29,3 +29,60 @@ export {
   AUDIT_EVENT_CATEGORY_VALUES,
 } from './enums/audit-event-category.enum.js';
 export type { AuditEventCategoryCode } from './enums/audit-event-category.enum.js';
+
+export {
+  ReportCategoryGroup,
+  REPORT_CATEGORY_GROUP_VALUES,
+  ReportSubCategory,
+  REPORT_SUB_CATEGORY_VALUES,
+  REPORT_SUB_CATEGORY_TO_GROUP,
+  REPORT_CATEGORY_CATALOG,
+} from './enums/report-category.enum.js';
+export type {
+  ReportCategoryGroupCode,
+  ReportSubCategoryCode,
+  ReportCategoryCatalogEntry,
+} from './enums/report-category.enum.js';
+
+export {
+  ReportStatus,
+  REPORT_STATUS_VALUES,
+  REPORT_STATUS_LABELS,
+  ReportChannel,
+  IncidentRecurrence,
+  HowReporterLearned,
+  ReporterIdentityRelation,
+} from './enums/report-status.enum.js';
+
+export { MalwareScanStatus, MALWARE_SCAN_STATUS_VALUES } from './enums/malware-scan-status.enum.js';
+
+export {
+  SecureMessageDirection,
+  SECURE_MESSAGE_DIRECTION_VALUES,
+  SecureMessageApiDirection,
+  SecureMessageSenderType,
+  SECURE_MESSAGE_SENDER_TYPE_VALUES,
+  SECURE_MESSAGE_SENDER_LABELS,
+  toSecureMessageApiDirection,
+} from './enums/secure-message.enum.js';
+export type {
+  SecureMessageDirectionCode,
+  SecureMessageApiDirectionCode,
+  SecureMessageSenderTypeCode,
+} from './enums/secure-message.enum.js';
+export type { MalwareScanStatusCode } from './enums/malware-scan-status.enum.js';
+
+export {
+  ALLOWED_UPLOAD_RULES,
+  MAX_SINGLE_FILE_BYTES,
+  MAX_TOTAL_REPORT_ATTACHMENT_BYTES,
+  PRESIGNED_UPLOAD_TTL_SECONDS,
+} from './constants/file-upload.constants.js';
+export type { AllowedUploadRule } from './constants/file-upload.constants.js';
+export type {
+  ReportStatusCode,
+  ReportChannelCode,
+  IncidentRecurrenceCode,
+  HowReporterLearnedCode,
+  ReporterIdentityRelationCode,
+} from './enums/report-status.enum.js';

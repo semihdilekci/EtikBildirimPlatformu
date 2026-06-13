@@ -1,0 +1,365 @@
+---
+description: '[Faz 4] Intake + Tracking — 7 iterasyon/chat (intake BE → tracking BE → upload → report wizard → tracking UI → secure messaging → test+gate). Mesajda "Faz 4 — İterasyon M" belirt.'
+---
+
+# Faz 4: Intake + Tracking (Dış Form + Anonim Takip)
+
+## Goal
+
+Dış bildirim kanalı uçtan uca çalışır: anonim kullanıcı multi-step form ile report oluşturur, `tracking_code` + parola alır; presigned upload → quarantine → ClamAV async scan akışı tamamlanır. Anonim takip session-less kalır — her istek `X-Tracking-Code` + `X-Tracking-Password` ile yeniden doğrulanır (cookie yok). Hassas alanlar `CryptoService` ile encrypt edilir; KVKK consent versiyonu kaydedilir. Güvenli mesajlaşma thread'i bildirimci ↔ sekreterya için hazır.
+
+Detay: `Docs/10_IMPLEMENTATION_ROADMAP.md` §Faz 4.
+
+**Bağımlılık:** Faz 3 tamamlanmış olmalı (`CryptoService`, `AuditEventPublisher` fail-closed, audit outbox).
+
+## Feature branch (zorunlu)
+
+Faz koduna **main üzerinde başlanmaz**. İlk commit/dosya değişikliği öncesi `48-git-phase-branch.mdc` uygula.
+
+**Bu faz branch adı:** `feature/F4-intake-tracking`
+
+**Stop (İterasyon 1, kod öncesi):** [ ] Faz 3 `main`'e merge edilmiş; [ ] faz branch oluşturuldu; [ ] `git push -u origin HEAD` (remote varsa).
+
+## Bu fazın çalışma modeli (iterasyonlar)
+
+Tek sohbette tamamlanmaz. Her session: `@54-phase-04-intake-tracking` + mesajda **「Faz 4 — İterasyon M」**. Branch açmadan kod yok.
+
+---
+
+### İterasyon 1 — Intake Backend (Report Create)
+
+**Hedef:** Report oluşturma API'si; 18 kategori, dinamik alan encrypt, tracking code üretimi, KVKK consent kaydı.
+
+**Yapılacaklar:**
+
+1. `apps/api/src/modules/intake/` — module, controller, service
+2. `POST /api/v1/intake/reports` — Zod DTO (`packages/dto`); `@AuditAction`; rate limit (10 req/dk/IP)
+3. `GET /api/v1/intake/categories`, `GET /api/v1/intake/kvkk-text`, `GET /api/v1/intake/companies`
+4. `tracking_code` üretimi — format `ETK-XXXX-XXXX` (12 karakter alfanümerik, unique)
+5. `tracking_code_password_hash` — argon2id (memory ≥64 MB, iterations ≥3, parallelism ≥1)
+6. Hassas alan encrypt: `incident_description`, `category_specific_data`, `reporter_identity_*`, `reporter_contact_*` via `CryptoService`
+7. `kvkk_consent_version` zorunlu kayıt
+8. Prisma migration: `reports` tablosu (`02` §Report)
+9. Unit + integration test: report create roundtrip; encrypted alan DB'de ciphertext
+
+**Minimum bağlam:**
+
+- `Docs/03_API_CONTRACTS.md` §8.1 Public Intake
+- `Docs/01_DOMAIN_MODEL.md` — Report entity, 18 kategori enum
+- `Docs/07_SECURITY_IMPLEMENTATION.md` §1.3, §4.2, §5.1
+- `Docs/02_DATABASE_SCHEMA.md` — `reports` tablo yapısı
+- `.cursor/rules/16-audit-crypto.mdc`, `14-backend-controllers.mdc`
+
+**Bu iterasyonda yok:** Tracking modülü, dosya upload, frontend, secure messaging, ClamAV worker.
+
+**Stop:** [ ] Report create integration test green; [ ] encrypted alan plaintext DB'de yok; [ ] argon2id hash (bcrypt yok); [ ] audit outbox aynı tx. PR/onay → İterasyon 2.
+
+---
+
+### İterasyon 2 — Tracking Backend (Anonim Auth)
+
+**Hedef:** Session-less anonim takip; `TrackingGuard` header doğrulama; brute-force koruması.
+
+**Yapılacaklar:**
+
+1. `apps/api/src/modules/tracking/` — module, controller, service, `tracking.guard.ts`
+2. `POST /api/v1/tracking/verify` — doğrulama sonrası **cookie/session set edilmez**
+3. `GET /api/v1/tracking/status` — guard korumalı; minimal durum bilgisi (içerik maskeli)
+4. `TrackingGuard` — her istekte `X-Tracking-Code` + `X-Tracking-Password` yeniden doğrula
+5. Brute-force: IP + tracking_code bazlı rate limit; eşik aşılınca geçici kilit + audit event
+6. Auth guard zincirinden exempt: public intake + tracking (`04` guard sırası)
+7. Integration test: verify success/fail; 11. deneme → 429; response'ta `Set-Cookie` yok
+
+**Minimum bağlam:**
+
+- `Docs/03_API_CONTRACTS.md` §8.2 Anonymous Tracking
+- `Docs/07_SECURITY_IMPLEMENTATION.md` §1.3–1.4, §4.2–4.3
+- `Docs/04_BACKEND_SPEC.md` — tracking modülü, guard zinciri
+- `.cursor/rules/11-auth-session.mdc`
+
+**Bu iterasyonda yok:** Mesajlaşma endpoint'leri, attachment upload, frontend, ClamAV.
+
+**Stop:** [ ] Session-less assertion test (Set-Cookie absent); [ ] argon2id verify; [ ] brute-force lockout test green. PR/onay → İterasyon 3.
+
+---
+
+### İterasyon 3 — File Upload (Presigned + Quarantine + ClamAV)
+
+**Hedef:** Async dosya yükleme pipeline; presigned URL pattern; quarantine → scan → AVAILABLE/REJECTED.
+
+**Yapılacaklar:**
+
+1. `POST /api/v1/intake/reports/:trackingCode/attachments` — presigned URL döner (client PUT)
+2. `POST /api/v1/tracking/attachments` — tracking guard korumalı upload
+3. MIME + uzantı whitelist; boyut limiti (`07` §5.2)
+4. Quarantine state: upload sonrası PENDING_SCAN; worker async ClamAV scan
+5. `apps/worker/src/jobs/clamav-scan.job.ts` — temiz → AVAILABLE, enfekte → REJECTED (quarantine'de kalır)
+6. `ReportAttachment` Prisma model + migration
+7. Integration test: presigned flow mock; infected file → REJECTED; sync scan yok
+
+**Minimum bağlam:**
+
+- `Docs/03_API_CONTRACTS.md` — intake/tracking attachment endpoint'leri
+- `Docs/07_SECURITY_IMPLEMENTATION.md` §5.2 Dosya Yükleme Güvenliği
+- `Docs/04_BACKEND_SPEC.md` — document/upload pattern, worker jobs
+- `Docs/01_DOMAIN_MODEL.md` — ReportAttachment entity
+
+**Bu iterasyonda yok:** Case document grant modeli (Faz 7), frontend upload UI (İterasyon 4), secure messaging.
+
+**Stop:** [ ] Presigned URL pattern (backend relay yok); [ ] async scan job; [ ] REJECTED state integration test. PR/onay → İterasyon 4.
+
+---
+
+### İterasyon 4 — Frontend: S-REPORT-FORM Wizard
+
+**Hedef:** Multi-step dış bildirim formu; kategori bazlı dinamik alanlar; KVKK onay; tracking code teslim ekranı.
+
+**Yapılacaklar:**
+
+1. `PublicIntakeLayout` — sade header, KVKK footer
+2. S-REPORT-FORM — wizard: kategori → dinamik alanlar → ilgili kişiler → dosya → KVKK → özet → gönder
+3. S-REPORT-SUCCESS — tracking code + parola teslim ("Bu kodu saklayın")
+4. Bileşenler: `CategorySelector`, `DynamicCategoryFields`, `FileUploadZone`, `KvkkConsentCheckbox`, `TrackingPasswordSection`
+5. Zod schema `packages/dto` paylaşımlı; React Hook Form + MUI
+6. Route: `/report`, `/report/success` — session cookie yok; public layout
+7. Geri/ileri navigasyon: veri korunur; ileri → step validation
+
+**Minimum bağlam:**
+
+- `Docs/06_SCREEN_CATALOG.md` — S-REPORT-FORM, S-REPORT-SUCCESS
+- `Docs/05_FRONTEND_SPEC.md` — multi-step form pattern, public route
+- `Docs/03_API_CONTRACTS.md` §8.1 (read contract)
+- `.cursor/rules/22-frontend-forms.mdc`, `21-frontend-routes.mdc`
+
+**Bu iterasyonda yok:** Tracking ekranları (İterasyon 5), secure messaging UI, internal layout.
+
+**Stop:** [ ] Wizard E2E smoke (form → success); [ ] KVKK consent version submit; [ ] geri git veri korunur. PR/onay → İterasyon 5.
+
+---
+
+### İterasyon 5 — Frontend: Tracking Ekranları
+
+**Hedef:** Anonim takip girişi, durum görüntüleme; session-less header pattern.
+
+**Yapılacaklar:**
+
+1. `AnonymousFollowupLayout` — tracking context topbar
+2. S-TRACKING-LOGIN — tracking code + parola giriş (localStorage yasak — form state only)
+3. S-TRACKING-STATUS — durum görüntüleme
+4. API client: her istekte `X-Tracking-Code` + `X-Tracking-Password` header (cookie yok)
+5. Route: `/tracking`, `/tracking/status`
+6. Error code mapping (`packages/shared` error codes)
+
+**Minimum bağlam:**
+
+- `Docs/06_SCREEN_CATALOG.md` — S-TRACKING-LOGIN, S-TRACKING-STATUS
+- `Docs/05_FRONTEND_SPEC.md` — anonymous API client pattern
+- `Docs/03_API_CONTRACTS.md` §8.2
+- `.cursor/rules/23-frontend-queries.mdc`
+
+**Bu iterasyonda yok:** Mesajlaşma thread UI (İterasyon 6), attachment upload UI tracking tarafında (İterasyon 6).
+
+**Stop:** [ ] Login → status flow smoke; [ ] localStorage/sessionStorage kullanılmıyor; [ ] header auth pattern. PR/onay → İterasyon 6.
+
+---
+
+### İterasyon 6 — Secure Messaging
+
+**Hedef:** Bildirimci ↔ sekreterya güvenli mesaj thread'i; mesaj içerikleri encrypted.
+
+**Yapılacaklar:**
+
+1. `GET /api/v1/tracking/messages`, `POST /api/v1/tracking/messages` — tracking guard korumalı
+2. `SecureMessage` Prisma model + migration; içerik `CryptoService` encrypt
+3. S-TRACKING-MESSAGES — thread UI; mesaj gönder/al
+4. `@AuditAction` mutating endpoint'lerde; audit event içerik kopyalamaz
+5. Integration test: mesaj create → list; ciphertext DB'de; denied tracking code → 404
+
+**Minimum bağlam:**
+
+- `Docs/03_API_CONTRACTS.md` — tracking messages endpoint'leri
+- `Docs/01_DOMAIN_MODEL.md` — SecureMessage entity
+- `Docs/06_SCREEN_CATALOG.md` — S-TRACKING-MESSAGES
+- `Docs/07_SECURITY_IMPLEMENTATION.md` §1.3 session-less
+
+**Bu iterasyonda yok:** Sekreterya internal inbox UI (Faz 5+), notification e-posta (Faz 8), case workflow bağlantısı.
+
+**Stop:** [ ] Mesaj encrypt roundtrip; [ ] thread UI smoke; [ ] negatif deny test. PR/onay → İterasyon 7.
+
+---
+
+### İterasyon 7 — Coverage, E2E & Human Gate
+
+**Hedef:** intake + tracking modülleri ≥%80 coverage; tam E2E journey; human gate checklist.
+
+**Yapılacaklar:**
+
+1. E2E journey: form doldur → gönder → tracking code al → tracking login → durum + mesaj
+2. Negatif testler: brute-force lockout, rate limit 429, wrong password, infected file REJECTED
+3. argon2id roundtrip integration test
+4. Coverage gate: intake + tracking modülleri ≥%80 line (`08` threshold)
+5. Human Gate checklist (`Docs/10` §Faz 4 Human Gate)
+6. Error code'ları `03` ile birebir spot-check
+
+**Minimum bağlam:**
+
+- `Docs/08_TESTING_STRATEGY.md` — intake/tracking test senaryoları, E2E journey
+- `Docs/09_DEV_WORKFLOW.md` §8 CI
+- `Docs/10_IMPLEMENTATION_ROADMAP.md` §Faz 4 Deliverable, Human Gate, Vibe Coding Risk
+
+**Bu iterasyonda yok:** Case management (Faz 5), internal sekreterya UI, MİM API intake.
+
+**Stop:** [ ] intake + tracking coverage ≥%80; [ ] E2E journey green; [ ] CI green; [ ] Human Gate checklist tamam. Faz 4 Done.
+
+---
+
+## Required Context
+
+- `Docs/03_API_CONTRACTS.md` §8 Public Intake & Anonymous Tracking
+- `Docs/01_DOMAIN_MODEL.md` — Report, ReportAttachment, SecureMessage
+- `Docs/02_DATABASE_SCHEMA.md` — `reports`, `report_attachments`, `secure_messages`
+- `Docs/06_SCREEN_CATALOG.md` — S-REPORT-*, S-TRACKING-*
+- `Docs/07_SECURITY_IMPLEMENTATION.md` §1.3–1.4, §4.2–4.3, §5.2
+- `Docs/04_BACKEND_SPEC.md` — intake/, tracking/ modül yapısı, guard zinciri
+- `Docs/05_FRONTEND_SPEC.md` — public route, multi-step form, anonymous API client
+- `Docs/08_TESTING_STRATEGY.md` — intake/tracking coverage, E2E journey
+- `Docs/10_IMPLEMENTATION_ROADMAP.md` §Faz 4
+
+Auto-attached glob rules: `10-backend-architecture`, `11-auth-session`, `14-backend-controllers`, `16-audit-crypto`, `21-frontend-routes`, `22-frontend-forms`, `23-frontend-queries`, `03-security-baseline`, `04-quality-gates`
+
+## Scope
+
+```
+apps/api/src/modules/intake/     intake.module, controller, service, DTOs
+apps/api/src/modules/tracking/   tracking.module, controller, service, tracking.guard
+apps/worker/src/jobs/            clamav-scan.job.ts
+apps/web/src/features/intake/    report wizard, success screen, shared components
+apps/web/src/features/tracking/  login, status, messages screens
+apps/web/src/layouts/            PublicIntakeLayout, AnonymousFollowupLayout
+packages/dto/                    intake + tracking Zod schemas
+apps/api/prisma/migrations/      reports, report_attachments, secure_messages
+```
+
+Tam yapı: `Docs/04_BACKEND_SPEC.md` Klasör Yapısı.
+
+### Files NOT touched
+
+- `apps/api/src/modules/case-management/**` — Faz 5
+- Document grant model / internal download — Faz 7
+- Notification outbox / e-posta şablonları — Faz 8
+- Admin panel / sekreterya internal inbox — Faz 9
+- MİM API otomatik intake — MVP dışı (`00`)
+
+## Constraints
+
+### Use
+
+- `CryptoService` inject — hassas alan encrypt; controller'da doğrudan crypto yok
+- Audit outbox domain `$transaction` içinde — fail-closed
+- argon2id tracking parolası; bcrypt/md5 yasak
+- Session-less tracking: her istek header auth; `Set-Cookie` yok
+- Presigned URL upload — client PUT doğrudan storage'a; backend relay yok
+- ClamAV async quarantine pattern — sync scan yok
+- KVKK `kvkk_consent_version` zorunlu
+- `category_specific_data` JSONB — kategori schema konfigürasyon bazlı (hard-code yasak)
+- Rate limit: intake 10 req/dk/IP; tracking brute-force IP + tracking_code
+
+### Avoid
+
+- Tracking verify sonrası session/cookie oluşturmak
+- bcrypt veya md5 tracking parolası için
+- Backend dosya relay (presigned pattern bypass)
+- Sync ClamAV scan upload path'inde
+- KVKK consent version atlama
+- Kategori dinamik alanları hard-code
+- Frontend-only auth (backend guard zorunlu)
+- `@RequirePolicy` public intake/tracking endpoint'lerinde (public yüzey — farklı guard)
+
+## Done Definition
+
+### Intake Backend
+
+- [ ] `POST /intake/reports` report + tracking code + argon2id hash
+- [ ] Encrypted alanlar DB'de ciphertext
+- [ ] `kvkk_consent_version` kaydediliyor
+- [ ] Categories, KVKK text, companies GET endpoint'leri
+- [ ] Rate limit 11. istek → 429
+
+### Tracking Backend
+
+- [ ] `TrackingGuard` header auth her istekte
+- [ ] Session/cookie oluşturulmuyor (`Set-Cookie` absent)
+- [ ] Verify, status, messages, attachments endpoint'leri
+- [ ] Brute-force lockout + audit event
+
+### File Upload
+
+- [ ] Presigned URL pattern
+- [ ] Quarantine → async ClamAV → AVAILABLE/REJECTED
+- [ ] Enfekte dosya REJECTED (integration test)
+
+### Frontend
+
+- [ ] S-REPORT-FORM multi-step wizard çalışıyor
+- [ ] S-REPORT-SUCCESS tracking code teslim
+- [ ] S-TRACKING-LOGIN, S-TRACKING-STATUS, S-TRACKING-MESSAGES
+- [ ] PublicIntakeLayout + AnonymousFollowupLayout
+- [ ] localStorage yasak — session cookie-only internal için geçerli; tracking header pattern
+
+### Test & Coverage
+
+- [ ] intake + tracking modülleri coverage ≥%80
+- [ ] E2E: form → tracking code → status + mesaj
+- [ ] Negatif: brute-force, rate limit, wrong password, infected file
+- [ ] CI green
+
+### Human Gate
+
+- [ ] Tracking code format `ETK-XXXX-XXXX`
+- [ ] argon2id parametreleri: memory ≥64 MB, iterations ≥3
+- [ ] Session-less: verify sonrası cookie yok
+- [ ] ClamAV: temiz → AVAILABLE, enfekte → REJECTED
+- [ ] Multi-step form: geri git veri korunur; ileri validation
+- [ ] Error code'ları `03` ile birebir
+- [ ] PR squash merge → `main`
+
+### Manual smoke test
+
+```bash
+pnpm dev
+# /report → form doldur → success ekranı tracking code
+# /tracking → code+parola → status → mesaj gönder
+# 11. hızlı istek → 429
+# psql: incident_description ciphertext
+pnpm --filter @ethics/worker start  # clamav scan job
+```
+
+## Explicit Don'ts
+
+- Tracking verify sonrası session/cookie
+- bcrypt/md5 tracking parolası
+- Backend dosya upload relay (presigned bypass)
+- Sync ClamAV scan
+- KVKK consent version atlama
+- Kategori alanları hard-code
+- Plaintext hassas alan DB/log/audit'te
+- localStorage tracking credentials
+- Case management / workflow (Faz 5)
+- MİM API intake (MVP dışı)
+- `main`'e direct push
+
+## Kısıtlar & Riskler
+
+| Risk | Önlem |
+| --- | --- |
+| Agent session/cookie bırakır | İterasyon 2 Set-Cookie absent test; code review |
+| Agent bcrypt kullanır | Done Definition argon2id; integration hash algo check |
+| Agent presigned yerine relay upload | İterasyon 3 presigned-only; architecture review |
+| Agent sync ClamAV | Async worker job zorunlu; upload path'te scan yok |
+| Agent KVKK version unutur | DTO zorunlu alan + integration assertion |
+| Agent kategori hard-code | `category_specific_data` JSONB + config schema |
+| Agent frontend-only tracking auth | Backend TrackingGuard; FE header pattern |
+
+---
+
+Phase done → `Docs/10_IMPLEMENTATION_ROADMAP.md` Faz 4 durumunu güncelle.
