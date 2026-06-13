@@ -99,7 +99,7 @@ packages/
 
 - Branch: `feature/F<N>-kısa-açıklama`
 - Commit: [Conventional Commits](https://www.conventionalcommits.org/) — `type(scope): açıklama`
-- Merge: squash only → `develop`
+- Merge: squash only → `main` (PR ile)
 - Husky: pre-commit (lint-staged) + commit-msg (commitlint)
 
 ## Geliştirme Yol Haritası

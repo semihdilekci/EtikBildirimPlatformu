@@ -11,7 +11,7 @@ Mesajda **「Faz N — İterasyon M」** belirt. `@NN-phase-XX-slug` invoke et (
 ## Step 2: Feature Branch
 
 ```bash
-git checkout develop
+git checkout main
 git pull
 git checkout -b feature/F<N>-<kısa-açıklama>
 ```
@@ -28,7 +28,7 @@ Faz deliverable + human gate checklist (`Docs/10` ilgili faz bölümü).
 
 ## Step 5: PR
 
-- Squash merge → `develop`
+- Squash merge → `main` (PR üzerinden)
 - PR template checklist tamamla (`Docs/09` §3.3)
 - CI green zorunlu
 

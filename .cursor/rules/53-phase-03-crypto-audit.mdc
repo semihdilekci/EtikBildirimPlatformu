@@ -18,7 +18,7 @@ Faz koduna **main üzerinde başlanmaz**. İlk commit/dosya değişikliği önce
 
 **Bu faz branch adı:** `feature/F3-crypto-audit`
 
-**Stop (İterasyon 1, kod öncesi):** [ ] Faz 2 merge edilmiş / `develop` güncel; [ ] faz branch oluşturuldu; [ ] `git push -u origin HEAD` (remote varsa).
+**Stop (İterasyon 1, kod öncesi):** [ ] Önceki faz `main`'e merge edilmiş; [ ] faz branch oluşturuldu; [ ] `git push -u origin HEAD` (remote varsa).
 
 ## Bu fazın çalışma modeli (iterasyonlar)
 
@@ -266,7 +266,7 @@ Tam yapı: `Docs/04_BACKEND_SPEC.md` Klasör Yapısı.
 - [ ] Chain hash DB seviyesinde (code review)
 - [ ] Fail-closed integration test green
 - [ ] `pnpm dev` log grep — PII yok
-- [ ] PR squash merge → develop
+- [ ] PR squash merge → `main`
 
 ### Manual smoke test
 

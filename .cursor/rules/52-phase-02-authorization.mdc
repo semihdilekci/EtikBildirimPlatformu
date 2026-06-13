@@ -18,7 +18,7 @@ Faz koduna **main üzerinde başlanmaz**. İlk commit/dosya değişikliği önce
 
 **Bu faz branch adı:** `feature/F2-authorization`
 
-**Stop (İterasyon 1, kod öncesi):** [ ] Faz 1 merge edilmiş / `develop` güncel; [ ] faz branch oluşturuldu; [ ] `git push -u origin HEAD` (remote varsa).
+**Stop (İterasyon 1, kod öncesi):** [ ] Faz 1 `main`'e merge edilmiş; [ ] faz branch oluşturuldu; [ ] `git push -u origin HEAD` (remote varsa).
 
 ## Bu fazın çalışma modeli (iterasyonlar)
 
@@ -257,7 +257,7 @@ Tam yapı: `Docs/04_BACKEND_SPEC.md` Klasör Yapısı.
 - [ ] Clearance: SENSITIVE vaka + NORMAL clearance → deny (unit/integration)
 - [ ] ABAC company scope spot-check
 - [ ] Backend enforcement frontend'ten bağımsız doğrulandı
-- [ ] PR squash merge → develop
+- [ ] PR squash merge → `main`
 
 ### Manual smoke test
 
