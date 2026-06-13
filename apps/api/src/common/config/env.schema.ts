@@ -41,6 +41,13 @@ const envInputSchema = z
     CRYPTO_LOCAL_KEK_DOCUMENT: z.string().optional(),
     AWS_KMS_KEY_ALIAS_FIELD: z.string().optional(),
     AWS_KMS_KEY_ALIAS_DOCUMENT: z.string().optional(),
+
+    OBJECT_STORAGE_PROVIDER: z.enum(['local', 's3']).default('local'),
+    AWS_REGION: z.string().default('eu-central-1'),
+    S3_BUCKET_QUARANTINE: z.string().optional(),
+
+    CLAMAV_HOST: z.string().optional(),
+    CLAMAV_TIMEOUT_MS: positiveInt.default(30_000),
   })
   .transform((input) => {
     const oidcIssuerUrl = input.OIDC_ISSUER_URL ?? input.OIDC_ISSUER;
@@ -85,6 +92,13 @@ const envInputSchema = z
       }
     }
 
+    const objectStorageProvider = input.OBJECT_STORAGE_PROVIDER;
+    if (objectStorageProvider === 's3' && !input.S3_BUCKET_QUARANTINE) {
+      throw new Error(
+        'Invalid environment configuration: S3_BUCKET_QUARANTINE is required when OBJECT_STORAGE_PROVIDER=s3',
+      );
+    }
+
     if (input.NODE_ENV === 'production' && cryptoKeyManagementProvider === 'local') {
       throw new Error(
         'Invalid environment configuration: CRYPTO_KEY_MANAGEMENT_PROVIDER=local is not allowed in production',
@@ -115,6 +129,11 @@ const envInputSchema = z
       CRYPTO_LOCAL_KEK_DOCUMENT: cryptoLocalKekDocument,
       AWS_KMS_KEY_ALIAS_FIELD: input.AWS_KMS_KEY_ALIAS_FIELD,
       AWS_KMS_KEY_ALIAS_DOCUMENT: input.AWS_KMS_KEY_ALIAS_DOCUMENT,
+      OBJECT_STORAGE_PROVIDER: objectStorageProvider,
+      AWS_REGION: input.AWS_REGION,
+      S3_BUCKET_QUARANTINE: input.S3_BUCKET_QUARANTINE,
+      CLAMAV_HOST: input.CLAMAV_HOST,
+      CLAMAV_TIMEOUT_MS: input.CLAMAV_TIMEOUT_MS,
     };
   });
 

@@ -24,6 +24,6 @@ import type { KeyManagementPort } from './key-management.port.js';
     },
     CryptoService,
   ],
-  exports: [CryptoService],
+  exports: [CryptoService, KEY_MANAGEMENT_PORT],
 })
 export class CryptoModule {}

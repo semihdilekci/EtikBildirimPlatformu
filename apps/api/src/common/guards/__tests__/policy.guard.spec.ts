@@ -1,5 +1,5 @@
 import { Controller, Get, HttpStatus, type INestApplication } from '@nestjs/common';
-import { APP_GUARD, Reflector } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD, Reflector } from '@nestjs/core';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { ClearanceLevel, ErrorCode, Role } from '@ethics/shared';
 import { PermissionCode } from '@ethics/policy';
@@ -10,6 +10,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Authenticated } from '../../decorators/authenticated.decorator.js';
 import { Public } from '../../decorators/public.decorator.js';
 import { RequirePolicy } from '../../decorators/require-policy.decorator.js';
+import { SafeLoggerService } from '../../../audit/safe-logger.service.js';
 import { GlobalExceptionFilter } from '../../filters/global-exception.filter.js';
 import { PolicyGuardService } from '../../../authorization/policy-guard.service.js';
 import { PolicyGuard } from '../policy.guard.js';
@@ -195,11 +196,15 @@ describe('PolicyGuard', () => {
           provide: APP_FILTER,
           useClass: GlobalExceptionFilter,
         },
+        {
+          provide: SafeLoggerService,
+          useValue: createSafeLoggerMock(),
+        },
       ],
     }).compile();
 
     app = moduleRef.createNestApplication();
-    app.useGlobalFilters(new GlobalExceptionFilter());
+    app.useGlobalFilters(new GlobalExceptionFilter(createSafeLoggerMock() as never));
 
     app.use((req: Request, _res: Response, next: NextFunction) => {
       req.user = { userId: 'missing-user' };
@@ -235,11 +240,15 @@ describe('PolicyGuard', () => {
           provide: APP_FILTER,
           useClass: GlobalExceptionFilter,
         },
+        {
+          provide: SafeLoggerService,
+          useValue: createSafeLoggerMock(),
+        },
       ],
     }).compile();
 
     app = moduleRef.createNestApplication();
-    app.useGlobalFilters(new GlobalExceptionFilter());
+    app.useGlobalFilters(new GlobalExceptionFilter(createSafeLoggerMock() as never));
 
     app.use((req: Request, _res: Response, next: NextFunction) => {
       req.user = { userId: 123 } as never;

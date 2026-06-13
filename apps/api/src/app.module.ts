@@ -16,6 +16,8 @@ import { CryptoModule } from './crypto/crypto.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { DevCryptoAuditModule } from './modules/dev-crypto-audit/dev-crypto-audit.module.js';
 import { HealthModule } from './modules/health/health.module.js';
+import { IntakeModule } from './modules/intake/intake.module.js';
+import { TrackingModule } from './modules/tracking/tracking.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 
 @Module({
@@ -63,6 +65,8 @@ import { PrismaModule } from './prisma/prisma.module.js';
     HealthModule,
     DevCryptoAuditModule,
     AuthModule,
+    IntakeModule,
+    TrackingModule,
     AuthorizationModule,
   ],
   providers: [

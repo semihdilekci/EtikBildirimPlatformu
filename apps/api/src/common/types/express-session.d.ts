@@ -24,6 +24,17 @@ declare global {
       companyName?: string | null;
       isGeneralSecretary?: boolean;
     }
+
+    interface Request {
+      trackingReport?: {
+        reportId: string;
+        trackingCode: string;
+        status: string;
+        submittedAt: Date;
+        lastActivityAt: Date | null;
+        companyId: string;
+      };
+    }
   }
 }
 

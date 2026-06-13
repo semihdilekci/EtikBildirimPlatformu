@@ -80,18 +80,18 @@ Mesajda **「Faz N — İterasyon M」** belirt. Kod öncesi `48-git-phase-branc
 | 1 DB + Auth | `51-phase-01-database-auth` | hazır |
 | 2 Authorization | `52-phase-02-authorization` | hazır |
 | 3 Crypto + Audit | `53-phase-03-crypto-audit` | hazır |
-| 4 Intake + Tracking | `54-phase-04-intake-tracking` | phase-creator ile üretilecek |
-| 5 Case + Workflow | `55-phase-05-case-workflow` | phase-creator ile üretilecek |
-| 6 Task + SLA | `56-phase-06-task-sla` | phase-creator ile üretilecek |
-| 7 Document | `57-phase-07-document` | phase-creator ile üretilecek |
-| 8 Notification | `58-phase-08-notification` | phase-creator ile üretilecek |
-| 9 Admin Panel | `59-phase-09-admin` | phase-creator ile üretilecek |
-| 10 Dashboard + Polish | `60-phase-10-dashboard-polish` | phase-creator ile üretilecek |
-| 11 Performance | `61-phase-11-performance` | phase-creator ile üretilecek |
-| 12 Security Hardening | `62-phase-12-security-hardening` | phase-creator ile üretilecek |
-| 13 UAT + Go-Live | `63-phase-13-uat-go-live` | phase-creator ile üretilecek |
+| 4 Intake + Tracking | `54-phase-04-intake-tracking` | hazır |
+| 5 Case + Workflow | `55-phase-05-case-workflow` | hazır |
+| 6 Task + SLA | `56-phase-06-task-sla` | hazır |
+| 7 Document | `57-phase-07-document` | hazır |
+| 8 Notification | `58-phase-08-notification` | hazır |
+| 9 Admin Panel | `59-phase-09-admin` | hazır |
+| 10 Dashboard + Polish | `60-phase-10-dashboard-polish` | hazır |
+| 11 Performance | `61-phase-11-performance` | hazır |
+| 12 Security Hardening | `62-phase-12-security-hardening` | hazır |
+| 13 UAT + Go-Live | `63-phase-13-uat-go-live` | hazır |
 
-Faz `.mdc` üretimi: **`phase-creator` skill** — `@phase-creator Faz 0` ile başla.
+Faz `.mdc` paketi tamamlandı (Faz 0–13). Yeni faz için `@phase-creator`.
 
 ---
 

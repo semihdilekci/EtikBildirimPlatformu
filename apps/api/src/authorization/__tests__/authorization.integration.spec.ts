@@ -8,6 +8,7 @@ import request from 'supertest';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { RequirePolicy } from '../../common/decorators/require-policy.decorator.js';
+import { SafeLoggerService } from '../../audit/safe-logger.service.js';
 import { GlobalExceptionFilter } from '../../common/filters/global-exception.filter.js';
 import { PolicyGuardService } from '../policy-guard.service.js';
 import { PolicyGuard } from '../../common/guards/policy.guard.js';
@@ -130,6 +131,16 @@ function buildUser(role: Role, clearanceLevel: ClearanceLevel): AuthenticatedUse
   };
 }
 
+function createSafeLoggerMock() {
+  return {
+    debug: () => undefined,
+    info: () => undefined,
+    warn: () => undefined,
+    error: () => undefined,
+    fatal: () => undefined,
+  };
+}
+
 describe('Authorization integration (endpoint × rol matrisi)', () => {
   let app: INestApplication;
 
@@ -164,11 +175,15 @@ describe('Authorization integration (endpoint × rol matrisi)', () => {
           provide: APP_FILTER,
           useClass: GlobalExceptionFilter,
         },
+        {
+          provide: SafeLoggerService,
+          useValue: createSafeLoggerMock(),
+        },
       ],
     }).compile();
 
     app = moduleRef.createNestApplication();
-    app.useGlobalFilters(new GlobalExceptionFilter());
+    app.useGlobalFilters(new GlobalExceptionFilter(createSafeLoggerMock() as never));
 
     app.use((req: Request, _res: Response, next: NextFunction) => {
       req.user = { userId: activeUser.id };

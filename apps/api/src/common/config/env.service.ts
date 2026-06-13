@@ -107,4 +107,24 @@ export class EnvService {
   get awsKmsKeyAliasDocument(): string | undefined {
     return this.config.AWS_KMS_KEY_ALIAS_DOCUMENT;
   }
+
+  get objectStorageProvider(): EnvConfig['OBJECT_STORAGE_PROVIDER'] {
+    return this.config.OBJECT_STORAGE_PROVIDER;
+  }
+
+  get awsRegion(): string {
+    return this.config.AWS_REGION;
+  }
+
+  get objectStorageQuarantineBucket(): string {
+    return this.config.S3_BUCKET_QUARANTINE ?? 'local-quarantine-bucket';
+  }
+
+  get clamavHost(): string | undefined {
+    return this.config.CLAMAV_HOST;
+  }
+
+  get clamavTimeoutMs(): number {
+    return this.config.CLAMAV_TIMEOUT_MS;
+  }
 }

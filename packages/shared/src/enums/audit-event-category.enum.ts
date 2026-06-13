@@ -6,6 +6,7 @@ export const AuditEventCategory = {
   CONFIG: 'CONFIG',
   TRACKING: 'TRACKING',
   SYSTEM: 'SYSTEM',
+  INTAKE: 'INTAKE',
 } as const;
 
 export type AuditEventCategoryCode = (typeof AuditEventCategory)[keyof typeof AuditEventCategory];

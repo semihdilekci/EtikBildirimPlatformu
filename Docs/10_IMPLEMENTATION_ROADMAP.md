@@ -488,6 +488,8 @@ Session'lara bölünmeli — tek session'da yazılamaz:
 
 ### Faz 4 — Intake + Tracking (Dış Form + Anonim Takip)
 
+- **Durum:** tamamlandı (Human Gate onayı developer merge öncesi)
+
 #### Kapsam
 
 **Backend:**
@@ -564,9 +566,29 @@ Session'lara bölünmeli — tek session'da yazılamaz:
 
 10–14 agent session (~6–8 gün developer time).
 
+#### Cursor faz kuralı
+
+- **Rule:** `.cursor/rules/54-phase-04-intake-tracking.mdc`
+- **Branch:** `feature/F4-intake-tracking` (`48-git-phase-branch.mdc`)
+- **Durum:** tamamlandı (İterasyon 7 — coverage + E2E journey green; Human Gate merge öncesi)
+
+#### İterasyon planı (agent)
+
+| #   | Hedef                                                                                    | Stop                                                                 |
+| --- | ---------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| 1   | Intake backend: report create, encrypt, tracking code, KVKK consent                      | Integration test; ciphertext DB; argon2id hash                       |
+| 2   | Tracking backend: TrackingGuard, session-less verify/status, brute-force                 | Set-Cookie absent; lockout test green                               |
+| 3   | Presigned upload + quarantine + async ClamAV scan job                                    | Presigned pattern; REJECTED integration test                         |
+| 4   | Frontend S-REPORT-FORM wizard + S-REPORT-SUCCESS                                         | Wizard E2E smoke; KVKK version submit                                |
+| 5   | Frontend S-TRACKING-LOGIN + S-TRACKING-STATUS                                            | Header auth; localStorage yok                                        |
+| 6   | Secure messaging API + S-TRACKING-MESSAGES UI                                            | Mesaj encrypt; thread smoke                                          |
+| 7   | E2E journey + intake/tracking ≥%80 coverage + human gate                                 | CI green; Human Gate checklist — tamamlandı                          |
+
 ---
 
 ### Faz 5 — Case Management + Workflow Engine
+
+- **Durum:** planlandı (Cursor faz kuralı hazır)
 
 #### Kapsam
 
@@ -640,9 +662,30 @@ Session'lara bölünmeli — tek session'da yazılamaz:
 
 12–18 agent session (~7–10 gün developer time). En karmaşık domain fazı.
 
+#### Cursor faz kuralı
+
+- **Rule:** `.cursor/rules/55-phase-05-case-workflow.mdc`
+- **Branch:** `feature/F5-case-workflow` (`48-git-phase-branch.mdc`)
+- **Durum:** planlandı
+
+#### İterasyon planı (agent)
+
+| #   | Hedef                                                                                    | Stop                                                                 |
+| --- | ---------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| 1   | Prisma `cases` + `case_transitions`; append-only trigger                                 | Migration; append-only test green                                    |
+| 2   | WorkflowCommandHandler pattern; TRANSITION_MAP; transaction iskeleti                     | Invalid transition reject; tek tx                                   |
+| 3   | Aşama 1 geçişleri + transition API                                                       | Matrix test aşama 1; idempotency                                   |
+| 4   | Aşama 2 geçişleri (raportör döngüsü, üye onay); confidentiality update                   | Raportör döngüsü test                                                |
+| 5   | Aşama 3 + 4 geçişleri (HYKB, uygulama, aksiyon, arşiv)                                   | 17 state map tam; veto/aksiyon test                                  |
+| 6   | Case CRUD + ABAC scoping + FieldMasking                                                  | Scope + concurrent 409 test                                          |
+| 7   | Frontend S-CASE-LIST + S-CASE-DETAIL                                                     | Timeline + transition dialog smoke                                   |
+| 8   | Transition matrix ≥8 tip/geçiş + E2E aşama 1 + human gate                                  | workflow coverage ≥%90; CI green                                     |
+
 ---
 
 ### Faz 6 — Task Management + SLA + Decision
+
+- **Durum:** planlandı (Cursor faz kuralı hazır)
 
 #### Kapsam
 
@@ -710,9 +753,28 @@ Session'lara bölünmeli — tek session'da yazılamaz:
 
 10–14 agent session (~6–8 gün developer time).
 
+#### Cursor faz kuralı
+
+- **Rule:** `.cursor/rules/56-phase-06-task-sla.mdc`
+- **Branch:** `feature/F6-task-sla` (`48-git-phase-branch.mdc`)
+- **Durum:** planlandı
+
+#### İterasyon planı (agent)
+
+| #   | Hedef                                                                                    | Stop                                                                 |
+| --- | ---------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| 1   | Task CRUD + lifecycle; transition side-effect; complete → case transition                | 11 task type; side-effect integration test                           |
+| 2   | SLA engine (business days, tatil, yarım gün); `sla_due_at`                               | Tatil atlanır integration test                                       |
+| 3   | Delegation + TaskEvent append-only                                                       | Yeni task + DELEGATED; append-only test                              |
+| 4   | DecisionVote + unanimity + 24h sessiz kabul worker cron                                  | Fake clock 24h test; interval yok                                    |
+| 5   | Frontend S-TASK-LIST + S-TASK-DETAIL (SLA badge)                                         | 3 tab + badge renkleri smoke                                         |
+| 6   | E2E + task/SLA/decision ≥%90 coverage + human gate                                       | CI green; Human Gate tamam                                           |
+
 ---
 
 ### Faz 7 — Document Management
+
+- **Durum:** planlandı (Cursor faz kuralı hazır)
 
 #### Kapsam
 
@@ -779,9 +841,28 @@ Session'lara bölünmeli — tek session'da yazılamaz:
 
 8–12 agent session (~5–7 gün developer time).
 
+#### Cursor faz kuralı
+
+- **Rule:** `.cursor/rules/57-phase-07-document.mdc`
+- **Branch:** `feature/F7-document` (`48-git-phase-branch.mdc`)
+- **Durum:** planlandı
+
+#### İterasyon planı (agent)
+
+| #   | Hedef                                              | Stop                                      |
+| --- | -------------------------------------------------- | ----------------------------------------- |
+| 1   | Document entity + presigned upload + quarantine    | Relay yok; PENDING_SCAN                   |
+| 2   | Per-document envelope encryption                   | Encrypt/decrypt roundtrip                 |
+| 3   | DocumentAccessGrant + DocumentPolicy               | Grant yok → 403                           |
+| 4   | Malware scan worker + timeout → REJECTED           | Async scan integration                    |
+| 5   | Case detail doküman sekmesi UI                     | Upload + download smoke                   |
+| 6   | document modülü ≥%90 + human gate                  | CI green                                  |
+
 ---
 
 ### Faz 8 — Notification System
+
+- **Durum:** planlandı (Cursor faz kuralı hazır)
 
 #### Kapsam
 
@@ -863,9 +944,28 @@ Session'lara bölünmeli — tek session'da yazılamaz:
 
 8–12 agent session (~5–7 gün developer time).
 
+#### Cursor faz kuralı
+
+- **Rule:** `.cursor/rules/58-phase-08-notification.mdc`
+- **Branch:** `feature/F8-notification` (`48-git-phase-branch.mdc`)
+- **Durum:** planlandı
+
+#### İterasyon planı (agent)
+
+| #   | Hedef                                              | Stop                                      |
+| --- | -------------------------------------------------- | ----------------------------------------- |
+| 1   | Notifications schema + service + 28 template seed  | API integration                           |
+| 2   | Outbox + worker dispatch + dead letter             | Fail-closed tx                            |
+| 3   | SMTP Mailpit + içeriksiz şablonlar                 | Body'de hassas veri yok                   |
+| 4   | Event triggers (task, case, SLA, vote, …)          | Transition → notification                 |
+| 5   | Cron jobs (SLA, sessiz kabul, chain, retention)    | legal_hold purge skip                     |
+| 6   | NotificationBell + S-NOTIFICATION-CENTER           | 30s polling; Human Gate                   |
+
 ---
 
 ### Faz 9 — Admin Panel
+
+- **Durum:** planlandı (Cursor faz kuralı hazır)
 
 #### Kapsam
 
@@ -952,9 +1052,32 @@ Session'lara bölünmeli — tek session'da yazılamaz:
 
 12–16 agent session (~7–10 gün developer time). En hacimli UI fazı.
 
+#### Cursor faz kuralı
+
+- **Rule:** `.cursor/rules/59-phase-09-admin.mdc`
+- **Branch:** `feature/F9-admin` (`48-git-phase-branch.mdc`)
+- **Durum:** planlandı
+
+#### İterasyon planı (agent)
+
+| #   | Hedef                                              | Stop                                      |
+| --- | -------------------------------------------------- | ----------------------------------------- |
+| 1   | User/role/clearance admin CRUD                     | Normal user → 403                         |
+| 2   | Master data generic CRUD                           | Per-type integration                      |
+| 3   | System settings + maker-checker backend            | maker=checker → reject                    |
+| 4   | Field visibility + action matrix API               | Matrix update path                        |
+| 5   | SLA policies + business calendar admin             | Tatil → SLA etkisi                        |
+| 6   | Notification templates + KVKK texts API            | KVKK publish flow                         |
+| 7   | Audit viewer + document-ops + system-health BE     | CSV async; redacted audit                 |
+| 8   | Frontend AdminLayout + user screens                | Admin URL guard                           |
+| 9   | Frontend config screens                            | Maker-checker UI smoke                    |
+| 10  | Frontend monitoring + human gate                   | CI green                                  |
+
 ---
 
 ### Faz 10 — Dashboard + Error Pages + Polish
+
+- **Durum:** planlandı (Cursor faz kuralı hazır)
 
 #### Kapsam
 
@@ -1010,9 +1133,27 @@ Session'lara bölünmeli — tek session'da yazılamaz:
 
 6–10 agent session (~4–6 gün developer time).
 
+#### Cursor faz kuralı
+
+- **Rule:** `.cursor/rules/60-phase-10-dashboard-polish.mdc`
+- **Branch:** `feature/F10-dashboard-polish` (`48-git-phase-branch.mdc`)
+- **Durum:** planlandı
+
+#### İterasyon planı (agent)
+
+| #   | Hedef                                              | Stop                                      |
+| --- | -------------------------------------------------- | ----------------------------------------- |
+| 1   | Dashboard summary API + session revoke             | No plaintext content in response          |
+| 2   | S-DASHBOARD widgets (parallel, permission-gated)   | Widget isolation                          |
+| 3   | Sidebar + topbar finalizasyon                      | PermissionGate menu                       |
+| 4   | Error pages + session expired modal                | No stack trace prod                       |
+| 5   | KVKK consent modal + UI polish + human gate        | Blocking modal; Human Gate                |
+
 ---
 
 ### Faz 11 — Performance + Load Test
+
+- **Durum:** planlandı (Cursor faz kuralı hazır)
 
 #### Kapsam
 
@@ -1052,9 +1193,26 @@ Session'lara bölünmeli — tek session'da yazılamaz:
 
 5–8 session (~3–5 gün developer time). İterasyon yoğun — her fix sonrası load test yeniden çalıştır.
 
+#### Cursor faz kuralı
+
+- **Rule:** `.cursor/rules/61-phase-11-performance.mdc`
+- **Branch:** `feature/F11-performance` (`48-git-phase-branch.mdc`)
+- **Durum:** planlandı
+
+#### İterasyon planı (agent)
+
+| #   | Hedef                                              | Stop                                      |
+| --- | -------------------------------------------------- | ----------------------------------------- |
+| 1   | Lighthouse CI PR gate                              | perf ≥80, a11y ≥90                        |
+| 2   | Bundle analysis + route splitting                  | <200 KB gzipped initial                   |
+| 3   | DB query review + indexes                          | EXPLAIN hot paths                         |
+| 4   | k6 load test + fixes + human gate                  | P95 <500 ms; 0 critical errors            |
+
 ---
 
 ### Faz 12 — Security Hardening + Penetration Test
+
+- **Durum:** planlandı (Cursor faz kuralı hazır)
 
 #### Kapsam
 
@@ -1103,9 +1261,27 @@ Session'lara bölünmeli — tek session'da yazılamaz:
 
 8–15 session (pen-test raporuna bağlı). ~5–10 gün developer time.
 
+#### Cursor faz kuralı
+
+- **Rule:** `.cursor/rules/62-phase-12-security-hardening.mdc`
+- **Branch:** `feature/F12-security-hardening` (`48-git-phase-branch.mdc`)
+- **Durum:** planlandı
+
+#### İterasyon planı (agent)
+
+| #   | Hedef                                              | Stop                                      |
+| --- | -------------------------------------------------- | ----------------------------------------- |
+| 1   | SAST/SCA/container scan → 0 HIGH/CRITICAL          | CI security green                         |
+| 2   | OWASP ZAP + DAST staging                           | Critical remediated                       |
+| 3   | CSP nonce-based hardening                          | No unsafe-inline                          |
+| 4   | Secret rotation + backup restore drills            | Staging drill success                     |
+| 5   | Runbooks 15+ + pen-test remediation + human gate   | Human sign-off                            |
+
 ---
 
 ### Faz 13 — UAT + Go-Live
+
+- **Durum:** planlandı (Cursor faz kuralı hazır)
 
 #### Kapsam
 
@@ -1159,6 +1335,22 @@ Session'lara bölünmeli — tek session'da yazılamaz:
 #### Tahmini İterasyon
 
 10–20 session (UAT bug count'a bağlı). ~7–15 gün developer time.
+
+#### Cursor faz kuralı
+
+- **Rule:** `.cursor/rules/63-phase-13-uat-go-live.mdc`
+- **Branch:** `feature/F13-uat-go-live` (`48-git-phase-branch.mdc`)
+- **Durum:** planlandı
+
+#### İterasyon planı (agent)
+
+| #   | Hedef                                              | Stop                                      |
+| --- | -------------------------------------------------- | ----------------------------------------- |
+| 1   | Production IaC apply (BG onaylı)                   | IaC success                               |
+| 2   | Prod config/secrets/seed + monitoring              | No dev seed on prod                       |
+| 3   | UAT execution (sentetik veri)                      | Scenario checklist                        |
+| 4   | UAT bug fixes                                      | Blockers closed                           |
+| 5   | Soft launch + full rollout + human gate            | Production live; UAT sign-off             |
 
 ---
 

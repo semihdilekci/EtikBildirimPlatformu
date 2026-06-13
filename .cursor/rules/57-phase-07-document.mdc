@@ -1,0 +1,296 @@
+---
+description: '[Faz 7] Document Management — 6 iterasyon/chat (entity+upload → encryption → grant/policy → scan worker → UI → test+gate). Mesajda "Faz 7 — İterasyon M" belirt.'
+---
+
+# Faz 7: Document Management
+
+## Goal
+
+Doküman yaşam döngüsü kurulur: presigned upload → client PUT → meta kayıt → quarantine → async ClamAV → AVAILABLE/REJECTED. Per-document envelope encryption (`CryptoService` + KMS adapter). `DocumentAccessGrant` — vaka erişimi doküman erişimi değildir. Download kısa ömürlü presigned URL (TTL 5 dk). `DocumentVersion` append-only; yeni upload yeni versiyon. Case detail doküman sekmesi + `<FileViewer>`.
+
+Detay: `Docs/10_IMPLEMENTATION_ROADMAP.md` §Faz 7.
+
+**Bağımlılık:** Faz 3 (`CryptoService`, envelope iskeleti), Faz 5 (case entity), Faz 6 (task precondition). Faz 4 intake attachment pattern ile uyumlu presigned flow.
+
+## Feature branch (zorunlu)
+
+Faz koduna **main üzerinde başlanmaz**. İlk commit/dosya değişikliği öncesi `48-git-phase-branch.mdc` uygula.
+
+**Bu faz branch adı:** `feature/F7-document`
+
+**Stop (İterasyon 1, kod öncesi):** [ ] Faz 5–6 `main`'e merge edilmiş; [ ] faz branch oluşturuldu; [ ] `git push -u origin HEAD` (remote varsa).
+
+## Bu fazın çalışma modeli (iterasyonlar)
+
+Tek sohbette tamamlanmaz. Her session: `@57-phase-07-document` + mesajda **「Faz 7 — İterasyon M」**. Branch açmadan kod yok.
+
+---
+
+### İterasyon 1 — Document Entity + Upload Flow
+
+**Hedef:** Prisma schema; presigned URL upload; meta kayıt; quarantine PENDING_SCAN state.
+
+**Yapılacaklar:**
+
+1. Prisma migration: `documents`, `document_versions` (`02` §Document Management)
+2. Document category enum — 13 kategori (`01` §Document)
+3. `apps/api/src/modules/document/` — module, controller, service iskeleti
+4. Presigned URL üretimi → client PUT doğrudan storage'a (backend relay yok)
+5. `POST /api/v1/cases/:id/documents` — meta kayıt; scan_status PENDING_SCAN
+6. MIME + uzantı whitelist; boyut limiti (tek 50 MB, toplam 200 MB — `system_settings`)
+7. `@AuditAction` mutating endpoint'lerde; audit outbox aynı tx
+8. Integration test: presigned flow mock; unsupported MIME → 400
+
+**Minimum bağlam:**
+
+- `Docs/03_API_CONTRACTS.md` §8.6 Documents
+- `Docs/02_DATABASE_SCHEMA.md` — documents, document_versions
+- `Docs/01_DOMAIN_MODEL.md` — Document entity
+- `Docs/07_SECURITY_IMPLEMENTATION.md` §5.2
+- `.cursor/rules/14-backend-controllers.mdc`
+
+**Bu iterasyonda yok:** Envelope encryption, grant model, worker scan, frontend UI.
+
+**Stop:** [ ] Presigned pattern (relay yok); [ ] quarantine state; [ ] MIME reject test. PR/onay → İterasyon 2.
+
+---
+
+### İterasyon 2 — Per-Document Envelope Encryption
+
+**Hedef:** S3'te encrypted blob; upload encrypt; download decrypt via `CryptoService.encryptDocument`.
+
+**Yapılacaklar:**
+
+1. Upload path: DEK üret → envelope wrap (KMS adapter) → encrypted PUT
+2. Download path: presigned URL öncesi decrypt stream (backend metadata only — file via presigned)
+3. `document_versions` — wrapped_dek, encryption metadata alanları
+4. Unit test: encrypt→decrypt roundtrip; tampered ciphertext fail
+5. Integration test: S3 mock'ta ciphertext; plaintext storage yok
+
+**Minimum bağlam:**
+
+- `Docs/07_SECURITY_IMPLEMENTATION.md` §8 Encryption
+- `Docs/04_BACKEND_SPEC.md` — crypto.service, document upload pattern
+- `.cursor/rules/16-audit-crypto.mdc`
+
+**Bu iterasyonda yok:** Grant policy, worker scan, frontend.
+
+**Stop:** [ ] Roundtrip integration test; [ ] doğrudan `crypto` import yok (CryptoService only). PR/onay → İterasyon 3.
+
+---
+
+### İterasyon 3 — DocumentAccessGrant + DocumentPolicy
+
+**Hedef:** Grant zorunluluğu; holding seviyesi rol yetmez; clearance + rol check.
+
+**Yapılacaklar:**
+
+1. Prisma migration: `document_access_grants`
+2. `document-access.service.ts` — grant CRUD (transition side-effect ile otomatik grant)
+3. `DocumentPolicyService` — grant + clearance + rol üçlü kontrol
+4. `GET /api/v1/documents/:id/download` — presigned URL TTL 5 dk; grant yok → 403
+5. Yetkisiz erişim → 404 (bilgi sızıntısı önleme)
+6. Integration test: case erişimi var, grant yok → download deny
+
+**Minimum bağlam:**
+
+- `Docs/07_SECURITY_IMPLEMENTATION.md` §3.7 Doküman Erişim Politikası
+- `Docs/04_BACKEND_SPEC.md` — document-policy.service, document-access.service
+- `.cursor/rules/12-authorization-policy.mdc`
+
+**Bu iterasyonda yok:** Malware worker, frontend.
+
+**Stop:** [ ] Grant olmadan 403/404; [ ] TTL 5 dk assertion. PR/onay → İterasyon 4.
+
+---
+
+### İterasyon 4 — Malware Scan Worker
+
+**Hedef:** `malware-scan.job.ts` async ClamAV; timeout → REJECTED; infected download blocked.
+
+**Yapılacaklar:**
+
+1. `apps/worker/src/jobs/malware-scan.job.ts` — quarantine poll → ClamAV instream
+2. Temiz → AVAILABLE; enfekte → REJECTED (quarantine'de kalır)
+3. Scan timeout handling — stuck PENDING_SCAN → REJECTED after threshold
+4. REJECTED state download engeli
+5. Integration test: clean file → AVAILABLE; eicar test file → REJECTED
+
+**Minimum bağlam:**
+
+- `Docs/04_BACKEND_SPEC.md` — worker jobs, malware-scan
+- `Docs/07_SECURITY_IMPLEMENTATION.md` §5.2 ClamAV
+- Faz 4 clamav-scan pattern (intake) — reuse worker infra
+
+**Bu iterasyonda yok:** Frontend, admin document-ops monitor (Faz 9).
+
+**Stop:** [ ] Async scan (sync upload path'te yok); [ ] timeout → REJECTED test. PR/onay → İterasyon 5.
+
+---
+
+### İterasyon 5 — Frontend Doküman UI
+
+**Hedef:** Case detail doküman sekmesi; upload progress; quarantine badge; FileViewer download.
+
+**Yapılacaklar:**
+
+1. S-CASE-DETAIL doküman sekmesi — liste + upload + versiyon gösterimi
+2. `<FileViewer>` — presigned download butonu; grant yoksa disabled/hidden
+3. Upload progress indicator; quarantine/scan status badge (PENDING_SCAN, AVAILABLE, REJECTED)
+4. Yeni versiyon upload → version_number artışı UI'da görünür
+5. Error code mapping; toast TR mesajları
+
+**Minimum bağlam:**
+
+- `Docs/06_SCREEN_CATALOG.md` — S-CASE-DETAIL doküman sekmesi
+- `Docs/05_FRONTEND_SPEC.md` — file upload component pattern
+- `.cursor/rules/24-frontend-components.mdc`
+
+**Bu iterasyonda yok:** S-ADMIN-DOCUMENT-OPS (Faz 9).
+
+**Stop:** [ ] Upload + download smoke; [ ] REJECTED badge görünür. PR/onay → İterasyon 6.
+
+---
+
+### İterasyon 6 — Coverage, Integration & Human Gate
+
+**Hedef:** document modülü ≥%90 coverage; human gate checklist.
+
+**Yapılacaklar:**
+
+1. Integration: upload → quarantine → scan → AVAILABLE full pipeline
+2. Integration: grant deny, encryption roundtrip, version append-only
+3. Negatif: infected file, grant bypass attempt, oversize file
+4. Coverage gate: document modülü ≥%90 line
+5. Human Gate checklist (`Docs/10` §Faz 7 Human Gate)
+
+**Minimum bağlam:**
+
+- `Docs/08_TESTING_STRATEGY.md` — document modülü test senaryoları
+- `Docs/09_DEV_WORKFLOW.md` §8 CI
+- `Docs/10_IMPLEMENTATION_ROADMAP.md` §Faz 7 Deliverable, Vibe Coding Risk
+
+**Bu iterasyonda yok:** Admin monitoring UI (Faz 9).
+
+**Stop:** [ ] document coverage ≥%90; [ ] CI green; [ ] Human Gate tamam. Faz 7 Done.
+
+---
+
+## Required Context
+
+- `Docs/01_DOMAIN_MODEL.md` — Document, DocumentVersion, grant model
+- `Docs/02_DATABASE_SCHEMA.md` — documents, document_versions, document_access_grants
+- `Docs/03_API_CONTRACTS.md` §8.6 Documents
+- `Docs/04_BACKEND_SPEC.md` — document/ modülü, worker jobs
+- `Docs/06_SCREEN_CATALOG.md` — S-CASE-DETAIL doküman sekmesi
+- `Docs/07_SECURITY_IMPLEMENTATION.md` §3.7, §5.2, §8
+- `Docs/08_TESTING_STRATEGY.md` — document encryption, grant, scan
+- `Docs/10_IMPLEMENTATION_ROADMAP.md` §Faz 7
+
+Auto-attached glob rules: `16-audit-crypto`, `12-authorization-policy`, `14-backend-controllers`, `15-database-prisma`, `03-security-baseline`, `04-quality-gates`
+
+## Scope
+
+```
+apps/api/src/modules/document/   document.module, controller, service,
+                                 document-access.service, document-policy.service
+apps/worker/src/jobs/            malware-scan.job.ts
+apps/web/src/features/documents/ FileViewer, case detail document tab
+apps/api/prisma/migrations/      documents, document_versions, document_access_grants
+packages/dto/                    document upload/download schemas
+packages/shared/                 DocumentCategory enum
+```
+
+Tam yapı: `Docs/04_BACKEND_SPEC.md` Klasör Yapısı.
+
+### Files NOT touched
+
+- Intake report attachments (Faz 4 — ayrı flow, pattern paylaşımı OK)
+- Admin document-ops monitor — Faz 9
+- Notification on document events — Faz 8 (event stub OK)
+
+## Constraints
+
+### Use
+
+- Presigned URL upload — client → storage direct
+- `CryptoService.encryptDocument` / decrypt — per-document DEK
+- DocumentAccessGrant ayrı model — case access ≠ doc access
+- Download presigned TTL 5 dk
+- DocumentVersion append-only
+- Async ClamAV worker — sync scan yok
+- `@RequirePolicy` + DocumentPolicyService tüm download'larda
+
+### Avoid
+
+- Backend file relay upload/download
+- Case visibility = document visibility
+- Encryption "later" skip
+- Sync ClamAV on request path
+- Grant bypass for holding-level roles
+- document_versions UPDATE (yeni versiyon = yeni kayıt)
+
+## Done Definition
+
+### Upload & Scan
+
+- [ ] Presigned upload flow çalışıyor
+- [ ] Quarantine → async scan → AVAILABLE/REJECTED
+- [ ] Enfekte dosya indirilemiyor
+- [ ] MIME/uzantı whitelist + boyut limiti
+
+### Encryption & Grant
+
+- [ ] S3'te encrypted storage
+- [ ] Grant olmadan download deny
+- [ ] Download TTL 5 dk
+- [ ] Version 2 upload → version 1 korunur
+
+### Frontend
+
+- [ ] Case detail doküman sekmesi
+- [ ] FileViewer + status badges
+
+### Test & Coverage
+
+- [ ] document modülü ≥%90
+- [ ] CI green
+
+### Human Gate
+
+- [ ] Presigned pattern spot-check
+- [ ] Grant zorunluluğu integration test
+- [ ] PR squash merge → `main`
+
+### Manual smoke test
+
+```bash
+pnpm dev
+# Case detail → upload → quarantine badge → scan → AVAILABLE → download
+# Grant revoke → download 403
+pnpm --filter @ethics/worker start  # malware-scan job
+```
+
+## Explicit Don'ts
+
+- Case erişimi = doküman erişimi
+- Backend download/upload relay
+- Sync ClamAV on upload
+- CryptoService bypass / encryption later
+- document_versions mutation
+- Plaintext in S3/logs
+- `main`'e direct push
+
+## Kısıtlar & Riskler
+
+| Risk | Önlem |
+| --- | --- |
+| Agent case=doc access | Grant integration test İterasyon 3 |
+| Agent backend relay download | Presigned-only Done Definition |
+| Agent encryption skip | CryptoService zorunlu; Faz 3 dependency |
+| Agent ClamAV timeout unhandled | Timeout → REJECTED test İterasyon 4 |
+| Agent sync scan | Worker-only scan; upload returns PENDING_SCAN |
+
+---
+
+Phase done → `Docs/10_IMPLEMENTATION_ROADMAP.md` Faz 7 durumunu güncelle.

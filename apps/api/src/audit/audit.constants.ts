@@ -35,6 +35,7 @@ export const AUDIT_EVENT_CATEGORY_BY_TYPE: Record<AuditEventTypeCode, AuditEvent
   [AuditEventType.SYSTEM_SETTING_CHANGED]: AuditEventCategory.CONFIG,
   [AuditEventType.TRACKING_VERIFY_ATTEMPT]: AuditEventCategory.TRACKING,
   [AuditEventType.TRACKING_AUTH_FAILED]: AuditEventCategory.TRACKING,
+  [AuditEventType.SECURE_MESSAGE_READ]: AuditEventCategory.TRACKING,
   [AuditEventType.SECURE_MESSAGE_SENT]: AuditEventCategory.TRACKING,
   [AuditEventType.FIELD_VISIBILITY_CHANGED]: AuditEventCategory.CONFIG,
   [AuditEventType.ACTION_MATRIX_CHANGED]: AuditEventCategory.CONFIG,
@@ -43,6 +44,9 @@ export const AUDIT_EVENT_CATEGORY_BY_TYPE: Record<AuditEventTypeCode, AuditEvent
   [AuditEventType.SSO_LOGOUT_SUCCESS]: AuditEventCategory.AUTH,
   [AuditEventType.AUTHZ_DENIED]: AuditEventCategory.AUTHZ,
   [AuditEventType.AUDIT_LOG_VIEWED]: AuditEventCategory.SYSTEM,
+  [AuditEventType.REPORT_SUBMITTED]: AuditEventCategory.INTAKE,
+  [AuditEventType.REPORT_ATTACHMENT_UPLOADED]: AuditEventCategory.INTAKE,
+  [AuditEventType.TRACKING_ATTACHMENT_UPLOADED]: AuditEventCategory.TRACKING,
 };
 
 export const AUDIT_EVENT_DEFAULT_SEVERITY: Record<AuditEventTypeCode, AuditSeverityCode> = {
@@ -56,6 +60,7 @@ export const AUDIT_EVENT_DEFAULT_SEVERITY: Record<AuditEventTypeCode, AuditSever
   [AuditEventType.SYSTEM_SETTING_CHANGED]: AuditSeverity.HIGH,
   [AuditEventType.TRACKING_VERIFY_ATTEMPT]: AuditSeverity.INFO,
   [AuditEventType.TRACKING_AUTH_FAILED]: AuditSeverity.WARN,
+  [AuditEventType.SECURE_MESSAGE_READ]: AuditSeverity.INFO,
   [AuditEventType.SECURE_MESSAGE_SENT]: AuditSeverity.INFO,
   [AuditEventType.FIELD_VISIBILITY_CHANGED]: AuditSeverity.HIGH,
   [AuditEventType.ACTION_MATRIX_CHANGED]: AuditSeverity.HIGH,
@@ -64,4 +69,7 @@ export const AUDIT_EVENT_DEFAULT_SEVERITY: Record<AuditEventTypeCode, AuditSever
   [AuditEventType.SSO_LOGOUT_SUCCESS]: AuditSeverity.INFO,
   [AuditEventType.AUTHZ_DENIED]: AuditSeverity.WARN,
   [AuditEventType.AUDIT_LOG_VIEWED]: AuditSeverity.INFO,
+  [AuditEventType.REPORT_SUBMITTED]: AuditSeverity.INFO,
+  [AuditEventType.REPORT_ATTACHMENT_UPLOADED]: AuditSeverity.INFO,
+  [AuditEventType.TRACKING_ATTACHMENT_UPLOADED]: AuditSeverity.INFO,
 };
