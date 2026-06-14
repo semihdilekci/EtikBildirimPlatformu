@@ -2,7 +2,13 @@ export const MAX_SINGLE_FILE_BYTES = 50 * 1024 * 1024;
 
 export const MAX_TOTAL_REPORT_ATTACHMENT_BYTES = 200 * 1024 * 1024;
 
+/** Vaka başına toplam doküman boyutu — system_settings ile hizalı MVP sabiti */
+export const MAX_TOTAL_CASE_DOCUMENT_BYTES = 200 * 1024 * 1024;
+
 export const PRESIGNED_UPLOAD_TTL_SECONDS = 300;
+
+/** Doküman indirme presigned URL TTL — Docs/03 §8.6 (5 dk) */
+export const PRESIGNED_DOWNLOAD_TTL_SECONDS = 300;
 
 export type AllowedUploadRule = {
   readonly extension: string;

@@ -22,6 +22,8 @@ export const ROLE_PERMISSION_MAP: Readonly<Record<RoleCode, ReadonlySet<Permissi
     PermissionCode.TASK_DELEGATE,
     PermissionCode.SECURE_MESSAGE_READ,
     PermissionCode.SECURE_MESSAGE_WRITE,
+    PermissionCode.NOTIFICATION_LIST,
+    PermissionCode.NOTIFICATION_MARK_READ,
     PermissionCode.AUTH_SESSION_READ,
   ]),
 
@@ -35,6 +37,8 @@ export const ROLE_PERMISSION_MAP: Readonly<Record<RoleCode, ReadonlySet<Permissi
     PermissionCode.TASK_LIST,
     PermissionCode.TASK_COMPLETE,
     PermissionCode.TASK_DELEGATE,
+    PermissionCode.NOTIFICATION_LIST,
+    PermissionCode.NOTIFICATION_MARK_READ,
     PermissionCode.AUTH_SESSION_READ,
   ]),
 
@@ -47,6 +51,8 @@ export const ROLE_PERMISSION_MAP: Readonly<Record<RoleCode, ReadonlySet<Permissi
     PermissionCode.TASK_LIST,
     PermissionCode.TASK_COMPLETE,
     PermissionCode.TASK_DELEGATE,
+    PermissionCode.NOTIFICATION_LIST,
+    PermissionCode.NOTIFICATION_MARK_READ,
     PermissionCode.AUTH_SESSION_READ,
   ]),
 
@@ -59,6 +65,8 @@ export const ROLE_PERMISSION_MAP: Readonly<Record<RoleCode, ReadonlySet<Permissi
     PermissionCode.TASK_LIST,
     PermissionCode.TASK_COMPLETE,
     PermissionCode.TASK_DELEGATE,
+    PermissionCode.NOTIFICATION_LIST,
+    PermissionCode.NOTIFICATION_MARK_READ,
     PermissionCode.AUTH_SESSION_READ,
   ]),
 
@@ -72,6 +80,8 @@ export const ROLE_PERMISSION_MAP: Readonly<Record<RoleCode, ReadonlySet<Permissi
     PermissionCode.TASK_LIST,
     PermissionCode.TASK_COMPLETE,
     PermissionCode.TASK_DELEGATE,
+    PermissionCode.NOTIFICATION_LIST,
+    PermissionCode.NOTIFICATION_MARK_READ,
     PermissionCode.AUTH_SESSION_READ,
   ]),
 
@@ -85,6 +95,8 @@ export const ROLE_PERMISSION_MAP: Readonly<Record<RoleCode, ReadonlySet<Permissi
     PermissionCode.TASK_LIST,
     PermissionCode.TASK_COMPLETE,
     PermissionCode.TASK_DELEGATE,
+    PermissionCode.NOTIFICATION_LIST,
+    PermissionCode.NOTIFICATION_MARK_READ,
     PermissionCode.AUTH_SESSION_READ,
   ]),
 
@@ -95,6 +107,8 @@ export const ROLE_PERMISSION_MAP: Readonly<Record<RoleCode, ReadonlySet<Permissi
     PermissionCode.ADMIN_MANAGE_SETTINGS,
     PermissionCode.ADMIN_VIEW_SYNC_STATUS,
     PermissionCode.AUDIT_VIEW_METADATA,
+    PermissionCode.NOTIFICATION_LIST,
+    PermissionCode.NOTIFICATION_MARK_READ,
     PermissionCode.AUTH_SESSION_READ,
   ]),
 };

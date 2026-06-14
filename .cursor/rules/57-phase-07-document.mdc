@@ -1,5 +1,5 @@
 ---
-description: '[Faz 7] Document Management — 6 iterasyon/chat (entity+upload → encryption → grant/policy → scan worker → UI → test+gate). Mesajda "Faz 7 — İterasyon M" belirt.'
+description: '[Faz 7] Document Management — 7 iterasyon/chat (entity+upload → encryption → grant/policy → scan worker → UI → test+gate → merge ready). Mesajda "Faz 7 — İterasyon M" belirt.'
 ---
 
 # Faz 7: Document Management
@@ -75,7 +75,7 @@ Tek sohbette tamamlanmaz. Her session: `@57-phase-07-document` + mesajda **「Fa
 
 **Bu iterasyonda yok:** Grant policy, worker scan, frontend.
 
-**Stop:** [ ] Roundtrip integration test; [ ] doğrudan `crypto` import yok (CryptoService only). PR/onay → İterasyon 3.
+**Stop:** [x] Roundtrip integration test; [x] doğrudan `crypto` import yok (CryptoService only). PR/onay → İterasyon 3.
 
 ---
 
@@ -172,7 +172,31 @@ Tek sohbette tamamlanmaz. Her session: `@57-phase-07-document` + mesajda **「Fa
 
 **Bu iterasyonda yok:** Admin monitoring UI (Faz 9).
 
-**Stop:** [ ] document coverage ≥%90; [ ] CI green; [ ] Human Gate tamam. Faz 7 Done.
+**Stop:** [ ] document coverage ≥%90; [ ] CI green; [ ] Human Gate tamam. PR/onay → İterasyon 7.
+
+---
+
+### İterasyon 7 — CI Green & Merge Ready
+
+**Hedef:** Monorepo typecheck/lint green; cross-package pipeline test harness; faz kapanış dokümantasyonu.
+
+**Yapılacaklar:**
+
+1. `pnpm typecheck` + `pnpm lint` + `pnpm test` green (api document + worker malware-scan)
+2. Worker cross-import typecheck fix: `malware-scan-test.harness.ts` (runtime dynamic import)
+3. `CreatedTransitionRecord` test fixture uyumu (grant side-effect testleri)
+4. `Docs/10` Faz 7 durum + iterasyon tablosu güncelle
+5. Done Definition checklist işaretle (otomatik kapılar geçti)
+
+**Minimum bağlam:**
+
+- `Docs/09_DEV_WORKFLOW.md` §8 CI
+- `Docs/10_IMPLEMENTATION_ROADMAP.md` §Faz 7 Human Gate
+- `.cursor/rules/46-fix-failing-test.mdc`
+
+**Bu iterasyonda yok:** Staging deploy, squash merge (developer onayı).
+
+**Stop:** [ ] `pnpm typecheck` green; [ ] document + worker test green; [ ] PR merge hazır. Faz 7 Done.
 
 ---
 

@@ -5,6 +5,8 @@ import { DEFAULT_SLA_POLICIES } from '@ethics/shared';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import { PrismaClient } from '@prisma/client';
 
+import { seedNotificationTemplates } from '../modules/notification/notification-template.seed.js';
+
 export interface PostgresTestEnvironment {
   prisma: PrismaClient;
   databaseUrl: string;
@@ -59,6 +61,7 @@ export async function createPostgresTestEnvironment(): Promise<PostgresTestEnvir
   });
 
   await seedDefaultSlaPolicies(prisma);
+  await seedNotificationTemplates(prisma);
 
   return {
     prisma,

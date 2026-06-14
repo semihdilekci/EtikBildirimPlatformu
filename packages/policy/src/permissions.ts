@@ -36,6 +36,10 @@ export const PermissionCode = {
   SECURE_MESSAGE_READ: 'secure_message:read',
   SECURE_MESSAGE_WRITE: 'secure_message:write',
 
+  // Notification (in-app)
+  NOTIFICATION_LIST: 'notification:list',
+  NOTIFICATION_MARK_READ: 'notification:mark_read',
+
   // Audit
   AUDIT_VIEW_METADATA: 'audit:view_metadata',
 

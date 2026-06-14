@@ -21,6 +21,8 @@ import { IntakeModule } from './modules/intake/intake.module.js';
 import { CaseManagementModule } from './modules/case-management/case-management.module.js';
 import { DecisionModule } from './modules/decision/decision.module.js';
 import { TaskModule } from './modules/task/task.module.js';
+import { DocumentModule } from './modules/document/document.module.js';
+import { InAppNotificationModule } from './modules/notification/in-app-notification.module.js';
 import { TrackingModule } from './modules/tracking/tracking.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 
@@ -74,6 +76,8 @@ import { PrismaModule } from './prisma/prisma.module.js';
     CaseManagementModule,
     DecisionModule,
     TaskModule,
+    DocumentModule,
+    InAppNotificationModule,
     TrackingModule,
     AuthorizationModule,
   ],

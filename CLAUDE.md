@@ -111,6 +111,7 @@ Faz `.mdc` paketi tamamlandı (Faz 0–13). Yeni faz için `@phase-creator`.
 | `Docs/08_TESTING_STRATEGY.md` | Test piramidi, coverage |
 | `Docs/09_DEV_WORKFLOW.md` | Git, PR, CI/CD, env |
 | `Docs/10_IMPLEMENTATION_ROADMAP.md` | Faz planı, human gate |
+| `Docs/11_UAT.md` | Human Gate UAT checklist (Faz 9 sonrası uygulama) |
 
 > Yeni faz / spec değişikliği → önce Docs güncelle, sonra ilgili `.mdc` referansını doğrula.
 

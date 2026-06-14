@@ -5,6 +5,7 @@ import { NotificationChannel, NotificationEventType } from '@ethics/shared';
 
 import { NotificationEventPublisher } from '../../../notification/notification-event.publisher.js';
 import { lazyProviderToken } from '../../../common/utils/lazy-provider-token.util.js';
+import type { DocumentAccessService } from '../../document/document-access.service.js';
 import type { TaskService } from '../../task/task.service.js';
 import type {
   TransitionTaskStub,
@@ -28,6 +29,7 @@ export interface TransitionSideEffectPort {
 @Injectable()
 export class TransitionSideEffects implements TransitionSideEffectPort {
   private taskServiceRef: TaskService | null = null;
+  private documentAccessRef: DocumentAccessService | null = null;
 
   constructor(
     private readonly notificationPublisher: NotificationEventPublisher,
@@ -38,6 +40,10 @@ export class TransitionSideEffects implements TransitionSideEffectPort {
     this.taskServiceRef = taskService;
   }
 
+  wireDocumentAccessServiceForTests(documentAccess: DocumentAccessService): void {
+    this.documentAccessRef = documentAccess;
+  }
+
   private get taskService(): TaskService {
     if (this.taskServiceRef) {
       return this.taskServiceRef;
@@ -45,6 +51,20 @@ export class TransitionSideEffects implements TransitionSideEffectPort {
 
     return this.moduleRef.get(
       lazyProviderToken<TaskService>('../../task/task.service.js', 'TaskService'),
+      { strict: false },
+    );
+  }
+
+  private get documentAccess(): DocumentAccessService {
+    if (this.documentAccessRef) {
+      return this.documentAccessRef;
+    }
+
+    return this.moduleRef.get(
+      lazyProviderToken<DocumentAccessService>(
+        '../../document/document-access.service.js',
+        'DocumentAccessService',
+      ),
       { strict: false },
     );
   }
@@ -69,6 +89,16 @@ export class TransitionSideEffects implements TransitionSideEffectPort {
         },
       });
     }
+
+    await this.documentAccess.applyTransitionGrants(
+      tx,
+      context.caseEntity.id,
+      {
+        ...transition,
+        performedByUserId: context.actor.userId ?? null,
+      },
+      context.metadata,
+    );
 
     return this.taskService.createTasksForTransition(tx, context.caseEntity, transition, {
       type: context.actor.type,

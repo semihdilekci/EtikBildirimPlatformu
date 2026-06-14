@@ -58,6 +58,8 @@ Faz süresi tahmini yapılır ama katı değil — "5–8 agent session" gibi ap
 
 Her faz sonunda developer'ın manuel kontrol listesi:
 
+> **Tam checklist:** `Docs/11_UAT.md` — uygulama **Faz 9 (Admin Panel) sonrası** planlanmıştır.
+
 - Feature çalışıyor mu (lokal end-to-end)?
 - Test coverage threshold'unu karşılıyor mu (kritik modüller ≥%90, toplam ≥%80)?
 - `pnpm lint` + `pnpm typecheck` green mi?
@@ -774,7 +776,7 @@ Session'lara bölünmeli — tek session'da yazılamaz:
 
 ### Faz 7 — Document Management
 
-- **Durum:** planlandı (Cursor faz kuralı hazır)
+- **Durum:** tamamlandı (İterasyon 7 — typecheck + CI green; Human Gate merge öncesi)
 
 #### Kapsam
 
@@ -845,7 +847,7 @@ Session'lara bölünmeli — tek session'da yazılamaz:
 
 - **Rule:** `.cursor/rules/57-phase-07-document.mdc`
 - **Branch:** `feature/F7-document` (`48-git-phase-branch.mdc`)
-- **Durum:** planlandı
+- **Durum:** tamamlandı (Human Gate merge öncesi)
 
 #### İterasyon planı (agent)
 
@@ -856,7 +858,8 @@ Session'lara bölünmeli — tek session'da yazılamaz:
 | 3   | DocumentAccessGrant + DocumentPolicy               | Grant yok → 403                           |
 | 4   | Malware scan worker + timeout → REJECTED           | Async scan integration                    |
 | 5   | Case detail doküman sekmesi UI                     | Upload + download smoke                   |
-| 6   | document modülü ≥%90 + human gate                  | CI green                                  |
+| 6   | document modülü ≥%90 + human gate                  | CI green — tamamlandı                     |
+| 7   | typecheck/lint green + merge ready                 | CI green — tamamlandı                     |
 
 ---
 

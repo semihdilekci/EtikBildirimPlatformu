@@ -46,6 +46,9 @@ model User {
   tasks                Task[]
   taskEvents           TaskEvent[]
   decisionVotes        DecisionVote[]
+  documentsUploaded    Document[] @relation("DocumentUploader")
+  documentAccessGrants DocumentAccessGrant[] @relation("DocumentAccessGrantUser")
+  notifications        Notification[]
 
   @@index([companyId], map: "idx_users_company_id")
   @@index([isActive], map: "idx_users_is_active")
@@ -178,6 +181,7 @@ model Report {
   caseRecord Case?
   attachments ReportAttachment[]
   secureMessages SecureMessage[]
+  documents Document[]
 
   @@index([companyId], map: "idx_reports_company_id")
   @@index([status], map: "idx_reports_status")
@@ -443,6 +447,46 @@ model NotificationEvent {
   @@map("notification_events")
 }
 
+// ─── In-app notifications + templates (Faz 8 — İterasyon 1) ──────────────────
+
+model NotificationTemplate {
+  id              String   @id @default(cuid())
+  templateCode    String   @unique @map("template_code")
+  name            String
+  channel         String
+  subjectTemplate String?  @map("subject_template")
+  bodyTemplate    String   @map("body_template")
+  isActive        Boolean  @default(true) @map("is_active")
+  versionNo       Int      @default(1) @map("version_no")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  notifications Notification[]
+
+  @@index([channel, isActive], map: "idx_notification_templates_channel_active")
+  @@map("notification_templates")
+}
+
+model Notification {
+  id           String    @id @default(cuid())
+  userId       String    @map("user_id")
+  templateCode String    @map("template_code")
+  title        String
+  body         String
+  caseId       String?   @map("case_id")
+  taskId       String?   @map("task_id")
+  isRead       Boolean   @default(false) @map("is_read")
+  readAt       DateTime? @map("read_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  user     User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  template NotificationTemplate @relation(fields: [templateCode], references: [templateCode])
+
+  @@index([userId, isRead, createdAt(sort: Desc)], map: "idx_notifications_user_read_created")
+  @@index([userId, createdAt(sort: Desc)], map: "idx_notifications_user_created")
+  @@map("notifications")
+}
+
 // ─── Case Management (Faz 5 — İterasyon 1) ───────────────────────────────────
 
 model Case {
@@ -468,6 +512,7 @@ model Case {
   transitions         CaseTransition[]
   tasks                 Task[]
   decisionVotes         DecisionVote[]
+  documents             Document[]
 
   @@index([currentState], map: "idx_cases_current_state")
   @@index([companyId], map: "idx_cases_company_id")
@@ -497,6 +542,8 @@ model CaseTransition {
   performedByUser User? @relation(fields: [performedByUserId], references: [id])
   tasksCreated    Task[]
   decisionVotes   DecisionVote[]
+  documents              Document[]
+  documentAccessGrants   DocumentAccessGrant[]
 
   @@index([caseId], map: "idx_ct_case_id")
   @@index([transitionedAt], map: "idx_ct_transitioned_at")
@@ -536,6 +583,7 @@ model Task {
   delegatedFromTask    Task?            @relation("TaskDelegation", fields: [delegatedFromTaskId], references: [id])
   delegatedTasks       Task[]           @relation("TaskDelegation")
   events               TaskEvent[]
+  documents            Document[]
 
   @@index([caseId], map: "idx_tasks_case_id")
   @@index([status], map: "idx_tasks_status")
@@ -588,4 +636,87 @@ model DecisionVote {
   @@index([caseId], map: "idx_dv_case_id")
   @@index([transitionId], map: "idx_dv_transition_id")
   @@map("decision_votes")
+}
+
+// ─── Document Management (Faz 7 — İterasyon 1) ──────────────────────────────
+
+model Document {
+  id                   String    @id @default(cuid())
+  caseId               String    @map("case_id")
+  reportId             String?   @map("report_id")
+  taskId               String?   @map("task_id")
+  transitionId         String?   @map("transition_id")
+  documentCategory     String    @map("document_category")
+  title                String
+  currentVersionNo     Int       @default(1) @map("current_version_no")
+  status               String    @default("QUARANTINED")
+  confidentialityLevel String    @map("confidentiality_level")
+  retentionPolicyId    String?   @map("retention_policy_id")
+  archivedAt           DateTime? @map("archived_at")
+  uploadedByUserId     String?   @map("uploaded_by_user_id")
+  uploadedAt           DateTime  @default(now()) @map("uploaded_at")
+  contentSealedAt      DateTime? @map("content_sealed_at")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  case         Case            @relation(fields: [caseId], references: [id])
+  report       Report?         @relation(fields: [reportId], references: [id])
+  task         Task?           @relation(fields: [taskId], references: [id])
+  transition   CaseTransition? @relation(fields: [transitionId], references: [id])
+  uploadedBy   User?                 @relation("DocumentUploader", fields: [uploadedByUserId], references: [id])
+  versions     DocumentVersion[]
+  accessGrants DocumentAccessGrant[]
+
+  @@index([caseId], map: "idx_docs_case_id")
+  @@index([documentCategory], map: "idx_docs_document_category")
+  @@index([status], map: "idx_docs_status")
+  @@index([confidentialityLevel], map: "idx_docs_confidentiality_level")
+  @@index([uploadedAt], map: "idx_docs_uploaded_at")
+  @@map("documents")
+}
+
+model DocumentVersion {
+  id                        String    @id @default(cuid())
+  documentId                String    @map("document_id")
+  versionNo                 Int       @map("version_no")
+  storageKeyCiphertext      String    @map("storage_key_ciphertext")
+  encryptedDek              String    @map("encrypted_dek")
+  kmsKeyId                  String    @map("kms_key_id")
+  encryptionAlgorithm       String    @default("AES-256-GCM") @map("encryption_algorithm")
+  contentSha256             String    @map("content_sha256") @db.VarChar(64)
+  sizeBytes                 BigInt    @map("size_bytes")
+  mimeType                  String    @map("mime_type") @db.VarChar(100)
+  originalFilenameEncrypted String    @map("original_filename_encrypted")
+  malwareScanStatus         String    @default("PENDING") @map("malware_scan_status")
+  scannedAt                 DateTime? @map("scanned_at")
+  uploadedByUserId          String?   @map("uploaded_by_user_id")
+  createdAt                 DateTime  @default(now()) @map("created_at")
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, versionNo], map: "idx_dv_document_version_unique")
+  @@index([documentId], map: "idx_dv_document_id")
+  @@map("document_versions")
+}
+
+model DocumentAccessGrant {
+  id                     String    @id @default(cuid())
+  documentId             String    @map("document_id")
+  grantedToUserId        String?   @map("granted_to_user_id")
+  grantedToRole          String?   @map("granted_to_role")
+  grantScope             String    @default("FULL_ACCESS") @map("grant_scope")
+  grantedByTransitionId  String?   @map("granted_by_transition_id")
+  grantedAt              DateTime  @default(now()) @map("granted_at")
+  revokedAt              DateTime? @map("revoked_at")
+  createdAt              DateTime  @default(now()) @map("created_at")
+
+  document            Document        @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  grantedToUser       User?           @relation("DocumentAccessGrantUser", fields: [grantedToUserId], references: [id])
+  grantedByTransition CaseTransition? @relation(fields: [grantedByTransitionId], references: [id])
+
+  @@index([documentId], map: "idx_dag_document_id")
+  @@index([grantedToUserId], map: "idx_dag_granted_to_user_id")
+  @@index([grantedToRole], map: "idx_dag_granted_to_role")
+  @@index([revokedAt], map: "idx_dag_revoked_at")
+  @@map("document_access_grants")
 }

@@ -9,6 +9,7 @@ import type {
 import type { ReportCategoryCatalogEntry } from '@ethics/shared';
 
 import { apiClient } from '@/api/client';
+import { uploadToPresignedUrl as uploadFileToPresignedUrl } from '@/api/upload.util';
 import type { ApiSuccessEnvelope } from '@/types/api.types';
 
 export async function fetchIntakeCategories(): Promise<ReportCategoryCatalogEntry[]> {
@@ -53,15 +54,5 @@ export async function uploadToPresignedUrl(
   file: File,
   mimeType: string,
 ): Promise<void> {
-  const response = await fetch(uploadUrl, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': mimeType,
-    },
-    body: file,
-  });
-
-  if (!response.ok) {
-    throw new Error('Dosya yüklemesi başarısız oldu.');
-  }
+  await uploadFileToPresignedUrl(uploadUrl, file, mimeType);
 }

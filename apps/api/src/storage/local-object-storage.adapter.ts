@@ -1,11 +1,18 @@
 import { randomBytes } from 'node:crypto';
 
-import { MAX_SINGLE_FILE_BYTES, PRESIGNED_UPLOAD_TTL_SECONDS } from '@ethics/shared';
+import {
+  MAX_SINGLE_FILE_BYTES,
+  PRESIGNED_DOWNLOAD_TTL_SECONDS,
+  PRESIGNED_UPLOAD_TTL_SECONDS,
+} from '@ethics/shared';
 
 import type {
   ObjectStoragePort,
+  PresignedGetUrlParams,
+  PresignedGetUrlResult,
   PresignedPutUrlParams,
   PresignedPutUrlResult,
+  PutObjectParams,
 } from './object-storage.port.js';
 
 /**
@@ -31,6 +38,26 @@ export class LocalObjectStorageAdapter implements ObjectStoragePort {
     });
   }
 
+  createPresignedGetUrl(params: PresignedGetUrlParams): Promise<PresignedGetUrlResult> {
+    const expiresInSeconds = params.expiresInSeconds ?? PRESIGNED_DOWNLOAD_TTL_SECONDS;
+    const expiresAt = new Date(Date.now() + expiresInSeconds * 1000);
+    const token = randomBytes(16).toString('hex');
+    const filenameQuery = params.downloadFilename
+      ? `&filename=${encodeURIComponent(params.downloadFilename)}`
+      : '';
+
+    return Promise.resolve({
+      storageKey: params.storageKey,
+      expiresAt,
+      downloadUrl: `local-storage://get/${encodeURIComponent(params.storageKey)}?token=${token}&expires=${String(expiresAt.getTime())}${filenameQuery}`,
+    });
+  }
+
+  putObject(params: PutObjectParams): Promise<void> {
+    this.objects.set(params.storageKey, Buffer.from(params.content));
+    return Promise.resolve();
+  }
+
   getObjectBuffer(storageKey: string): Promise<Buffer> {
     const object = this.objects.get(storageKey);
     if (!object) {
@@ -41,7 +68,7 @@ export class LocalObjectStorageAdapter implements ObjectStoragePort {
   }
 
   /** Test yardımcısı — client PUT simülasyonu */
-  putObject(storageKey: string, content: Buffer): void {
+  putObjectForTest(storageKey: string, content: Buffer): void {
     this.objects.set(storageKey, content);
   }
 

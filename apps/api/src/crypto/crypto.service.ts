@@ -18,7 +18,12 @@ import {
   CRYPTO_IV_LENGTH_BYTES,
   KEY_MANAGEMENT_PORT,
 } from './crypto.constants.js';
-import type { EncryptedDocumentResult, EncryptedFieldResult } from './crypto.types.js';
+import type {
+  EncryptedDocumentResult,
+  EncryptedFieldResult,
+  DocumentStorageEncryptionMetadata,
+  WrappedKey,
+} from './crypto.types.js';
 import type { KeyManagementPort } from './key-management.port.js';
 
 @Injectable()
@@ -70,9 +75,7 @@ export class CryptoService {
     }
   }
 
-  /**
-   * Per-document envelope encryption iskeleti — Faz 7 upload akışında genişletilecek.
-   */
+  /** Stream tabanlı per-document envelope encryption (tek seferlik upload senaryoları). */
   async encryptDocument(stream: Readable, documentId: string): Promise<EncryptedDocumentResult> {
     const plaintext = await this.readStream(stream);
     const dek = randomBytes(CRYPTO_DEK_LENGTH_BYTES);
@@ -88,9 +91,7 @@ export class CryptoService {
     };
   }
 
-  /**
-   * Per-document envelope decryption iskeleti — Faz 7 upload akışında genişletilecek.
-   */
+  /** Stream tabanlı per-document envelope decryption. */
   async decryptDocument(encrypted: EncryptedDocumentResult): Promise<Readable> {
     this.assertFieldAlgorithm(encrypted.algorithm);
 
@@ -103,6 +104,57 @@ export class CryptoService {
     try {
       const plaintext = this.decryptBuffer(Buffer.from(encrypted.encryptedPayload, 'base64'), dek);
       return Readable.from(plaintext);
+    } catch {
+      throw new DomainException(
+        ErrorCode.CRYPTO_DECRYPT_FAILED,
+        'Failed to decrypt document payload.',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  /** Per-document DEK üretir ve KMS ile sarar — upload initiate aşamasında kullanılır. */
+  async generateWrappedDocumentDek(): Promise<WrappedKey> {
+    const dek = randomBytes(CRYPTO_DEK_LENGTH_BYTES);
+    return this.keyManagement.wrapKey(dek, 'document');
+  }
+
+  /**
+   * Plaintext blob'u önceden sarılmış DEK ile object storage formatında şifreler (iv + authTag + ciphertext).
+   */
+  async sealDocumentContent(
+    plaintext: Buffer,
+    metadata: DocumentStorageEncryptionMetadata,
+  ): Promise<Buffer> {
+    this.assertFieldAlgorithm(metadata.algorithm);
+
+    const dek = await this.keyManagement.unwrapKey(
+      metadata.encryptedDek,
+      metadata.kmsKeyId,
+      'document',
+    );
+
+    const { ciphertext } = this.encryptBuffer(plaintext, dek);
+    return ciphertext;
+  }
+
+  /**
+   * Object storage'daki şifreli blob'u açar — download akışında kullanılır.
+   */
+  async openDocumentContent(
+    encryptedPayload: Buffer,
+    metadata: DocumentStorageEncryptionMetadata,
+  ): Promise<Buffer> {
+    this.assertFieldAlgorithm(metadata.algorithm);
+
+    const dek = await this.keyManagement.unwrapKey(
+      metadata.encryptedDek,
+      metadata.kmsKeyId,
+      'document',
+    );
+
+    try {
+      return this.decryptBuffer(encryptedPayload, dek);
     } catch {
       throw new DomainException(
         ErrorCode.CRYPTO_DECRYPT_FAILED,

@@ -49,6 +49,7 @@ export function useCreateCaseTransitionMutation(caseId: string) {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: queryKeys.cases.detail(caseId) }),
         queryClient.invalidateQueries({ queryKey: queryKeys.cases.transitions(caseId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.cases.documents(caseId) }),
         queryClient.invalidateQueries({ queryKey: queryKeys.cases.all() }),
       ]);
     },

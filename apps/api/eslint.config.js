@@ -3,7 +3,7 @@ import eslintConfig from '@ethics/eslint-config';
 export default [
   ...eslintConfig,
   {
-    ignores: ['vitest.config.ts', 'prisma/seed.ts'],
+    ignores: ['vitest.config.ts', 'vitest.*.config.ts', 'prisma/seed.ts', 'scripts/smoke-faz3.ts'],
   },
   {
     languageOptions: {

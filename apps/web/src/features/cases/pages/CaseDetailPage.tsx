@@ -16,6 +16,7 @@ import { useEffect, useState } from 'react';
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
 
 import { CaseActionBar } from '@/features/cases/components/CaseActionBar';
+import { CaseDocumentsTab } from '@/features/documents/components/CaseDocumentsTab';
 import { CaseStateBadge } from '@/features/cases/components/CaseStateBadge';
 import { CaseSummaryTab } from '@/features/cases/components/CaseSummaryTab';
 import { CaseTimeline } from '@/features/cases/components/CaseTimeline';
@@ -157,7 +158,7 @@ export function CaseDetailPage() {
       >
         <Tab value="summary" label="Özet" />
         <Tab value="timeline" label="Zaman Çizelgesi" />
-        <Tab value="documents" label="Dokümanlar" disabled />
+        <Tab value="documents" label="Dokümanlar" />
         <Tab value="votes" label="Oylar" disabled />
         <Tab value="messages" label="Güvenli Mesajlar" disabled />
       </Tabs>
@@ -171,6 +172,16 @@ export function CaseDetailPage() {
           isError={transitionsQuery.isError}
           onRetry={() => {
             void transitionsQuery.refetch();
+          }}
+        />
+      ) : null}
+
+      {activeTab === 'documents' ? (
+        <CaseDocumentsTab
+          caseId={caseId}
+          onToast={(message, severity) => {
+            setToastSeverity(severity);
+            setToastMessage(message);
           }}
         />
       ) : null}

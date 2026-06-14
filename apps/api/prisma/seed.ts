@@ -3,6 +3,8 @@ import { PERMISSION_CODE_VALUES, ROLE_VALUES } from '@ethics/policy';
 import { BusinessCalendarDayType, DEFAULT_SLA_POLICIES, Role } from '@ethics/shared';
 import { seedRoleTestUsers, seedWorkflowCaseStub } from '@ethics/test-fixtures';
 
+import { seedNotificationTemplates } from '../src/modules/notification/notification-template.seed.js';
+
 const prisma = new PrismaClient();
 
 const SUPERADMIN_OIDC_SUB = process.env['SEED_SUPERADMIN_OIDC_SUB'] ?? 'seed-superadmin-oidc-sub';
@@ -177,6 +179,7 @@ async function main(): Promise<void> {
   await seedSystemSettings();
   await seedSlaPolicies();
   await seedBusinessCalendarEntries();
+  await seedNotificationTemplates(prisma);
   const { companyId, usersByRole } = await seedRoleTestUsers(prisma, {
     superadminOidcSub: SUPERADMIN_OIDC_SUB,
   });
@@ -193,7 +196,7 @@ async function main(): Promise<void> {
 main()
   .then(() => {
     console.warn(
-      '[seed] Faz 6 seed tamamlandı (SLA politikaları, iş günü takvimi, 7 rol test kullanıcısı, sentetik şirket, KVKK v1, system_settings, workflow case stub).',
+      '[seed] Faz 8 seed tamamlandı (SLA politikaları, iş günü takvimi, 28 bildirim şablonu, 7 rol test kullanıcısı, sentetik şirket, KVKK v1, system_settings, workflow case stub).',
     );
   })
   .catch((error: unknown) => {

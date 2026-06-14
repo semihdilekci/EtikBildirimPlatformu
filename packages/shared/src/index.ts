@@ -56,6 +56,18 @@ export {
 
 export { MalwareScanStatus, MALWARE_SCAN_STATUS_VALUES } from './enums/malware-scan-status.enum.js';
 
+export { DocumentCategory, DOCUMENT_CATEGORY_VALUES } from './enums/document-category.enum.js';
+export type { DocumentCategoryCode } from './enums/document-category.enum.js';
+
+export { DocumentStatus, DOCUMENT_STATUS_VALUES } from './enums/document-status.enum.js';
+export type { DocumentStatusCode } from './enums/document-status.enum.js';
+
+export {
+  DocumentGrantScope,
+  DOCUMENT_GRANT_SCOPE_VALUES,
+} from './enums/document-grant-scope.enum.js';
+export type { DocumentGrantScopeCode } from './enums/document-grant-scope.enum.js';
+
 export {
   SecureMessageDirection,
   SECURE_MESSAGE_DIRECTION_VALUES,
@@ -140,6 +152,17 @@ export {
 export type { NotificationEventTypeCode } from './enums/notification-event-type.enum.js';
 
 export {
+  NotificationTemplateCode,
+  NOTIFICATION_TEMPLATE_CODE_VALUES,
+} from './enums/notification-template.enum.js';
+export type { NotificationTemplateCodeValue } from './enums/notification-template.enum.js';
+
+export {
+  DEFAULT_NOTIFICATION_TEMPLATES,
+  type DefaultNotificationTemplateDefinition,
+} from './constants/default-notification-templates.js';
+
+export {
   NOTIFICATION_DISPATCH_PENDING,
   NOTIFICATION_DISPATCH_SENT,
   NOTIFICATION_DISPATCH_FAILED,
@@ -150,8 +173,11 @@ export {
   ALLOWED_UPLOAD_RULES,
   MAX_SINGLE_FILE_BYTES,
   MAX_TOTAL_REPORT_ATTACHMENT_BYTES,
+  MAX_TOTAL_CASE_DOCUMENT_BYTES,
   PRESIGNED_UPLOAD_TTL_SECONDS,
+  PRESIGNED_DOWNLOAD_TTL_SECONDS,
 } from './constants/file-upload.constants.js';
+export { MALWARE_SCAN_PENDING_TIMEOUT_MS } from './constants/malware-scan.constants.js';
 export type { AllowedUploadRule } from './constants/file-upload.constants.js';
 export type {
   ReportStatusCode,

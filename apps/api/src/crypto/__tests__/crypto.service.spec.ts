@@ -70,22 +70,23 @@ describe('CryptoService', () => {
     expect(encrypted.documentId).toBe('doc-1');
   });
 
-  it('bozulmuş ciphertext decryptField sırasında CRYPTO_DECRYPT_FAILED fırlatır', async () => {
-    const encrypted = await cryptoService.encryptField('sensitive', 'report_text', 'case-1');
-    const tampered = {
-      ...encrypted,
-      ciphertext: Buffer.from('tampered-data').toString('base64'),
+  it('sealDocumentContent → openDocumentContent roundtrip buffer içeriğini korur', async () => {
+    const payload = Buffer.from('Şifreli object storage blob simülasyonu');
+    const wrapped = await cryptoService.generateWrappedDocumentDek();
+    const metadata = {
+      encryptedDek: wrapped.encryptedDek,
+      kmsKeyId: wrapped.kmsKeyId,
+      algorithm: 'AES-256-GCM' as const,
     };
 
-    await expect(
-      cryptoService.decryptField(tampered, 'report_text', 'case-1'),
-    ).rejects.toMatchObject({
-      code: ErrorCode.CRYPTO_DECRYPT_FAILED,
-      status: HttpStatus.INTERNAL_SERVER_ERROR,
-    });
+    const sealed = await cryptoService.sealDocumentContent(payload, metadata);
+    const opened = await cryptoService.openDocumentContent(sealed, metadata);
+
+    expect(opened).toEqual(payload);
+    expect(sealed.equals(payload)).toBe(false);
   });
 
-  it('bozulmuş auth tag decryptField sırasında CRYPTO_DECRYPT_FAILED fırlatır', async () => {
+  it('bozulmuş ciphertext decryptField sırasında CRYPTO_DECRYPT_FAILED fırlatır', async () => {
     const encrypted = await cryptoService.encryptField('sensitive', 'report_text', 'case-1');
     const buffer = Buffer.from(encrypted.ciphertext, 'base64');
     const tagIndex = CRYPTO_IV_LENGTH_BYTES + 1;
@@ -115,6 +116,22 @@ describe('CryptoService', () => {
         'case-1',
       ),
     ).rejects.toMatchObject({
+      code: ErrorCode.CRYPTO_DECRYPT_FAILED,
+    });
+  });
+
+  it('bozulmuş sealed blob openDocumentContent sırasında CRYPTO_DECRYPT_FAILED fırlatır', async () => {
+    const wrapped = await cryptoService.generateWrappedDocumentDek();
+    const metadata = {
+      encryptedDek: wrapped.encryptedDek,
+      kmsKeyId: wrapped.kmsKeyId,
+      algorithm: 'AES-256-GCM' as const,
+    };
+    const sealed = await cryptoService.sealDocumentContent(Buffer.from('doc'), metadata);
+    const tampered = Buffer.from(sealed);
+    tampered[0] = (tampered[0] ?? 0) ^ 0xff;
+
+    await expect(cryptoService.openDocumentContent(tampered, metadata)).rejects.toMatchObject({
       code: ErrorCode.CRYPTO_DECRYPT_FAILED,
     });
   });

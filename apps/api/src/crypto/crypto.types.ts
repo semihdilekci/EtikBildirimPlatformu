@@ -19,3 +19,10 @@ export interface WrappedKey {
   encryptedDek: string;
   kmsKeyId: string;
 }
+
+/** Per-document object storage envelope metadata (document_versions kolonları). */
+export interface DocumentStorageEncryptionMetadata {
+  encryptedDek: string;
+  kmsKeyId: string;
+  algorithm: typeof CRYPTO_ALGORITHM;
+}

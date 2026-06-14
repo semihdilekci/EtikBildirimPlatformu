@@ -112,3 +112,31 @@ export {
   type DecisionVoteListItem,
   type ListDecisionVotesResponse,
 } from './decision/index.js';
+
+export {
+  initiateCaseDocumentBodySchema,
+  initiateCaseDocumentResponseSchema,
+  completeCaseDocumentUploadResponseSchema,
+  documentDownloadResponseSchema,
+  caseDocumentListItemSchema,
+  listCaseDocumentsResponseSchema,
+  type InitiateCaseDocumentBody,
+  type InitiateCaseDocumentResponse,
+  type CompleteCaseDocumentUploadResponse,
+  type DocumentDownloadResponse,
+  type CaseDocumentListItem,
+  type ListCaseDocumentsResponse,
+} from './document/index.js';
+
+export {
+  listNotificationsQuerySchema,
+  notificationListItemSchema,
+  notificationPaginationSchema,
+  listNotificationsResponseSchema,
+  unreadNotificationCountResponseSchema,
+  type ListNotificationsQuery,
+  type NotificationListItem,
+  type NotificationPagination,
+  type ListNotificationsResponse,
+  type UnreadNotificationCountResponse,
+} from './notification/index.js';
