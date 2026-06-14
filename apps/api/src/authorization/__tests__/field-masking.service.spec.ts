@@ -2,11 +2,12 @@ import { ClearanceLevel, Role } from '@ethics/shared';
 import { describe, expect, it } from 'vitest';
 
 import type { AuthenticatedUser } from '../../common/types/authenticated-user.type.js';
+import { createDefaultFieldVisibilityPolicyService } from '../field-visibility-policy.service.js';
 import { FieldMaskingService } from '../field-masking.service.js';
 import type { MaskableCaseData } from '../field-masking.types.js';
 
 describe('[AUTH-006] FieldMaskingPolicy', () => {
-  const service = new FieldMaskingService();
+  const service = new FieldMaskingService(createDefaultFieldVisibilityPolicyService());
 
   function buildUser(
     overrides: Partial<AuthenticatedUser> & Pick<AuthenticatedUser, 'roles'>,

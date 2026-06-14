@@ -9,6 +9,46 @@ export type { ClearanceLevel as ClearanceLevelCode } from './enums/clearance-lev
 export { ErrorCode } from './constants/error-codes.js';
 export type { ErrorCodeValue } from './constants/error-codes.js';
 
+export {
+  MasterDataType,
+  MASTER_DATA_TYPE_VALUES,
+  isMasterDataType,
+} from './constants/master-data-types.js';
+export type { MasterDataTypeCode } from './constants/master-data-types.js';
+
+export { AdminActionCode, ADMIN_ACTION_CODE_VALUES } from './constants/admin-action-codes.js';
+export type { AdminActionCodeValue } from './constants/admin-action-codes.js';
+
+export {
+  AdminExportType,
+  ADMIN_EXPORT_TYPE_VALUES,
+  AdminExportJobStatus,
+  ADMIN_AUDIT_EXPORT_PRESIGNED_TTL_SECONDS,
+  ADMIN_AUDIT_EXPORT_ASYNC_THRESHOLD,
+  ADMIN_AUDIT_EXPORT_BATCH_SIZE,
+} from './constants/admin-export.constants.js';
+export type {
+  AdminExportTypeCode,
+  AdminExportJobStatusCode,
+} from './constants/admin-export.constants.js';
+
+export {
+  SystemSettingValueType,
+  SYSTEM_SETTING_DEFINITIONS,
+  getSystemSettingDefinition,
+  isKnownSystemSettingKey,
+} from './constants/system-settings.js';
+export type {
+  SystemSettingValueTypeCode,
+  SystemSettingDefinition,
+} from './constants/system-settings.js';
+
+export {
+  getClearanceRank,
+  isClearanceUpgrade,
+  requiresStrictlyConfidentialMakerChecker,
+} from './clearance/clearance-rank.util.js';
+
 export { AUDIT_FORBIDDEN_METADATA_KEYS } from './constants/audit-forbidden-keys.js';
 export type { AuditForbiddenMetadataKey } from './constants/audit-forbidden-keys.js';
 
@@ -183,6 +223,11 @@ export {
   NOTIFICATION_DISPATCH_FAILED,
   NOTIFICATION_DISPATCH_RETRYING,
   NOTIFICATION_DISPATCH_PERMANENTLY_FAILED,
+  NOTIFICATION_DISPATCH_STATUSES,
+  NOTIFICATION_DISPATCH_ADVISORY_LOCK_KEY,
+  NOTIFICATION_DISPATCH_RETRY_BACKOFF_MS,
+  NOTIFICATION_DISPATCH_DEFAULT_MAX_RETRY_COUNT,
+  getNotificationRetryBackoffMs,
 } from './constants/notification.constants.js';
 
 export {

@@ -2,19 +2,25 @@ import type { Prisma, PrismaClient } from '@prisma/client';
 import {
   NotificationChannel,
   NotificationTemplateCode,
-  NOTIFICATION_DISPATCH_FAILED,
+  NOTIFICATION_DISPATCH_ADVISORY_LOCK_KEY,
+  NOTIFICATION_DISPATCH_DEFAULT_MAX_RETRY_COUNT,
   NOTIFICATION_DISPATCH_PENDING,
   NOTIFICATION_DISPATCH_PERMANENTLY_FAILED,
+  NOTIFICATION_DISPATCH_RETRYING,
   NOTIFICATION_DISPATCH_SENT,
+  getNotificationRetryBackoffMs,
   renderNotificationEmailTemplate,
   resolveNotificationTemplateCode,
 } from '@ethics/shared';
 
 import type { EmailRelayPort } from '../email/email-relay.port.js';
 
-const ADVISORY_LOCK_KEY = 9_128_473;
 const DEFAULT_BATCH_SIZE = 50;
-const MAX_RETRY_COUNT = 3;
+
+const DISPATCHABLE_STATUSES = [
+  NOTIFICATION_DISPATCH_PENDING,
+  NOTIFICATION_DISPATCH_RETRYING,
+] as const;
 
 export interface NotificationDispatcherItemResult {
   eventId: string;
@@ -52,21 +58,31 @@ export class NotificationDispatcherJob {
     options: NotificationDispatcherJobOptions = {},
   ) {
     this.batchSize = options.batchSize ?? DEFAULT_BATCH_SIZE;
-    this.maxRetryCount = options.maxRetryCount ?? MAX_RETRY_COUNT;
+    this.maxRetryCount = options.maxRetryCount ?? NOTIFICATION_DISPATCH_DEFAULT_MAX_RETRY_COUNT;
     this.emailRelay = options.emailRelay ?? null;
   }
 
   async processPendingBatch(): Promise<NotificationDispatcherResult> {
-    const pending = await this.prisma.notificationEvent.findMany({
+    const candidates = await this.prisma.notificationEvent.findMany({
       where: {
-        dispatchStatus: NOTIFICATION_DISPATCH_PENDING,
         channel: {
           in: [NotificationChannel.IN_APP, NotificationChannel.EMAIL],
         },
+        OR: [
+          { dispatchStatus: NOTIFICATION_DISPATCH_PENDING },
+          {
+            dispatchStatus: NOTIFICATION_DISPATCH_RETRYING,
+            retryCount: { lt: this.maxRetryCount },
+          },
+        ],
       },
       orderBy: { createdAt: 'asc' },
-      take: this.batchSize,
+      take: this.batchSize * 4,
     });
+
+    const pending = candidates
+      .filter((event) => this.isEligibleForDispatch(event))
+      .slice(0, this.batchSize);
 
     const items: NotificationDispatcherItemResult[] = [];
     let sent = 0;
@@ -89,7 +105,7 @@ export class NotificationDispatcherJob {
         const errorCode =
           error instanceof Error ? error.message.slice(0, 120) : 'NOTIFICATION_DISPATCH_FAILED';
 
-        await this.markFailedStandalone(event.id, event.retryCount, errorCode);
+        await this.markFailedStandalone(event.id, event.retryCount, errorCode, event.metadataJson);
 
         items.push({
           eventId: event.id,
@@ -111,7 +127,7 @@ export class NotificationDispatcherJob {
 
   private async dispatchSingle(eventId: string): Promise<NotificationDispatcherItemResult> {
     return this.prisma.$transaction(async (tx) => {
-      await tx.$executeRaw`SELECT pg_advisory_xact_lock(${ADVISORY_LOCK_KEY})`;
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(${NOTIFICATION_DISPATCH_ADVISORY_LOCK_KEY})`;
 
       const event = await tx.notificationEvent.findUnique({
         where: { id: eventId },
@@ -121,7 +137,18 @@ export class NotificationDispatcherJob {
         return { eventId, status: 'skipped' };
       }
 
-      if (event.dispatchStatus !== NOTIFICATION_DISPATCH_PENDING) {
+      if (
+        !DISPATCHABLE_STATUSES.includes(
+          event.dispatchStatus as (typeof DISPATCHABLE_STATUSES)[number],
+        )
+      ) {
+        return { eventId, status: 'skipped' };
+      }
+
+      if (
+        event.dispatchStatus === NOTIFICATION_DISPATCH_RETRYING &&
+        !this.isEligibleForDispatch(event)
+      ) {
         return { eventId, status: 'skipped' };
       }
 
@@ -131,6 +158,24 @@ export class NotificationDispatcherJob {
 
       return this.dispatchInAppEvent(tx, event);
     });
+  }
+
+  private isEligibleForDispatch(event: NotificationEventRecord): boolean {
+    if (event.dispatchStatus === NOTIFICATION_DISPATCH_PENDING) {
+      return true;
+    }
+
+    if (event.dispatchStatus !== NOTIFICATION_DISPATCH_RETRYING) {
+      return false;
+    }
+
+    if (event.retryCount >= this.maxRetryCount) {
+      return false;
+    }
+
+    const lastAttemptAt = this.readLastAttemptAt(event.metadataJson) ?? event.createdAt;
+    const backoffMs = getNotificationRetryBackoffMs(event.retryCount);
+    return Date.now() - lastAttemptAt.getTime() >= backoffMs;
   }
 
   private async dispatchInAppEvent(
@@ -337,7 +382,7 @@ export class NotificationDispatcherJob {
     const dispatchStatus =
       nextRetryCount >= this.maxRetryCount
         ? NOTIFICATION_DISPATCH_PERMANENTLY_FAILED
-        : NOTIFICATION_DISPATCH_FAILED;
+        : NOTIFICATION_DISPATCH_RETRYING;
 
     await tx.notificationEvent.update({
       where: { id: event.id },
@@ -345,6 +390,7 @@ export class NotificationDispatcherJob {
         dispatchStatus,
         retryCount: nextRetryCount,
         errorCode,
+        metadataJson: this.mergeLastAttemptMetadata(event.metadataJson),
       },
     });
 
@@ -359,12 +405,13 @@ export class NotificationDispatcherJob {
     eventId: string,
     currentRetryCount: number,
     errorCode: string,
+    metadataJson: Prisma.JsonValue | null,
   ): Promise<void> {
     const nextRetryCount = currentRetryCount + 1;
     const dispatchStatus =
       nextRetryCount >= this.maxRetryCount
         ? NOTIFICATION_DISPATCH_PERMANENTLY_FAILED
-        : NOTIFICATION_DISPATCH_FAILED;
+        : NOTIFICATION_DISPATCH_RETRYING;
 
     await this.prisma.notificationEvent.update({
       where: { id: eventId },
@@ -372,6 +419,7 @@ export class NotificationDispatcherJob {
         dispatchStatus,
         retryCount: nextRetryCount,
         errorCode,
+        metadataJson: this.mergeLastAttemptMetadata(metadataJson),
       },
     });
   }
@@ -382,6 +430,26 @@ export class NotificationDispatcherJob {
     }
 
     return {};
+  }
+
+  private readLastAttemptAt(metadataJson: Prisma.JsonValue | null): Date | null {
+    const metadata = this.readMetadata(metadataJson);
+    const value = metadata.lastAttemptAt;
+
+    if (typeof value !== 'string') {
+      return null;
+    }
+
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  private mergeLastAttemptMetadata(metadataJson: Prisma.JsonValue | null): Prisma.InputJsonValue {
+    const metadata = this.readMetadata(metadataJson);
+    return {
+      ...metadata,
+      lastAttemptAt: new Date().toISOString(),
+    };
   }
 
   private mergeEmailMetadata(

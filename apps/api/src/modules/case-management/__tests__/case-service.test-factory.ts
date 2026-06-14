@@ -1,4 +1,5 @@
 import { AuditEventPublisher } from '../../../audit/audit-event.publisher.js';
+import { createDefaultFieldVisibilityPolicyService } from '../../../authorization/field-visibility-policy.service.js';
 import { FieldMaskingService } from '../../../authorization/field-masking.service.js';
 import { PolicyScopeService } from '../../../authorization/policy-scope.service.js';
 import { EnvService } from '../../../common/config/env.service.js';
@@ -81,7 +82,7 @@ function createWorkflowBundle(prismaService: PrismaService): {
   const caseService = new CaseService(
     prismaService,
     policyScopeService,
-    new FieldMaskingService(),
+    new FieldMaskingService(createDefaultFieldVisibilityPolicyService()),
     transitionService,
     auditPublisher,
     new CaseReportDecryptService(cryptoService),

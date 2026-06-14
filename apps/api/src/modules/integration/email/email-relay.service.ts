@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 
 import { EnvService } from '../../../common/config/env.service.js';
 import { createSmtpEmailRelayAdapter } from './email-relay.adapter.js';
@@ -8,7 +8,7 @@ import type { EmailRelayPort, SendEmailInput, SendEmailResult } from './email-re
 export class EmailRelayService implements EmailRelayPort {
   private readonly relay: EmailRelayPort | null;
 
-  constructor(envService: EnvService) {
+  constructor(@Inject(EnvService) envService: EnvService) {
     const env = envService.config;
     this.relay =
       env.SMTP_HOST && env.SMTP_FROM_ADDRESS

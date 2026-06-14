@@ -12,7 +12,8 @@
 2. **Dosyaya dokunmadan önce** glob tablosundan ilgili kuralı oku.
 3. **Görev prosedürüyse** (endpoint, ekran, migration…) how-to tablosundan ilgili `4x` kuralı oku.
 4. **Faz çalışmasıysa** (`Faz N — İterasyon M`) ilgili `5x-phase-*.mdc` oku + `48-git-phase-branch`.
-5. Spec detayı için `Docs/` path'ine git — rule'da kopyalanmış tablo arama.
+5. **Faz bitti / gap audit:** `@phase-controller` — read-only; çıktı `.cursor/rules/NN-phase-XX-*-fix.mdc` (bulgular gömülü). Fix oturumu: `@NN-phase-XX-*-fix` + 「Faz N — Fix İterasyon M」.
+6. Spec detayı için `Docs/` path'ine git — rule'da kopyalanmış tablo arama.
 
 > **Verimlilik:** Tüm `.mdc` dosyalarını okuma. Yalnızca dokunduğun dosya + görev tipine uygun kurallar.
 
@@ -68,6 +69,8 @@ Tam metin: `.cursor/rules/00-*.mdc` … `04-*.mdc`.
 | CI/test kırığı | `46-fix-failing-test` |
 | Workflow transition ekleme | `47-add-workflow-transition` |
 | Faz implementasyonu branch | `48-git-phase-branch` |
+| Faz tamamlandı — gap audit (read-only) | `@phase-controller` skill |
+| Faz fix oturumu (remediation) | `NN-phase-XX-<slug>-fix.mdc` |
 
 ---
 
@@ -94,6 +97,17 @@ Mesajda **「Faz N — İterasyon M」** belirt. Kod öncesi `48-git-phase-branc
 
 Faz `.mdc` paketi tamamlandı (Faz 0–13). Yeni faz için `@phase-creator`.
 
+### Faz audit & fix (phase-controller)
+
+| Aşama | Ne | Çıktı |
+| --- | --- | --- |
+| Implementasyon bitti | `@phase-controller` | `.cursor/rules/NN-phase-XX-<slug>-fix.mdc` |
+| Fix planı | skill üretir | `.cursor/rules/NN-phase-XX-<slug>-fix.mdc` |
+| Remediation | `@NN-phase-XX-<slug>-fix` + Fix İterasyon M | Kod (ayrı oturum) |
+| Regression | `@phase-controller` tekrar | Güncel fix `.mdc` |
+
+Skill: `.cursor/skills/phase-controller/SKILL.md`. Human Gate öncesi BLOCKER=0 hedeflenir.
+
 ---
 
 ## 📚 Docs/ — Nihai Kaynak
@@ -112,6 +126,7 @@ Faz `.mdc` paketi tamamlandı (Faz 0–13). Yeni faz için `@phase-creator`.
 | `Docs/09_DEV_WORKFLOW.md` | Git, PR, CI/CD, env |
 | `Docs/10_IMPLEMENTATION_ROADMAP.md` | Faz planı, human gate |
 | `Docs/11_UAT.md` | Human Gate UAT checklist (Faz 9 sonrası uygulama) |
+| `Docs/fix-reports/` | Opsiyonel faz gap raporları (varsayılan değil; kullanıcı açık istemedikçe `phase-controller` yazmaz) |
 
 > Yeni faz / spec değişikliği → önce Docs güncelle, sonra ilgili `.mdc` referansını doğrula.
 

@@ -46,7 +46,12 @@ export const PermissionCode = {
   // Admin
   ADMIN_MANAGE_ROLES: 'admin:manage_roles',
   ADMIN_MANAGE_SETTINGS: 'admin:manage_settings',
+  ADMIN_MANAGE_MASTER_DATA: 'admin:manage_master_data',
   ADMIN_VIEW_SYNC_STATUS: 'admin:view_sync_status',
+  /** Maker-checker onay endpoint'leri — ince kontrol MakerCheckerService.assertChecker */
+  ADMIN_MAKER_CHECKER_APPROVE: 'admin:maker_checker_approve',
+  /** KVKK metin yönetimi — admin + council_secretary (Docs/06 S-ADMIN-KVKK-TEXTS) */
+  ADMIN_MANAGE_KVKK: 'admin:manage_kvkk',
 
   // Tracking (public — internal role map dışında)
   TRACKING_VERIFY: 'tracking:verify',

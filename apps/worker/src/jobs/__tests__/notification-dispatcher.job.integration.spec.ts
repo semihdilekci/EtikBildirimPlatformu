@@ -192,7 +192,7 @@ describe('NotificationDispatcherJob integration (Testcontainers)', () => {
     expect(notificationCount).toBe(1);
   });
 
-  it('recipient eksik → FAILED + notification oluşturulmaz', async () => {
+  it('recipient eksik → RETRYING + notification oluşturulmaz', async () => {
     const suffix = randomUUID();
     const outbox = await seedPendingEvent(suffix, {
       recipientUserId: null,
@@ -208,13 +208,48 @@ describe('NotificationDispatcherJob integration (Testcontainers)', () => {
     const updatedOutbox = await environment.prisma.notificationEvent.findUnique({
       where: { id: outbox.id },
     });
-    expect(updatedOutbox?.dispatchStatus).toBe('FAILED');
+    expect(updatedOutbox?.dispatchStatus).toBe('RETRYING');
+    expect(updatedOutbox?.retryCount).toBe(1);
     expect(updatedOutbox?.errorCode).toBe('NOTIFICATION_MISSING_RECIPIENT');
 
     const notificationCount = await environment.prisma.notification.count({
       where: { caseId: outbox.caseId },
     });
     expect(notificationCount).toBe(0);
+  });
+
+  it('RETRYING kaydı backoff sonrası tekrar dispatch edilir', async () => {
+    const suffix = randomUUID();
+    const outbox = await seedPendingEvent(suffix, {
+      recipientUserId: null,
+      idempotencyKey: `worker-retry-${suffix}`,
+    });
+
+    await dispatchJob.processPendingBatch();
+
+    const retrying = await environment.prisma.notificationEvent.update({
+      where: { id: outbox.id },
+      data: {
+        recipientUserId,
+        metadataJson: {
+          transitionId: `transition-${suffix}`,
+          lastAttemptAt: new Date(Date.now() - 60_000).toISOString(),
+        },
+      },
+    });
+
+    expect(retrying.dispatchStatus).toBe('RETRYING');
+
+    const result = await dispatchJob.processPendingBatch();
+
+    expect(result.items.some((item) => item.eventId === outbox.id && item.status === 'sent')).toBe(
+      true,
+    );
+
+    const updatedOutbox = await environment.prisma.notificationEvent.findUnique({
+      where: { id: outbox.id },
+    });
+    expect(updatedOutbox?.dispatchStatus).toBe('SENT');
   });
 
   it('max retry sonrası PERMANENTLY_FAILED dead-letter', async () => {

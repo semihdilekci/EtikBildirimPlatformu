@@ -32,6 +32,8 @@ export const AUDIT_EVENT_CATEGORY_BY_TYPE: Record<AuditEventTypeCode, AuditEvent
   [AuditEventType.DOCUMENT_UPLOADED]: AuditEventCategory.DOCUMENT,
   [AuditEventType.ROLE_ASSIGNMENT_REQUESTED]: AuditEventCategory.CONFIG,
   [AuditEventType.ROLE_ASSIGNMENT_APPROVED]: AuditEventCategory.CONFIG,
+  [AuditEventType.ROLE_REVOKED]: AuditEventCategory.CONFIG,
+  [AuditEventType.CLEARANCE_CHANGE_REQUESTED]: AuditEventCategory.CONFIG,
   [AuditEventType.CLEARANCE_UPDATED]: AuditEventCategory.CONFIG,
   [AuditEventType.SYSTEM_SETTING_CHANGED]: AuditEventCategory.CONFIG,
   [AuditEventType.TRACKING_VERIFY_ATTEMPT]: AuditEventCategory.TRACKING,
@@ -52,6 +54,13 @@ export const AUDIT_EVENT_CATEGORY_BY_TYPE: Record<AuditEventTypeCode, AuditEvent
   [AuditEventType.TASK_DELEGATED]: AuditEventCategory.WORKFLOW,
   [AuditEventType.DECISION_VOTE_CAST]: AuditEventCategory.WORKFLOW,
   [AuditEventType.SILENT_ACCEPTANCE_CREATED]: AuditEventCategory.WORKFLOW,
+  [AuditEventType.MASTER_DATA_CREATED]: AuditEventCategory.CONFIG,
+  [AuditEventType.MASTER_DATA_UPDATED]: AuditEventCategory.CONFIG,
+  [AuditEventType.MASTER_DATA_DELETED]: AuditEventCategory.CONFIG,
+  [AuditEventType.SLA_POLICY_CHANGED]: AuditEventCategory.CONFIG,
+  [AuditEventType.BUSINESS_CALENDAR_UPDATED]: AuditEventCategory.CONFIG,
+  [AuditEventType.NOTIFICATION_TEMPLATE_CHANGED]: AuditEventCategory.CONFIG,
+  [AuditEventType.KVKK_TEXT_PUBLISHED]: AuditEventCategory.CONFIG,
 };
 
 export const AUDIT_EVENT_DEFAULT_SEVERITY: Record<AuditEventTypeCode, AuditSeverityCode> = {
@@ -62,6 +71,8 @@ export const AUDIT_EVENT_DEFAULT_SEVERITY: Record<AuditEventTypeCode, AuditSever
   [AuditEventType.DOCUMENT_UPLOADED]: AuditSeverity.INFO,
   [AuditEventType.ROLE_ASSIGNMENT_REQUESTED]: AuditSeverity.HIGH,
   [AuditEventType.ROLE_ASSIGNMENT_APPROVED]: AuditSeverity.HIGH,
+  [AuditEventType.ROLE_REVOKED]: AuditSeverity.HIGH,
+  [AuditEventType.CLEARANCE_CHANGE_REQUESTED]: AuditSeverity.HIGH,
   [AuditEventType.CLEARANCE_UPDATED]: AuditSeverity.HIGH,
   [AuditEventType.SYSTEM_SETTING_CHANGED]: AuditSeverity.HIGH,
   [AuditEventType.TRACKING_VERIFY_ATTEMPT]: AuditSeverity.INFO,
@@ -82,4 +93,11 @@ export const AUDIT_EVENT_DEFAULT_SEVERITY: Record<AuditEventTypeCode, AuditSever
   [AuditEventType.TASK_DELEGATED]: AuditSeverity.INFO,
   [AuditEventType.DECISION_VOTE_CAST]: AuditSeverity.INFO,
   [AuditEventType.SILENT_ACCEPTANCE_CREATED]: AuditSeverity.INFO,
+  [AuditEventType.MASTER_DATA_CREATED]: AuditSeverity.INFO,
+  [AuditEventType.MASTER_DATA_UPDATED]: AuditSeverity.INFO,
+  [AuditEventType.MASTER_DATA_DELETED]: AuditSeverity.INFO,
+  [AuditEventType.SLA_POLICY_CHANGED]: AuditSeverity.HIGH,
+  [AuditEventType.BUSINESS_CALENDAR_UPDATED]: AuditSeverity.HIGH,
+  [AuditEventType.NOTIFICATION_TEMPLATE_CHANGED]: AuditSeverity.HIGH,
+  [AuditEventType.KVKK_TEXT_PUBLISHED]: AuditSeverity.HIGH,
 };

@@ -17,6 +17,7 @@ import type { Prisma, PrismaClient } from '@prisma/client';
 import { seedRoleTestUsers, seedSyntheticCompany } from '@ethics/test-fixtures';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { createDefaultFieldVisibilityPolicyService } from '../../../authorization/field-visibility-policy.service.js';
 import { FieldMaskingService } from '../../../authorization/field-masking.service.js';
 import type { AuthenticatedUser } from '../../../common/types/authenticated-user.type.js';
 import { DomainException } from '../../../common/exceptions/domain.exception.js';
@@ -58,7 +59,7 @@ describe('Case CRUD + ABAC scoping (Testcontainers)', () => {
 
     const prismaService = environment.prisma as unknown as PrismaService;
     caseService = createCaseServiceForTests(prismaService);
-    fieldMasking = new FieldMaskingService();
+    fieldMasking = new FieldMaskingService(createDefaultFieldVisibilityPolicyService());
 
     secretaryUser = await loadUserByEmail(environment.prisma, 'council.secretary@ethics.local');
     actionOwnerUser = await loadUserByEmail(

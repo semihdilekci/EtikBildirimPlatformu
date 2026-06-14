@@ -1,0 +1,200 @@
+---
+description: '[Faz 9 Fix] Admin Panel gap remediation — 4 fix iterasyon/chat (CI → master-data → E2E test → pattern/erişim). Mesajda "Faz 9 — Fix İterasyon M" belirt. Audit: phase-controller 2026-06-14.'
+---
+
+# Faz 9 Fix: Admin Panel
+
+## Goal
+
+Faz 9 phase-controller audit bulgularını kapat. BLOCKER=0, HIGH=0 hedeflenir; MEDIUM fix iterasyon 4'te veya bilinçli defer'de kapatılır. **Yeni feature yok** — yalnızca gap kapatma.
+
+**Kaynak faz:** `.cursor/rules/59-phase-09-admin.mdc`  
+**Audit durumu:** FAIL (2026-06-14, branch `feature/F9-admin`, ~58 dosya commit edilmemiş)  
+**Audit kapsamı:** Tam faz (iterasyon 1–10 + Done Definition + Explicit Don'ts)
+
+## Feature branch (fix)
+
+Fix oturumları mevcut faz branch'inde devam eder:
+
+**Branch:** `feature/F9-admin` (veya `fix/F9-admin`)
+
+**Stop (Fix İterasyon 1, kod öncesi):** [ ] Aşağıdaki bulgu listesi okundu; [ ] BLOCKER (F-09-001) net; [ ] branch checkout.
+
+## Bu fix'in çalışma modeli
+
+Tek sohbette tüm fix'ler tamamlanmayabilir. Her session: `@59-phase-09-admin-fix` + **「Faz 9 — Fix İterasyon M」**.
+
+---
+
+## Audit bulguları (tek kaynak)
+
+| ID | Severity | Tip | Başlık | Kanıt |
+| --- | --- | --- | --- | --- |
+| F-09-001 | BLOCKER | TEST_GAP | CI green değil | `pnpm lint` → `@ethics/policy` tsconfig parse; `pnpm typecheck` → `@ethics/web` jest-dom matcher tipleri |
+| F-09-002 | HIGH | MISSING | S-ADMIN-MASTER-DATA placeholder | `routes/index.tsx:83-86` → `AdminPlaceholderPage` |
+| F-09-003 | HIGH | MISSING | sync-runs endpoint yok | `Docs/03` §8.11, `Docs/06` S-ADMIN-MASTER-DATA; `rg sync-runs admin/` → 0 |
+| F-09-004 | HIGH | TEST_GAP | E2E admin user flow yok | Done Definition + İterasyon 10; `admin*.journey` / Playwright Akış 5 yok |
+| F-09-005 | MEDIUM | PATTERN | Approve endpoint'ler `@Authenticated()` only | 9 endpoint (örn. `admin-users.controller.ts:87-92`); PolicyGuard RBAC atlanıyor |
+| F-09-006 | MEDIUM | WRONG | council_secretary KVKK erişimi | `RoleGuard roles={[Role.ADMIN]}`; `Docs/06` S-ADMIN-KVKK-TEXTS admin/council_secretary |
+| F-09-007 | MEDIUM | PATTERN | send-test `@AuditAction` eksik | `notification-template.controller.ts:112-128` |
+| F-09-008 | LOW | TEST_GAP | Admin FE test kapsamı düşük | 3 spec (hook/component); sayfa/E2E yok |
+| F-09-009 | INFO | — | Faz 9 kodu commit edilmemiş | ~58 unstaged dosya, son commit Faz 8 |
+| F-09-010 | INFO | DOC_DRIFT | `Docs/10` Faz 9 "planlandı" | Human Gate sonrası güncellenir — fix scope dışı |
+
+**Explicit Don'ts:** ✅ uyumlu (maker-checker BE, audit redacted, async CSV, KVKK destructive confirm, generic master-data, admin case content yok).
+
+**Güçlü uyum (fix gerektirmez):** Backend admin modülü, 8 integration test dosyası 44/44 yeşil, maker-checker same-user reject, audit redaction, CSV async export, field visibility reload, XSS preview test, 12/13 ekran, RoleGuard `/403`.
+
+---
+
+### Fix İterasyon 1 — CI / kalite kapısı
+
+**Hedef:** F-09-001 kapat.
+
+**Yapılacaklar:**
+
+1. `packages/policy` — `policy.spec.ts` tsconfig/ESLint project service hatasını düzelt (`include` veya `allowDefaultProject`)
+2. `apps/web` — jest-dom matcher tipleri (`toBeInTheDocument`, `toHaveTextContent`, `toHaveValue`); `vitest.setup.ts` + `@testing-library/jest-dom/vitest` veya `tsconfig` types
+3. `pnpm lint` + `pnpm typecheck` monorepo genelinde green doğrula
+
+**Kapatılacak bulgular:** F-09-001
+
+**Minimum bağlam:**
+
+- `.cursor/rules/04-quality-gates.mdc`
+- `.cursor/rules/46-fix-failing-test.mdc`
+
+**Bu fix iterasyonda yok:** Admin feature, FE ekran.
+
+**Stop:** [ ] `pnpm lint` green; [ ] `pnpm typecheck` green. PR/onay → Fix İterasyon 2.
+
+---
+
+### Fix İterasyon 2 — Master Data (BE + FE)
+
+**Hedef:** F-09-002, F-09-003 kapat.
+
+**Yapılacaklar:**
+
+1. **Backend:** `GET /api/v1/admin/master-data/sync-runs` — `Docs/03` §8.11 response şekli; `@RequirePolicy(ADMIN_VIEW_SYNC_STATUS)`; PII yok; integration test
+2. **Frontend:** `S-ADMIN-MASTER-DATA` — `AdminPlaceholderPage` kaldır; `AdminMasterDataPage` (`Docs/06` §S-ADMIN-MASTER-DATA): sync özet kartı, şirket/lokasyon/fonksiyon tabları (salt okunur), sync koşu geçmişi; `admin-monitoring.api.ts` veya `admin-config.api.ts` genişlet
+3. Generic `/:type` pattern korunur (`Docs/03` path farkı bilinçli — phase generic zorunlu)
+4. Negatif deny test: normal user → 403
+
+**Kapatılacak bulgular:** F-09-002, F-09-003
+
+**Minimum bağlam:**
+
+- `Docs/03_API_CONTRACTS.md` §8.11
+- `Docs/06_SCREEN_CATALOG.md` §S-ADMIN-MASTER-DATA
+- `.cursor/rules/41-add-new-screen.mdc`
+- `apps/api/src/modules/admin/master-data/`
+
+**Bu fix iterasyonda yok:** HR/SAP canlı sync (MVP dışı), master-data mutating FE (ekran salt okunur).
+
+**Stop:** [ ] sync-runs integration test green; [ ] master-data ekran smoke; [ ] placeholder route kaldırıldı. PR/onay → Fix İterasyon 3.
+
+---
+
+### Fix İterasyon 3 — E2E admin akışı
+
+**Hedef:** F-09-004 kapat; F-09-008 kısmen.
+
+**Yapılacaklar:**
+
+1. API journey integration test: `admin-user-management.journey.db.integration.spec.ts` — admin login (seed) → kullanıcı listele → rol atama (maker) → checker onay → clearance güncelle → audit outbox spot-check
+2. Negatif: normal user admin endpoint → 403; maker=checker approve → `MAKER_CHECKER_SELF`
+3. (Opsiyonel, zaman varsa) Playwright Akış 5 iskeleti — `Docs/08` §12; Faz 13 öncesi tam suite defer edilebilir
+
+**Kapatılacak bulgular:** F-09-004 (F-09-008 kısmi — journey test yeterli; tam Playwright defer tablosuna)
+
+**Minimum bağlam:**
+
+- `.cursor/rules/59-phase-09-admin.mdc` İterasyon 10
+- `Docs/08_TESTING_STRATEGY.md` §12 Akış 5
+- `apps/api/src/modules/admin/__tests__/admin-users.db.integration.spec.ts` (pattern referans)
+
+**Bu fix iterasyonda yok:** Playwright full suite (defer), Faz 10 dashboard E2E.
+
+**Stop:** [ ] Journey test green; [ ] Done Definition "E2E admin user flow" karşılandı. PR/onay → Fix İterasyon 4.
+
+---
+
+### Fix İterasyon 4 — Pattern, erişim, audit
+
+**Hedef:** F-09-005, F-09-006, F-09-007 kapat.
+
+**Yapılacaklar:**
+
+1. **F-09-005:** Maker-checker approve endpoint'lerinde `@RequirePolicy` stratejisi netleştir — ya checker-specific permission + service assertChecker, ya ADR ile `@Authenticated()` + service-only documentasyon. Tercih: `@RequirePolicy` + maker-checker service (pattern tutarlılığı)
+2. **F-09-006:** KVKK route erişimi — `RoleGuard` genişlet (ADMIN veya COUNCIL_SECRETARY) veya KVKK alt-route ayrı guard; nav `PermissionGate` ile hizala (`kvkk-texts` permission)
+3. **F-09-007:** `POST send-test/:templateCode` → `@AuditAction` ekle (uygun `AuditEventType`)
+4. Faz 9 değişikliklerini commit et (F-09-009 — conventional commit, `feature/F9-admin`)
+
+**Kapatılacak bulgular:** F-09-005, F-09-006, F-09-007
+
+**Minimum bağlam:**
+
+- `.cursor/rules/14-backend-controllers.mdc`
+- `.cursor/rules/12-authorization-policy.mdc`
+- `.cursor/rules/21-frontend-routes.mdc`
+- `Docs/07_SECURITY_IMPLEMENTATION.md` maker-checker
+
+**Bu fix iterasyonda yok:** Document-ops rescan/reject (Docs/03 yalnızca GET monitor — defer), Faz 10 KVKK modal.
+
+**Stop:** [ ] Pattern review; [ ] council_secretary KVKK smoke; [ ] send-test audit test; [ ] F9 commit'ler push. PR/onay → regression audit.
+
+---
+
+## Required Context
+
+- `.cursor/rules/59-phase-09-admin.mdc` — orijinal Done Definition
+- `Docs/03_API_CONTRACTS.md` §8.10–8.13
+- `Docs/06_SCREEN_CATALOG.md` — S-ADMIN-*
+- `Docs/07_SECURITY_IMPLEMENTATION.md` — maker-checker, field visibility, audit
+- `Docs/08_TESTING_STRATEGY.md` §12
+- `Docs/10_IMPLEMENTATION_ROADMAP.md` §Faz 9 Human Gate
+- `Docs/11_UAT.md` §Faz 9 (UAT maddeleri fix sonrası manuel)
+
+## Fix Done Definition
+
+| Bulgu ID | Severity | Kapatıldı |
+| -------- | -------- | --------- |
+| F-09-001 | BLOCKER | [ ] |
+| F-09-002 | HIGH | [ ] |
+| F-09-003 | HIGH | [ ] |
+| F-09-004 | HIGH | [ ] |
+| F-09-005 | MEDIUM | [ ] |
+| F-09-006 | MEDIUM | [ ] |
+| F-09-007 | MEDIUM | [ ] |
+| F-09-008 | LOW | [ ] (kısmi OK — journey test) |
+
+### Kalite kapıları
+
+- [ ] `pnpm lint` + `pnpm typecheck` green
+- [ ] `pnpm --filter @ethics/api test` admin suite green
+- [ ] Orijinal Faz 9 Done Definition spot-check (13 ekran, maker-checker, CI)
+- [ ] BLOCKER = 0, HIGH = 0
+- [ ] Regression audit (`@phase-controller`) veya developer onayı
+- [ ] Faz 9 kodu commit + push (`feature/F9-admin`)
+
+## Explicit Don'ts
+
+- Yeni feature / sonraki faz deliverable (KVKK blocking modal, dashboard, prod deploy)
+- Orijinal faz scope genişletme (document rescan/reject API Docs/03'te yok)
+- Maker-checker yalnızca FE'de bırakma
+- Audit viewer plaintext etik içerik
+- Client-side CSV >10K
+- `main`'e direct push
+
+## Deferred (bilinçli erteleme)
+
+| Bulgu ID | Gerekçe | Hedef |
+| -------- | ------- | ----- |
+| F-09-008 | Tam Playwright Akış 1–5 suite repo geneli | Faz 13 UAT / CI genişletme |
+| F-09-010 | Roadmap durum güncellemesi | Human Gate sonrası ayrı commit |
+| Document-ops rescan/reject UI | Docs/03 yalnızca GET monitor; Faz 9 İterasyon 7 monitor-only | ADR veya sonraki faz |
+
+---
+
+Fix done → `@phase-controller` regression audit → Human Gate (`Docs/10` §Faz 9, `Docs/11_UAT.md` §Faz 9).

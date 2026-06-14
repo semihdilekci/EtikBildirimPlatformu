@@ -57,7 +57,9 @@ export function AdminLayout() {
             <ListItemButton
               component={RouterLink}
               to={item.path}
-              selected={location.pathname === item.path}
+              selected={
+                location.pathname === item.path || location.pathname.startsWith(`${item.path}/`)
+              }
               onClick={() => {
                 setMobileOpen(false);
               }}

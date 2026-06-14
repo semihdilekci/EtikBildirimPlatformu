@@ -8,6 +8,8 @@ description: Researches the Lean Management monorepo, asks scope questions one a
 > **Cursor:** Proje skill'i — `.cursor/skills/phase-creator/`. Claude Code eşdeğeri: `.claude/skills/phase-creator/`. İçerik değişince **her iki kopyayı** senkron tut.
 >
 > **Önkoşul:** Çekirdek/glob/how-to `.mdc` paketi yoksa önce **`rules-architect`** skill'i; faz `.mdc` bu skill'in kapsamındadır.
+>
+> **Implementasyon sonrası:** Gap audit için **`phase-controller`** skill'i — fix raporu + `-fix.mdc` (kod değiştirmez).
 
 Kullanıcının kapsamı için **araştırır** → **tek tek sorular** → **taslak + docs etki planı** → **onay** → **`docs/` güncellemesi** → **`.mdc` (docs referanslı)**. Onay ve kod yazımı öncesi sıra değişmez.
 

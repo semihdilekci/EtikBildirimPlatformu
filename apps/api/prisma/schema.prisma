@@ -49,6 +49,28 @@ model User {
   documentsUploaded    Document[] @relation("DocumentUploader")
   documentAccessGrants DocumentAccessGrant[] @relation("DocumentAccessGrantUser")
   notifications        Notification[]
+  clearanceChangeRequestsSubject ClearanceChangeRequest[] @relation("ClearanceChangeSubject")
+  clearanceChangeRequestsRequested ClearanceChangeRequest[] @relation("ClearanceChangeRequestedBy")
+  clearanceChangeRequestsApproved ClearanceChangeRequest[] @relation("ClearanceChangeApprovedBy")
+  clearanceChangeRequestsRejected ClearanceChangeRequest[] @relation("ClearanceChangeRejectedBy")
+  systemSettingChangeBatchesRequested SystemSettingChangeBatch[] @relation("SystemSettingChangeRequestedBy")
+  systemSettingChangeBatchesApproved SystemSettingChangeBatch[] @relation("SystemSettingChangeApprovedBy")
+  systemSettingChangeBatchesRejected SystemSettingChangeBatch[] @relation("SystemSettingChangeRejectedBy")
+  fieldVisibilityChangeBatchesRequested FieldVisibilityChangeBatch[] @relation("FieldVisibilityChangeRequestedBy")
+  fieldVisibilityChangeBatchesApproved FieldVisibilityChangeBatch[] @relation("FieldVisibilityChangeApprovedBy")
+  fieldVisibilityChangeBatchesRejected FieldVisibilityChangeBatch[] @relation("FieldVisibilityChangeRejectedBy")
+  actionMatrixChangeBatchesRequested ActionMatrixChangeBatch[] @relation("ActionMatrixChangeRequestedBy")
+  actionMatrixChangeBatchesApproved ActionMatrixChangeBatch[] @relation("ActionMatrixChangeApprovedBy")
+  actionMatrixChangeBatchesRejected ActionMatrixChangeBatch[] @relation("ActionMatrixChangeRejectedBy")
+  slaPolicyChangeBatchesRequested SlaPolicyChangeBatch[] @relation("SlaPolicyChangeRequestedBy")
+  slaPolicyChangeBatchesApproved SlaPolicyChangeBatch[] @relation("SlaPolicyChangeApprovedBy")
+  slaPolicyChangeBatchesRejected SlaPolicyChangeBatch[] @relation("SlaPolicyChangeRejectedBy")
+  notificationTemplateChangeBatchesRequested NotificationTemplateChangeBatch[] @relation("NotificationTemplateChangeRequestedBy")
+  notificationTemplateChangeBatchesApproved NotificationTemplateChangeBatch[] @relation("NotificationTemplateChangeApprovedBy")
+  notificationTemplateChangeBatchesRejected NotificationTemplateChangeBatch[] @relation("NotificationTemplateChangeRejectedBy")
+  kvkkTextChangeBatchesRequested KvkkTextChangeBatch[] @relation("KvkkTextChangeRequestedBy")
+  kvkkTextChangeBatchesApproved KvkkTextChangeBatch[] @relation("KvkkTextChangeApprovedBy")
+  kvkkTextChangeBatchesRejected KvkkTextChangeBatch[] @relation("KvkkTextChangeRejectedBy")
 
   @@index([companyId], map: "idx_users_company_id")
   @@index([isActive], map: "idx_users_is_active")
@@ -75,6 +97,30 @@ model UserRole {
 
   @@index([userId, isActive], map: "idx_user_roles_user_active")
   @@map("user_roles")
+}
+
+model ClearanceChangeRequest {
+  id             String    @id @default(cuid())
+  userId         String    @map("user_id")
+  requestedBy    String    @map("requested_by")
+  approvedBy     String?   @map("approved_by")
+  rejectedBy     String?   @map("rejected_by")
+  currentLevel   String    @map("current_level")
+  requestedLevel String    @map("requested_level")
+  reason         String
+  status         String    @default("PENDING")
+  resolvedAt     DateTime? @map("resolved_at")
+  auditEventId   String?   @map("audit_event_id")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  user            User  @relation("ClearanceChangeSubject", fields: [userId], references: [id])
+  requestedByUser User  @relation("ClearanceChangeRequestedBy", fields: [requestedBy], references: [id])
+  approvedByUser  User? @relation("ClearanceChangeApprovedBy", fields: [approvedBy], references: [id])
+  rejectedByUser  User? @relation("ClearanceChangeRejectedBy", fields: [rejectedBy], references: [id])
+
+  @@index([userId, status], map: "idx_clearance_change_requests_user_status")
+  @@map("clearance_change_requests")
 }
 
 /// connect-pg-simple session store — sid/sess/expire convention
@@ -299,6 +345,24 @@ model Position {
   @@map("positions")
 }
 
+model HrSyncRun {
+  id                 String    @id @default(cuid())
+  syncType           String    @map("sync_type")
+  status             String
+  startedAt          DateTime  @map("started_at")
+  finishedAt         DateTime? @map("finished_at")
+  recordsProcessed   Int?      @map("records_processed")
+  recordsCreated     Int?      @map("records_created")
+  recordsUpdated     Int?      @map("records_updated")
+  recordsDeactivated Int?      @map("records_deactivated")
+  errorCode          String?   @map("error_code")
+  errorDetailMasked  String?   @map("error_detail_masked")
+  createdAt          DateTime  @default(now()) @map("created_at")
+
+  @@index([startedAt(sort: Desc)], map: "idx_hr_sync_runs_started_at")
+  @@map("hr_sync_runs")
+}
+
 // ─── Config & Admin ───────────────────────────────────────────────────────────
 
 model SystemSetting {
@@ -315,6 +379,152 @@ model SystemSetting {
 
   @@index([category], map: "idx_system_settings_category")
   @@map("system_settings")
+}
+
+model SystemSettingChangeBatch {
+  id           String    @id @default(cuid())
+  requestedBy  String    @map("requested_by")
+  approvedBy   String?   @map("approved_by")
+  rejectedBy   String?   @map("rejected_by")
+  reason       String
+  status       String    @default("PENDING")
+  resolvedAt   DateTime? @map("resolved_at")
+  auditEventId String?   @map("audit_event_id")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  requestedByUser User @relation("SystemSettingChangeRequestedBy", fields: [requestedBy], references: [id])
+  approvedByUser  User? @relation("SystemSettingChangeApprovedBy", fields: [approvedBy], references: [id])
+  rejectedByUser  User? @relation("SystemSettingChangeRejectedBy", fields: [rejectedBy], references: [id])
+  items           SystemSettingChangeItem[]
+
+  @@index([status], map: "idx_system_setting_change_batches_status")
+  @@index([requestedBy, status], map: "idx_system_setting_change_batches_requested_status")
+  @@map("system_setting_change_batches")
+}
+
+model SystemSettingChangeItem {
+  id            String   @id @default(cuid())
+  batchId       String   @map("batch_id")
+  settingKey    String   @map("setting_key")
+  currentValue  Json     @map("current_value")
+  proposedValue Json     @map("proposed_value")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  batch SystemSettingChangeBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@unique([batchId, settingKey], map: "idx_system_setting_change_items_batch_key")
+  @@index([settingKey], map: "idx_system_setting_change_items_setting_key")
+  @@map("system_setting_change_items")
+}
+
+model FieldVisibilityConfig {
+  id           String   @id @default(cuid())
+  roleCode     String   @map("role_code")
+  fieldName    String   @map("field_name")
+  visibility   String
+  versionNo    Int      @default(1) @map("version_no")
+  isActive     Boolean  @default(true) @map("is_active")
+  approvedBy   String?  @map("approved_by")
+  auditEventId String?  @map("audit_event_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@unique([roleCode, fieldName], map: "idx_field_visibility_configs_role_field")
+  @@index([roleCode], map: "idx_field_visibility_configs_role_code")
+  @@map("field_visibility_configs")
+}
+
+model FieldVisibilityChangeBatch {
+  id           String    @id @default(cuid())
+  requestedBy  String    @map("requested_by")
+  approvedBy   String?   @map("approved_by")
+  rejectedBy   String?   @map("rejected_by")
+  reason       String
+  status       String    @default("PENDING")
+  resolvedAt   DateTime? @map("resolved_at")
+  auditEventId String?   @map("audit_event_id")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  requestedByUser User @relation("FieldVisibilityChangeRequestedBy", fields: [requestedBy], references: [id])
+  approvedByUser  User? @relation("FieldVisibilityChangeApprovedBy", fields: [approvedBy], references: [id])
+  rejectedByUser  User? @relation("FieldVisibilityChangeRejectedBy", fields: [rejectedBy], references: [id])
+  items           FieldVisibilityChangeItem[]
+
+  @@index([status], map: "idx_field_visibility_change_batches_status")
+  @@index([requestedBy, status], map: "idx_field_visibility_change_batches_requested_status")
+  @@map("field_visibility_change_batches")
+}
+
+model FieldVisibilityChangeItem {
+  id                 String   @id @default(cuid())
+  batchId            String   @map("batch_id")
+  roleCode           String   @map("role_code")
+  fieldName          String   @map("field_name")
+  currentVisibility  String   @map("current_visibility")
+  proposedVisibility String   @map("proposed_visibility")
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  batch FieldVisibilityChangeBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@unique([batchId, roleCode, fieldName], map: "idx_field_visibility_change_items_batch_role_field")
+  @@index([roleCode, fieldName], map: "idx_field_visibility_change_items_role_field")
+  @@map("field_visibility_change_items")
+}
+
+model ActionMatrixConfig {
+  id           String   @id @default(cuid())
+  actionCode   String   @unique @map("action_code")
+  makerRole    String   @map("maker_role")
+  checkerRole  String   @map("checker_role")
+  versionNo    Int      @default(1) @map("version_no")
+  isActive     Boolean  @default(true) @map("is_active")
+  approvedBy   String?  @map("approved_by")
+  auditEventId String?  @map("audit_event_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("action_matrix_configs")
+}
+
+model ActionMatrixChangeBatch {
+  id           String    @id @default(cuid())
+  requestedBy  String    @map("requested_by")
+  approvedBy   String?   @map("approved_by")
+  rejectedBy   String?   @map("rejected_by")
+  reason       String
+  status       String    @default("PENDING")
+  resolvedAt   DateTime? @map("resolved_at")
+  auditEventId String?   @map("audit_event_id")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  requestedByUser User @relation("ActionMatrixChangeRequestedBy", fields: [requestedBy], references: [id])
+  approvedByUser  User? @relation("ActionMatrixChangeApprovedBy", fields: [approvedBy], references: [id])
+  rejectedByUser  User? @relation("ActionMatrixChangeRejectedBy", fields: [rejectedBy], references: [id])
+  items           ActionMatrixChangeItem[]
+
+  @@index([status], map: "idx_action_matrix_change_batches_status")
+  @@index([requestedBy, status], map: "idx_action_matrix_change_batches_requested_status")
+  @@map("action_matrix_change_batches")
+}
+
+model ActionMatrixChangeItem {
+  id                  String   @id @default(cuid())
+  batchId             String   @map("batch_id")
+  actionCode          String   @map("action_code")
+  currentMakerRole    String   @map("current_maker_role")
+  proposedMakerRole   String   @map("proposed_maker_role")
+  currentCheckerRole  String   @map("current_checker_role")
+  proposedCheckerRole String   @map("proposed_checker_role")
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  batch ActionMatrixChangeBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@unique([batchId, actionCode], map: "idx_action_matrix_change_items_batch_action")
+  @@index([actionCode], map: "idx_action_matrix_change_items_action_code")
+  @@map("action_matrix_change_items")
 }
 
 model KvkkConsentVersion {
@@ -347,6 +557,117 @@ model SlaPolicyConfig {
   tasks Task[]
 
   @@map("sla_policy_configs")
+}
+
+model SlaPolicyChangeBatch {
+  id           String    @id @default(cuid())
+  requestedBy  String    @map("requested_by")
+  approvedBy   String?   @map("approved_by")
+  rejectedBy   String?   @map("rejected_by")
+  reason       String
+  status       String    @default("PENDING")
+  resolvedAt   DateTime? @map("resolved_at")
+  auditEventId String?   @map("audit_event_id")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  requestedByUser User @relation("SlaPolicyChangeRequestedBy", fields: [requestedBy], references: [id])
+  approvedByUser  User? @relation("SlaPolicyChangeApprovedBy", fields: [approvedBy], references: [id])
+  rejectedByUser  User? @relation("SlaPolicyChangeRejectedBy", fields: [rejectedBy], references: [id])
+  items           SlaPolicyChangeItem[]
+
+  @@index([status], map: "idx_sla_policy_change_batches_status")
+  @@index([requestedBy, status], map: "idx_sla_policy_change_batches_requested_status")
+  @@map("sla_policy_change_batches")
+}
+
+model SlaPolicyChangeItem {
+  id             String   @id @default(cuid())
+  batchId        String   @map("batch_id")
+  taskType       String   @map("task_type")
+  currentConfig  Json     @map("current_config")
+  proposedConfig Json     @map("proposed_config")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  batch SlaPolicyChangeBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@unique([batchId, taskType], map: "idx_sla_policy_change_items_batch_task_type")
+  @@index([taskType], map: "idx_sla_policy_change_items_task_type")
+  @@map("sla_policy_change_items")
+}
+
+model NotificationTemplateChangeBatch {
+  id           String    @id @default(cuid())
+  requestedBy  String    @map("requested_by")
+  approvedBy   String?   @map("approved_by")
+  rejectedBy   String?   @map("rejected_by")
+  reason       String
+  status       String    @default("PENDING")
+  resolvedAt   DateTime? @map("resolved_at")
+  auditEventId String?   @map("audit_event_id")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  requestedByUser User @relation("NotificationTemplateChangeRequestedBy", fields: [requestedBy], references: [id])
+  approvedByUser  User? @relation("NotificationTemplateChangeApprovedBy", fields: [approvedBy], references: [id])
+  rejectedByUser  User? @relation("NotificationTemplateChangeRejectedBy", fields: [rejectedBy], references: [id])
+  items           NotificationTemplateChangeItem[]
+
+  @@index([status], map: "idx_notification_template_change_batches_status")
+  @@index([requestedBy, status], map: "idx_notification_template_change_batches_requested_status")
+  @@map("notification_template_change_batches")
+}
+
+model NotificationTemplateChangeItem {
+  id             String   @id @default(cuid())
+  batchId        String   @map("batch_id")
+  templateCode   String   @map("template_code")
+  currentConfig  Json     @map("current_config")
+  proposedConfig Json     @map("proposed_config")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  batch NotificationTemplateChangeBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@unique([batchId, templateCode], map: "idx_notification_template_change_items_batch_code")
+  @@index([templateCode], map: "idx_notification_template_change_items_template_code")
+  @@map("notification_template_change_items")
+}
+
+model KvkkTextChangeBatch {
+  id           String    @id @default(cuid())
+  requestedBy  String    @map("requested_by")
+  approvedBy   String?   @map("approved_by")
+  rejectedBy   String?   @map("rejected_by")
+  reason       String
+  status       String    @default("PENDING")
+  resolvedAt   DateTime? @map("resolved_at")
+  auditEventId String?   @map("audit_event_id")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  requestedByUser User @relation("KvkkTextChangeRequestedBy", fields: [requestedBy], references: [id])
+  approvedByUser  User? @relation("KvkkTextChangeApprovedBy", fields: [approvedBy], references: [id])
+  rejectedByUser  User? @relation("KvkkTextChangeRejectedBy", fields: [rejectedBy], references: [id])
+  items           KvkkTextChangeItem[]
+
+  @@index([status], map: "idx_kvkk_text_change_batches_status")
+  @@index([requestedBy, status], map: "idx_kvkk_text_change_batches_requested_status")
+  @@map("kvkk_text_change_batches")
+}
+
+model KvkkTextChangeItem {
+  id            String   @id @default(cuid())
+  batchId       String   @map("batch_id")
+  versionCode   String   @map("version_code") @db.VarChar(20)
+  contentText   String   @map("content_text")
+  effectiveDate DateTime @map("effective_date") @db.Date
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  batch KvkkTextChangeBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@unique([batchId], map: "idx_kvkk_text_change_items_batch_id")
+  @@index([versionCode], map: "idx_kvkk_text_change_items_version_code")
+  @@map("kvkk_text_change_items")
 }
 
 model BusinessCalendarEntry {
@@ -720,4 +1041,25 @@ model DocumentAccessGrant {
   @@index([grantedToRole], map: "idx_dag_granted_to_role")
   @@index([revokedAt], map: "idx_dag_revoked_at")
   @@map("document_access_grants")
+}
+
+// ─── Admin monitoring (Faz 9 — İterasyon 7) ─────────────────────────────────
+
+model AdminExportJob {
+  id                String    @id @default(cuid())
+  exportType        String    @map("export_type")
+  status            String    @default("PENDING")
+  requestedByUserId String    @map("requested_by_user_id")
+  filterJson        Json      @map("filter_json")
+  storageKey        String?   @map("storage_key")
+  rowCount          Int?      @map("row_count")
+  errorCode         String?   @map("error_code")
+  expiresAt         DateTime? @map("expires_at")
+  completedAt       DateTime? @map("completed_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  @@index([status], map: "idx_admin_export_jobs_status")
+  @@index([requestedByUserId], map: "idx_admin_export_jobs_requested_by")
+  @@map("admin_export_jobs")
 }

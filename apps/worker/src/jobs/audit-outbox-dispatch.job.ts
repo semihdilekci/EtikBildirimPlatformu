@@ -182,6 +182,10 @@ export class AuditOutboxDispatchJob {
     return {
       ...base,
       sourceOutboxId: outbox.id,
+      ...(outbox.resourceType ? { resourceType: outbox.resourceType } : {}),
+      ...(outbox.resourceId ? { resourceId: outbox.resourceId } : {}),
+      ...(outbox.caseId ? { caseId: outbox.caseId } : {}),
+      ...(outbox.companyId ? { companyId: outbox.companyId } : {}),
       ...(outbox.idempotencyKey ? { idempotencyKey: outbox.idempotencyKey } : {}),
     };
   }

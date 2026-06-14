@@ -24,6 +24,7 @@ import { TaskModule } from './modules/task/task.module.js';
 import { DocumentModule } from './modules/document/document.module.js';
 import { InAppNotificationModule } from './modules/notification/in-app-notification.module.js';
 import { TrackingModule } from './modules/tracking/tracking.module.js';
+import { AdminModule } from './modules/admin/admin.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 
 @Module({
@@ -79,6 +80,7 @@ import { PrismaModule } from './prisma/prisma.module.js';
     DocumentModule,
     InAppNotificationModule,
     TrackingModule,
+    AdminModule,
     AuthorizationModule,
   ],
   providers: [

@@ -1,4 +1,4 @@
-import { CaseField, FieldVisibility, resolveFieldVisibilityForRoles } from '@ethics/policy';
+import { CaseField, FieldVisibility } from '@ethics/policy';
 import { Injectable } from '@nestjs/common';
 
 import type { AuthenticatedUser } from '../common/types/authenticated-user.type.js';
@@ -9,13 +9,14 @@ import {
   CASE_METADATA_PROPERTIES,
 } from './field-masking.constants.js';
 import type { MaskableCaseData } from './field-masking.types.js';
+import { FieldVisibilityPolicyService } from './field-visibility-policy.service.js';
 
 @Injectable()
 export class FieldMaskingService {
   private readonly managedPropertyKeys: ReadonlySet<string>;
   private readonly contextPropertyKeys: ReadonlySet<string>;
 
-  constructor() {
+  constructor(private readonly fieldVisibilityPolicy: FieldVisibilityPolicyService) {
     const managed = new Set<string>(CASE_MASKING_CONTEXT_PROPERTIES);
     for (const properties of Object.values(CASE_FIELD_PROPERTY_MAP)) {
       for (const property of properties) {
@@ -88,7 +89,10 @@ export class FieldMaskingService {
   }
 
   private isMetadataAllowed(user: AuthenticatedUser): boolean {
-    const visibility = resolveFieldVisibilityForRoles(user.roles, CaseField.CASE_METADATA);
+    const visibility = this.fieldVisibilityPolicy.resolveFieldVisibilityForRoles(
+      user.roles,
+      CaseField.CASE_METADATA,
+    );
     return visibility === FieldVisibility.VISIBLE || visibility === FieldVisibility.METADATA_ONLY;
   }
 
@@ -97,7 +101,10 @@ export class FieldMaskingService {
     caseField: CaseField,
     source: MaskableCaseData,
   ): boolean {
-    const visibility = resolveFieldVisibilityForRoles(user.roles, caseField);
+    const visibility = this.fieldVisibilityPolicy.resolveFieldVisibilityForRoles(
+      user.roles,
+      caseField,
+    );
 
     switch (visibility) {
       case FieldVisibility.VISIBLE:

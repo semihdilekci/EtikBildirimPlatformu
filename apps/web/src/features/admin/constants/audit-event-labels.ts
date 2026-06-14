@@ -1,0 +1,63 @@
+import { AuditEventType } from '@ethics/shared';
+
+const AUDIT_EVENT_TYPE_LABELS: Record<string, string> = {
+  [AuditEventType.CASE_TRANSITION]: 'Vaka Geçişi',
+  [AuditEventType.CASE_CONFIDENTIALITY_CHANGED]: 'Gizlilik Değişikliği',
+  [AuditEventType.CASE_VIEWED]: 'Vaka Görüntüleme',
+  [AuditEventType.DOCUMENT_DOWNLOADED]: 'Doküman İndirme',
+  [AuditEventType.DOCUMENT_UPLOADED]: 'Doküman Yükleme',
+  [AuditEventType.ROLE_ASSIGNMENT_REQUESTED]: 'Rol Atama Talebi',
+  [AuditEventType.ROLE_ASSIGNMENT_APPROVED]: 'Rol Atama Onayı',
+  [AuditEventType.ROLE_REVOKED]: 'Rol Kaldırma',
+  [AuditEventType.CLEARANCE_CHANGE_REQUESTED]: 'Clearance Değişiklik Talebi',
+  [AuditEventType.CLEARANCE_UPDATED]: 'Clearance Güncelleme',
+  [AuditEventType.SYSTEM_SETTING_CHANGED]: 'Sistem Ayarı Değişikliği',
+  [AuditEventType.TRACKING_VERIFY_ATTEMPT]: 'Takip Doğrulama',
+  [AuditEventType.TRACKING_AUTH_FAILED]: 'Takip Kimlik Doğrulama Hatası',
+  [AuditEventType.SECURE_MESSAGE_READ]: 'Güvenli Mesaj Okuma',
+  [AuditEventType.SECURE_MESSAGE_SENT]: 'Güvenli Mesaj Gönderimi',
+  [AuditEventType.FIELD_VISIBILITY_CHANGED]: 'Alan Görünürlüğü Değişikliği',
+  [AuditEventType.ACTION_MATRIX_CHANGED]: 'Aksiyon Matrisi Değişikliği',
+  [AuditEventType.SSO_LOGIN_SUCCESS]: 'SSO Giriş Başarılı',
+  [AuditEventType.SSO_LOGIN_FAILED]: 'SSO Giriş Başarısız',
+  [AuditEventType.SSO_LOGOUT_SUCCESS]: 'SSO Çıkış',
+  [AuditEventType.AUTHZ_DENIED]: 'Yetkilendirme Reddi',
+  [AuditEventType.AUDIT_LOG_VIEWED]: 'Audit Log Görüntüleme',
+  [AuditEventType.REPORT_SUBMITTED]: 'Bildirim Gönderimi',
+  [AuditEventType.REPORT_ATTACHMENT_UPLOADED]: 'Bildirim Eki Yükleme',
+  [AuditEventType.TRACKING_ATTACHMENT_UPLOADED]: 'Takip Eki Yükleme',
+  [AuditEventType.TASK_COMPLETED]: 'Görev Tamamlama',
+  [AuditEventType.TASK_DELEGATED]: 'Görev Devri',
+  [AuditEventType.DECISION_VOTE_CAST]: 'Karar Oyu',
+  [AuditEventType.SILENT_ACCEPTANCE_CREATED]: 'Sessiz Kabul',
+  [AuditEventType.MASTER_DATA_CREATED]: 'Master Data Oluşturma',
+  [AuditEventType.MASTER_DATA_UPDATED]: 'Master Data Güncelleme',
+  [AuditEventType.MASTER_DATA_DELETED]: 'Master Data Silme',
+  [AuditEventType.SLA_POLICY_CHANGED]: 'SLA Politikası Değişikliği',
+  [AuditEventType.BUSINESS_CALENDAR_UPDATED]: 'İş Günü Takvimi Güncelleme',
+  [AuditEventType.NOTIFICATION_TEMPLATE_CHANGED]: 'Bildirim Şablonu Değişikliği',
+  [AuditEventType.KVKK_TEXT_PUBLISHED]: 'KVKK Metni Yayınlama',
+};
+
+export function getAuditEventTypeLabel(eventType: string): string {
+  return AUDIT_EVENT_TYPE_LABELS[eventType] ?? eventType;
+}
+
+export const AUDIT_METADATA_FIELD_LABELS: Record<string, string> = {
+  resourceType: 'Kaynak Tipi',
+  resourceId: 'Kaynak ID',
+  policyDecisionId: 'Policy Karar ID',
+  reason_text: 'Gerekçe (Maskeli)',
+  actorRoleSnapshot: 'Aktör Rol Snapshot',
+  clearanceLevelSnapshot: 'Clearance Snapshot',
+  subjectType: 'Konu Tipi',
+  reasonCode: 'Neden Kodu',
+  sessionIdHash: 'Oturum Hash',
+  ipAddressHash: 'IP Hash',
+  dataClassification: 'Veri Sınıflandırması',
+  retentionClass: 'Saklama Sınıfı',
+  durationMs: 'Süre (ms)',
+  authenticationMethod: 'Kimlik Doğrulama Yöntemi',
+  sourceSurface: 'Kaynak Yüzey',
+  requestId: 'İstek ID',
+};

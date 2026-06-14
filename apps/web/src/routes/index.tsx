@@ -1,7 +1,19 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { Role } from '@ethics/shared';
 
-import { AdminPlaceholderPage } from '@/features/admin/pages/AdminPlaceholderPage';
+import { AdminUserDetailPage } from '@/features/admin/pages/AdminUserDetailPage';
+import { AdminUserListPage } from '@/features/admin/pages/AdminUserListPage';
+import { AdminActionMatrixPage } from '@/features/admin/pages/AdminActionMatrixPage';
+import { AdminAuditPage } from '@/features/admin/pages/AdminAuditPage';
+import { AdminBusinessCalendarPage } from '@/features/admin/pages/AdminBusinessCalendarPage';
+import { AdminDocumentOpsPage } from '@/features/admin/pages/AdminDocumentOpsPage';
+import { AdminFieldVisibilityPage } from '@/features/admin/pages/AdminFieldVisibilityPage';
+import { AdminKvkkTextsPage } from '@/features/admin/pages/AdminKvkkTextsPage';
+import { AdminNotificationTemplatesPage } from '@/features/admin/pages/AdminNotificationTemplatesPage';
+import { AdminMasterDataPage } from '@/features/admin/pages/AdminMasterDataPage';
+import { AdminSlaPoliciesPage } from '@/features/admin/pages/AdminSlaPoliciesPage';
+import { AdminSystemSettingsPage } from '@/features/admin/pages/AdminSystemSettingsPage';
+import { AdminSystemHealthPage } from '@/features/admin/pages/AdminSystemHealthPage';
 import { AuthCallbackPage } from '@/features/auth/pages/AuthCallbackPage';
 import { DashboardPage } from '@/features/auth/pages/DashboardPage';
 import { LoginPage } from '@/features/auth/pages/LoginPage';
@@ -24,6 +36,7 @@ import { PublicIntakeLayout } from '@/layouts/PublicIntakeLayout';
 import { AuthGuard } from '@/routes/guards/AuthGuard';
 import { GuestGuard } from '@/routes/guards/GuestGuard';
 import { RoleGuard } from '@/routes/guards/RoleGuard';
+import { AdminIndexRedirect } from '@/routes/AdminIndexRedirect';
 import { TrackingGuard } from '@/routes/guards/TrackingGuard';
 
 export function AppRoutes() {
@@ -63,20 +76,24 @@ export function AppRoutes() {
           <Route path="notifications" element={<NotificationCenterPage />} />
         </Route>
 
-        <Route element={<RoleGuard roles={[Role.ADMIN]} />}>
-          <Route path="/app/admin" element={<AdminLayout />}>
-            <Route index element={<Navigate to="/app/admin/users" replace />} />
-            <Route path="users" element={<AdminPlaceholderPage title="Kullanıcı Yönetimi" />} />
-            <Route
-              path="master-data"
-              element={<AdminPlaceholderPage title="Master Data Senkron" />}
-            />
-            <Route path="settings" element={<AdminPlaceholderPage title="Sistem Ayarları" />} />
-            <Route
-              path="field-visibility"
-              element={<AdminPlaceholderPage title="Alan Görünürlüğü" />}
-            />
-            <Route path="system-health" element={<AdminPlaceholderPage title="Sistem Sağlığı" />} />
+        <Route path="/app/admin" element={<AdminLayout />}>
+          <Route index element={<AdminIndexRedirect />} />
+          <Route element={<RoleGuard roles={[Role.ADMIN, Role.COUNCIL_SECRETARY]} />}>
+            <Route path="kvkk-texts" element={<AdminKvkkTextsPage />} />
+          </Route>
+          <Route element={<RoleGuard roles={[Role.ADMIN]} />}>
+            <Route path="users" element={<AdminUserListPage />} />
+            <Route path="users/:id" element={<AdminUserDetailPage />} />
+            <Route path="master-data" element={<AdminMasterDataPage />} />
+            <Route path="settings" element={<AdminSystemSettingsPage />} />
+            <Route path="field-visibility" element={<AdminFieldVisibilityPage />} />
+            <Route path="action-matrix" element={<AdminActionMatrixPage />} />
+            <Route path="sla-policies" element={<AdminSlaPoliciesPage />} />
+            <Route path="business-calendar" element={<AdminBusinessCalendarPage />} />
+            <Route path="notification-templates" element={<AdminNotificationTemplatesPage />} />
+            <Route path="audit" element={<AdminAuditPage />} />
+            <Route path="document-ops" element={<AdminDocumentOpsPage />} />
+            <Route path="system-health" element={<AdminSystemHealthPage />} />
           </Route>
         </Route>
       </Route>

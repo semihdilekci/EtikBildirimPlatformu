@@ -188,7 +188,9 @@ Kullanıcıya:
 | Yazılan | Adet |
 | … | … |
 
-**Sonraki adım:** Faz  N için `@phase-creator` ile devam edelim mi? (Roadmap'te Faz N …)
+**Sonraki adım:** Faz N için `@phase-creator` ile devam edelim mi? (Roadmap'te Faz N …)
+
+**Implementasyon sonrası:** `@phase-controller` ile gap audit → `Docs/fix-reports/` + `-fix.mdc`.
 ```
 
 ---

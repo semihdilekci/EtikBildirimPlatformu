@@ -24,6 +24,8 @@ export const ROLE_PERMISSION_MAP: Readonly<Record<RoleCode, ReadonlySet<Permissi
     PermissionCode.SECURE_MESSAGE_WRITE,
     PermissionCode.NOTIFICATION_LIST,
     PermissionCode.NOTIFICATION_MARK_READ,
+    PermissionCode.ADMIN_MAKER_CHECKER_APPROVE,
+    PermissionCode.ADMIN_MANAGE_KVKK,
     PermissionCode.AUTH_SESSION_READ,
   ]),
 
@@ -39,6 +41,7 @@ export const ROLE_PERMISSION_MAP: Readonly<Record<RoleCode, ReadonlySet<Permissi
     PermissionCode.TASK_DELEGATE,
     PermissionCode.NOTIFICATION_LIST,
     PermissionCode.NOTIFICATION_MARK_READ,
+    PermissionCode.ADMIN_MAKER_CHECKER_APPROVE,
     PermissionCode.AUTH_SESSION_READ,
   ]),
 
@@ -67,6 +70,7 @@ export const ROLE_PERMISSION_MAP: Readonly<Record<RoleCode, ReadonlySet<Permissi
     PermissionCode.TASK_DELEGATE,
     PermissionCode.NOTIFICATION_LIST,
     PermissionCode.NOTIFICATION_MARK_READ,
+    PermissionCode.ADMIN_MAKER_CHECKER_APPROVE,
     PermissionCode.AUTH_SESSION_READ,
   ]),
 
@@ -105,7 +109,10 @@ export const ROLE_PERMISSION_MAP: Readonly<Record<RoleCode, ReadonlySet<Permissi
     PermissionCode.CASE_READ,
     PermissionCode.ADMIN_MANAGE_ROLES,
     PermissionCode.ADMIN_MANAGE_SETTINGS,
+    PermissionCode.ADMIN_MANAGE_MASTER_DATA,
     PermissionCode.ADMIN_VIEW_SYNC_STATUS,
+    PermissionCode.ADMIN_MAKER_CHECKER_APPROVE,
+    PermissionCode.ADMIN_MANAGE_KVKK,
     PermissionCode.AUDIT_VIEW_METADATA,
     PermissionCode.NOTIFICATION_LIST,
     PermissionCode.NOTIFICATION_MARK_READ,
