@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { AuditChainVerifyJob } from '../audit-chain-verify.job.js';
+import {
+  AUDIT_CHAIN_VERIFY_CRON_INTERVAL_MS,
+  AuditChainVerifyJob,
+} from '../audit-chain-verify.job.js';
 
 describe('AuditChainVerifyJob', () => {
   it('geçerli zincir için alarm üretmez', async () => {
@@ -48,5 +51,29 @@ describe('AuditChainVerifyJob', () => {
       expect.objectContaining({ alarm: 'AUDIT_CHAIN_INTEGRITY_FAILURE' }),
       'Audit chain verification failed',
     );
+  });
+
+  it('cron periyodu dolmadan runIfDue tekrar çalışmaz', async () => {
+    const logger = {
+      warn: vi.fn(),
+      info: vi.fn(),
+    };
+
+    const prisma = {
+      $queryRaw: vi.fn().mockResolvedValue([{ id: 'e1', prev_hash: null, event_hash: 'hash-1' }]),
+    };
+
+    const job = new AuditChainVerifyJob(
+      prisma as never,
+      logger,
+      AUDIT_CHAIN_VERIFY_CRON_INTERVAL_MS,
+    );
+
+    const first = await job.runIfDue(1_000);
+    const second = await job.runIfDue(1_000 + AUDIT_CHAIN_VERIFY_CRON_INTERVAL_MS - 1);
+
+    expect(first).not.toBeNull();
+    expect(second).toBeNull();
+    expect(prisma.$queryRaw).toHaveBeenCalledTimes(1);
   });
 });

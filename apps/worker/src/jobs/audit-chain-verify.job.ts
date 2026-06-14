@@ -1,9 +1,12 @@
 import type { PrismaClient } from '@prisma/client';
+import { AUDIT_CHAIN_VERIFY_CRON_INTERVAL_MS } from '@ethics/shared';
 
 import {
   AuditChainVerifier,
   type AuditChainVerificationResult,
 } from '../audit/audit-chain-verifier.js';
+
+export { AUDIT_CHAIN_VERIFY_CRON_INTERVAL_MS };
 
 export interface AuditChainVerifyJobResult extends AuditChainVerificationResult {
   alarmRaised: boolean;
@@ -19,22 +22,32 @@ const defaultLogger: AuditChainVerifyLogger = {
     console.warn(JSON.stringify({ level: 'warn', ...context, msg: message }));
   },
   info(context, message) {
-    // Worker structured log — CLI çıktısı
     console.warn(JSON.stringify({ level: 'info', ...context, msg: message }));
   },
 };
 
 /**
- * Periyodik chain hash bütünlük doğrulama (cron schedule Faz 8).
+ * Periyodik chain hash bütünlük doğrulama (cron schedule Faz 8 — günlük).
  * Bozulma tespit edilirse structured alarm log üretir.
  */
 export class AuditChainVerifyJob {
+  private lastRunAt = 0;
   private readonly verifier = new AuditChainVerifier();
 
   constructor(
     private readonly prisma: PrismaClient,
     private readonly logger: AuditChainVerifyLogger = defaultLogger,
+    private readonly intervalMs: number = AUDIT_CHAIN_VERIFY_CRON_INTERVAL_MS,
   ) {}
+
+  async runIfDue(nowMs: number = Date.now()): Promise<AuditChainVerifyJobResult | null> {
+    if (this.lastRunAt > 0 && nowMs - this.lastRunAt < this.intervalMs) {
+      return null;
+    }
+
+    this.lastRunAt = nowMs;
+    return this.run();
+  }
 
   async run(): Promise<AuditChainVerifyJobResult> {
     const verification = await this.verifier.verify(

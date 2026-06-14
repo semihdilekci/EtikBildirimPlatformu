@@ -46,6 +46,7 @@ export interface TransitionTaskStub {
   id: string;
   taskType: string;
   assignedRole: string;
+  assignedUserId?: string | null;
 }
 
 export interface TransitionResult {

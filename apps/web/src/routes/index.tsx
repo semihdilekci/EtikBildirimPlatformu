@@ -9,6 +9,7 @@ import { CaseDetailPage } from '@/features/cases/pages/CaseDetailPage';
 import { CaseListPage } from '@/features/cases/pages/CaseListPage';
 import { TaskDetailPage } from '@/features/tasks/pages/TaskDetailPage';
 import { TaskListPage } from '@/features/tasks/pages/TaskListPage';
+import { NotificationCenterPage } from '@/features/notifications/pages/NotificationCenterPage';
 import { ReportFormPage } from '@/features/intake/pages/ReportFormPage';
 import { ReportSuccessPage } from '@/features/intake/pages/ReportSuccessPage';
 import { TrackingLoginPage } from '@/features/tracking/pages/TrackingLoginPage';
@@ -59,6 +60,7 @@ export function AppRoutes() {
           <Route path="cases/:id" element={<CaseDetailPage />} />
           <Route path="tasks" element={<TaskListPage />} />
           <Route path="tasks/:id" element={<TaskDetailPage />} />
+          <Route path="notifications" element={<NotificationCenterPage />} />
         </Route>
 
         <Route element={<RoleGuard roles={[Role.ADMIN]} />}>

@@ -51,6 +51,7 @@ export function useCreateCaseTransitionMutation(caseId: string) {
         queryClient.invalidateQueries({ queryKey: queryKeys.cases.transitions(caseId) }),
         queryClient.invalidateQueries({ queryKey: queryKeys.cases.documents(caseId) }),
         queryClient.invalidateQueries({ queryKey: queryKeys.cases.all() }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all() }),
       ]);
     },
   });

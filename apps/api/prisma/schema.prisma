@@ -500,6 +500,7 @@ model Case {
   assignedActionOwnerId String?   @map("assigned_action_owner_id")
   openedAt              DateTime  @default(now()) @map("opened_at")
   closedAt              DateTime? @map("closed_at")
+  legalHoldFlag         Boolean   @default(false) @map("legal_hold_flag")
   optimisticLockVersion Int       @default(0) @map("optimistic_lock_version")
   createdAt             DateTime  @default(now()) @map("created_at")
   updatedAt             DateTime  @updatedAt @map("updated_at")

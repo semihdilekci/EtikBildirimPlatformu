@@ -21,6 +21,7 @@ import {
 import type { Prisma } from '@prisma/client';
 
 import { AuditEventPublisher } from '../../audit/audit-event.publisher.js';
+import { NotificationService } from '../../notification/notification.service.js';
 import { PolicyScopeService } from '../../authorization/policy-scope.service.js';
 import type { AuthenticatedUser } from '../../common/types/authenticated-user.type.js';
 import { DomainException } from '../../common/exceptions/domain.exception.js';
@@ -65,6 +66,7 @@ export class TaskService {
     private readonly policyScope: PolicyScopeService,
     private readonly auditPublisher: AuditEventPublisher,
     private readonly slaCalculator: SlaCalculatorService,
+    private readonly notificationService: NotificationService,
     private readonly moduleRef: ModuleRef,
   ) {}
 
@@ -149,6 +151,7 @@ export class TaskService {
           id: task.id,
           taskType: task.taskType,
           assignedRole: task.assignedRole,
+          assignedUserId: task.assignedUserId,
         });
       }
     }
@@ -344,6 +347,15 @@ export class TaskService {
         },
       });
 
+      await this.notificationService.enqueueTaskCompleted(tx, {
+        taskId,
+        caseId: completedTask.caseId,
+        taskType: completedTask.taskType,
+        correlationId,
+        idempotencyKey: body.idempotencyKey,
+        completedByUserId: user.id,
+      });
+
       return toTaskDetail(completedTask);
     });
   }
@@ -481,6 +493,14 @@ export class TaskService {
           caseId: delegatedTask.caseId,
           taskType: delegatedTask.taskType,
         },
+      });
+
+      await this.notificationService.enqueueTaskDelegated(tx, {
+        taskId: delegatedTask.id,
+        caseId: delegatedTask.caseId,
+        delegateToUserId: body.delegateToUserId,
+        correlationId,
+        idempotencyKey: `${taskId}:${body.delegateToUserId}`,
       });
 
       return toTaskDetail(delegatedTask);

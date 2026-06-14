@@ -1,9 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
 import type { Prisma } from '@prisma/client';
-import { NotificationChannel, NotificationEventType } from '@ethics/shared';
-
-import { NotificationEventPublisher } from '../../../notification/notification-event.publisher.js';
+import { NotificationService } from '../../../notification/notification.service.js';
 import { lazyProviderToken } from '../../../common/utils/lazy-provider-token.util.js';
 import type { DocumentAccessService } from '../../document/document-access.service.js';
 import type { TaskService } from '../../task/task.service.js';
@@ -32,7 +30,7 @@ export class TransitionSideEffects implements TransitionSideEffectPort {
   private documentAccessRef: DocumentAccessService | null = null;
 
   constructor(
-    private readonly notificationPublisher: NotificationEventPublisher,
+    private readonly notificationService: NotificationService,
     private readonly moduleRef: ModuleRef,
   ) {}
 
@@ -74,22 +72,6 @@ export class TransitionSideEffects implements TransitionSideEffectPort {
     context: TransitionValidationContext,
     transition: CreatedTransitionRecord,
   ): Promise<TransitionTaskStub[]> {
-    if (context.idempotencyKey) {
-      await this.notificationPublisher.publish(tx, {
-        eventType: NotificationEventType.CASE_TRANSITION,
-        channel: NotificationChannel.IN_APP,
-        caseId: context.caseEntity.id,
-        correlationId: context.correlationId,
-        idempotencyKey: `notification:${context.idempotencyKey}`,
-        metadata: {
-          transitionId: transition.id,
-          command: transition.command,
-          fromState: transition.fromState,
-          toState: transition.toState,
-        },
-      });
-    }
-
     await this.documentAccess.applyTransitionGrants(
       tx,
       context.caseEntity.id,
@@ -100,9 +82,18 @@ export class TransitionSideEffects implements TransitionSideEffectPort {
       context.metadata,
     );
 
-    return this.taskService.createTasksForTransition(tx, context.caseEntity, transition, {
-      type: context.actor.type,
-      userId: context.actor.userId ?? null,
-    });
+    const tasks = await this.taskService.createTasksForTransition(
+      tx,
+      context.caseEntity,
+      transition,
+      {
+        type: context.actor.type,
+        userId: context.actor.userId ?? null,
+      },
+    );
+
+    await this.notificationService.enqueueTransitionNotifications(tx, context, transition, tasks);
+
+    return tasks;
   }
 }

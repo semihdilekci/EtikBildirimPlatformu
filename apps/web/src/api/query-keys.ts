@@ -23,4 +23,9 @@ export const queryKeys = {
     list: (filters: unknown) => ['tasks', 'list', filters] as const,
     detail: (taskId: string) => ['tasks', 'detail', taskId] as const,
   },
+  notifications: {
+    all: () => ['notifications'] as const,
+    list: (filters: unknown) => ['notifications', 'list', filters] as const,
+    unreadCount: () => ['notifications', 'unread-count'] as const,
+  },
 } as const;

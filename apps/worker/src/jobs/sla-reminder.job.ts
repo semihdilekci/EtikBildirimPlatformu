@@ -1,15 +1,16 @@
-/** Cron periyodu — Faz 8 notification dispatch ile birlikte aktifleşir (Docs/04 §sla_reminder) */
-export const SLA_REMINDER_CRON_INTERVAL_MS = 5 * 60 * 1000;
+/** Cron periyodu — @ethics/shared worker-cron.constants */
+export { SLA_REMINDER_CRON_INTERVAL_MS } from '@ethics/shared';
 
 export interface SlaReminderProcessResult {
   tasksScanned: number;
   warningsCreated: number;
+  breachesCreated: number;
 }
 
 export type SlaReminderJobResult = SlaReminderProcessResult;
 
 /**
- * Worker cron job placeholder — Faz 8'de SLA_WARNING bildirim dispatch bağlanır.
+ * Worker cron job — SLA ≤%20 kalan görevler için SLA_WARNING; aşımda SLA_BREACH.
  * setInterval yasak; main poll döngüsünde runIfDue çağrılır.
  */
 export class SlaReminderJob {
@@ -17,7 +18,7 @@ export class SlaReminderJob {
 
   constructor(
     private readonly runHandler: () => Promise<SlaReminderProcessResult>,
-    private readonly intervalMs: number = SLA_REMINDER_CRON_INTERVAL_MS,
+    private readonly intervalMs: number,
   ) {}
 
   async runIfDue(nowMs: number = Date.now()): Promise<SlaReminderJobResult | null> {

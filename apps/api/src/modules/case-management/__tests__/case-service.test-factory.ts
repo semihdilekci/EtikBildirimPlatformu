@@ -5,6 +5,7 @@ import { EnvService } from '../../../common/config/env.service.js';
 import { CryptoService } from '../../../crypto/crypto.service.js';
 import { LocalKeyManagementAdapter } from '../../../crypto/key-management.adapter.js';
 import { NotificationEventPublisher } from '../../../notification/notification-event.publisher.js';
+import { NotificationService } from '../../../notification/notification.service.js';
 import type { PrismaService } from '../../../prisma/prisma.service.js';
 import { DecisionService } from '../../decision/decision.service.js';
 import { SilentAcceptanceHandler } from '../../decision/silent-acceptance.handler.js';
@@ -37,18 +38,23 @@ function createWorkflowBundle(prismaService: PrismaService): {
 } {
   const auditPublisher = new AuditEventPublisher();
   const notificationPublisher = new NotificationEventPublisher();
+  const notificationService = new NotificationService(notificationPublisher);
   const policyScopeService = new PolicyScopeService();
   const businessCalendarService = new BusinessCalendarService(prismaService);
   const slaCalculatorService = new SlaCalculatorService(businessCalendarService);
   const cryptoService = buildTestCryptoService();
-  const transitionSideEffects = new TransitionSideEffects(notificationPublisher, {
+  const transitionSideEffects = new TransitionSideEffects(notificationService, {
     get: () => undefined,
   } as unknown as import('@nestjs/core').ModuleRef);
+  transitionSideEffects.wireDocumentAccessServiceForTests({
+    applyTransitionGrants: () => Promise.resolve(undefined),
+  } as never);
   const taskService = new TaskService(
     prismaService,
     policyScopeService,
     auditPublisher,
     slaCalculatorService,
+    notificationService,
     { get: () => undefined } as unknown as import('@nestjs/core').ModuleRef,
   );
   const transitionService = new TransitionService(
@@ -64,6 +70,7 @@ function createWorkflowBundle(prismaService: PrismaService): {
     policyScopeService,
     auditPublisher,
     cryptoService,
+    notificationService,
     { get: () => undefined } as unknown as import('@nestjs/core').ModuleRef,
   );
   taskService.wireTransitionServiceForTests(transitionService);

@@ -1,5 +1,5 @@
-/** Cron periyodu — Docs/04 §silent_acceptance (5 dk) */
-export const SILENT_ACCEPTANCE_CRON_INTERVAL_MS = 5 * 60 * 1000;
+/** Cron periyodu — @ethics/shared worker-cron.constants */
+export { SILENT_ACCEPTANCE_CRON_INTERVAL_MS } from '@ethics/shared';
 
 export interface SilentAcceptanceProcessResult {
   casesScanned: number;
@@ -18,7 +18,7 @@ export class SilentAcceptanceJob {
 
   constructor(
     private readonly runHandler: () => Promise<SilentAcceptanceProcessResult>,
-    private readonly intervalMs: number = SILENT_ACCEPTANCE_CRON_INTERVAL_MS,
+    private readonly intervalMs: number,
   ) {}
 
   async runIfDue(nowMs: number = Date.now()): Promise<SilentAcceptanceJobResult | null> {

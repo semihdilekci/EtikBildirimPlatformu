@@ -7,6 +7,7 @@ describe('SlaReminderJob (placeholder)', () => {
     const handler = vi.fn().mockResolvedValue({
       tasksScanned: 0,
       warningsCreated: 0,
+      breachesCreated: 0,
     });
     const job = new SlaReminderJob(handler, SLA_REMINDER_CRON_INTERVAL_MS);
 

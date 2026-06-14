@@ -13,7 +13,6 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { AuditEventPublisher } from '../../../../audit/audit-event.publisher.js';
 import { DomainException } from '../../../../common/exceptions/domain.exception.js';
-import { NotificationEventPublisher } from '../../../../notification/notification-event.publisher.js';
 import { TransitionSideEffects } from '../transition.side-effects.js';
 import { TransitionService } from '../transition.service.js';
 import { TransitionValidators } from '../transition.validators.js';
@@ -33,6 +32,7 @@ const baseCase = {
   assignedActionOwnerId: null,
   openedAt: new Date('2026-06-13T10:00:00.000Z'),
   closedAt: null,
+  legalHoldFlag: false,
   optimisticLockVersion: 0,
   createdAt: new Date('2026-06-13T10:00:00.000Z'),
   updatedAt: new Date('2026-06-13T10:00:00.000Z'),
@@ -53,10 +53,19 @@ function createTransitionService(prisma: Record<string, unknown>) {
   const decisionService = {
     isUnanimityComplete: vi.fn(() => Promise.resolve(false)),
   };
-  const sideEffects = new TransitionSideEffects(new NotificationEventPublisher(), {
-    get: () => undefined,
-  } as never);
+  const notificationService = {
+    enqueueTransitionNotifications: vi.fn(() => Promise.resolve()),
+  };
+  const sideEffects = new TransitionSideEffects(
+    notificationService as never,
+    {
+      get: () => undefined,
+    } as never,
+  );
   sideEffects.wireTaskServiceForTests(taskService as never);
+  sideEffects.wireDocumentAccessServiceForTests({
+    applyTransitionGrants: () => Promise.resolve(undefined),
+  } as never);
 
   const transitionService = new TransitionService(
     prisma as never,

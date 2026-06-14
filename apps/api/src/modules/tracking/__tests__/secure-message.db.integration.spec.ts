@@ -14,6 +14,8 @@ import type { CreateReportBody } from '@ethics/dto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { AuditEventPublisher } from '../../../audit/audit-event.publisher.js';
+import { NotificationEventPublisher } from '../../../notification/notification-event.publisher.js';
+import { NotificationService } from '../../../notification/notification.service.js';
 import { EnvService } from '../../../common/config/env.service.js';
 import { CryptoService } from '../../../crypto/crypto.service.js';
 import { LocalKeyManagementAdapter } from '../../../crypto/key-management.adapter.js';
@@ -124,10 +126,13 @@ describe('SecureMessageService integration (Testcontainers)', () => {
       auditPublisher,
     );
 
+    const notificationService = new NotificationService(new NotificationEventPublisher());
+
     secureMessageService = new SecureMessageService(
       environment.prisma as never,
       cryptoService,
       auditPublisher,
+      notificationService,
     );
 
     const created = await intakeService.createReport(buildValidReportBody(companyId), randomUUID());

@@ -26,6 +26,7 @@ const baseCase = {
   assignedActionOwnerId: 'owner-001',
   openedAt: new Date(),
   closedAt: null,
+  legalHoldFlag: false,
   optimisticLockVersion: 0,
   createdAt: new Date(),
   updatedAt: new Date(),

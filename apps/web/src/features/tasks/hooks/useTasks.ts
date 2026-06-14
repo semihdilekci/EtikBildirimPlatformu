@@ -43,6 +43,7 @@ export function useCompleteTaskMutation(taskId: string, caseId: string) {
         queryClient.invalidateQueries({ queryKey: queryKeys.cases.detail(caseId) }),
         queryClient.invalidateQueries({ queryKey: queryKeys.cases.transitions(caseId) }),
         queryClient.invalidateQueries({ queryKey: queryKeys.cases.all() }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all() }),
       ]);
     },
   });
@@ -59,6 +60,7 @@ export function useDelegateTaskMutation(taskId: string, caseId: string) {
         queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all() }),
         queryClient.invalidateQueries({ queryKey: queryKeys.cases.detail(caseId) }),
         queryClient.invalidateQueries({ queryKey: queryKeys.cases.all() }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all() }),
       ]);
     },
   });

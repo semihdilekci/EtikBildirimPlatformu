@@ -580,7 +580,12 @@ describe('Stage 3 + 4 transition matrix (Testcontainers)', () => {
     );
 
     const notification = await environment.prisma.notificationEvent.findFirst({
-      where: { idempotencyKey: `notification:${idempotencyKey}` },
+      where: {
+        caseId,
+        correlationId,
+        eventType: NotificationEventType.CASE_TRANSITION,
+        channel: 'IN_APP',
+      },
     });
 
     expect(notification).toMatchObject({
@@ -588,6 +593,20 @@ describe('Stage 3 + 4 transition matrix (Testcontainers)', () => {
       caseId,
       correlationId,
       dispatchStatus: 'PENDING',
+    });
+    expect(notification?.recipientUserId).toBeTruthy();
+
+    const emailOutbox = await environment.prisma.notificationEvent.findFirst({
+      where: {
+        caseId,
+        correlationId,
+        eventType: NotificationEventType.CASE_TRANSITION,
+        channel: 'EMAIL',
+      },
+    });
+    expect(emailOutbox).toMatchObject({
+      dispatchStatus: 'PENDING',
+      recipientUserId: notification?.recipientUserId,
     });
 
     const auditRecord = await environment.prisma.auditOutbox.findFirst({

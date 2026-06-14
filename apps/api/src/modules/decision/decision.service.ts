@@ -21,6 +21,7 @@ import { Prisma as PrismaNamespace } from '@prisma/client';
 import { isClearanceSufficient } from '@ethics/policy';
 
 import { AuditEventPublisher } from '../../audit/audit-event.publisher.js';
+import { NotificationService } from '../../notification/notification.service.js';
 import { lazyProviderToken } from '../../common/utils/lazy-provider-token.util.js';
 import { PolicyScopeService } from '../../authorization/policy-scope.service.js';
 import type { AuthenticatedUser } from '../../common/types/authenticated-user.type.js';
@@ -42,6 +43,7 @@ export class DecisionService {
     private readonly policyScope: PolicyScopeService,
     private readonly auditPublisher: AuditEventPublisher,
     private readonly cryptoService: CryptoService,
+    private readonly notificationService: NotificationService,
     private readonly moduleRef: ModuleRef,
   ) {}
 
@@ -425,6 +427,13 @@ export class DecisionService {
       input.voterUserId,
       AuditActorType.SYSTEM,
     );
+
+    await this.notificationService.enqueueSilentAcceptanceCreated(tx, {
+      caseId: input.caseId,
+      voterUserId: input.voterUserId,
+      correlationId: input.correlationId,
+      idempotencyKey,
+    });
 
     return { created: true, voteId: vote.id };
   }

@@ -16,6 +16,7 @@ import {
 import { Prisma } from '@prisma/client';
 
 import { AuditEventPublisher } from '../../audit/audit-event.publisher.js';
+import { NotificationService } from '../../notification/notification.service.js';
 import { DomainException } from '../../common/exceptions/domain.exception.js';
 import { CryptoService } from '../../crypto/crypto.service.js';
 import { CRYPTO_ALGORITHM } from '../../crypto/crypto.constants.js';
@@ -58,6 +59,7 @@ export class SecureMessageService {
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(CryptoService) private readonly cryptoService: CryptoService,
     @Inject(AuditEventPublisher) private readonly auditPublisher: AuditEventPublisher,
+    @Inject(NotificationService) private readonly notificationService: NotificationService,
   ) {}
 
   async hasUnreadInboundMessages(reportId: string): Promise<boolean> {
@@ -172,6 +174,22 @@ export class SecureMessageService {
         },
         idempotencyKey: `secure-message-sent:${messageId}`,
       });
+
+      const linkedCase = await tx.case.findUnique({
+        where: { reportId: reportContext.reportId },
+        select: { id: true },
+      });
+
+      if (linkedCase) {
+        await this.notificationService.enqueueSecureMessageReceived(tx, {
+          caseId: linkedCase.id,
+          reportId: reportContext.reportId,
+          messageId,
+          trackingCode: reportContext.trackingCode,
+          correlationId,
+          idempotencyKey: messageId,
+        });
+      }
     });
 
     return {

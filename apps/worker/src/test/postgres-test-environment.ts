@@ -1,6 +1,7 @@
 import { execSync } from 'node:child_process';
 import { resolve } from 'node:path';
 
+import { DEFAULT_NOTIFICATION_TEMPLATES } from '@ethics/shared';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import { PrismaClient } from '@prisma/client';
 
@@ -8,6 +9,30 @@ export interface PostgresTestEnvironment {
   prisma: PrismaClient;
   databaseUrl: string;
   teardown: () => Promise<void>;
+}
+
+async function seedNotificationTemplates(prisma: PrismaClient): Promise<void> {
+  for (const template of DEFAULT_NOTIFICATION_TEMPLATES) {
+    await prisma.notificationTemplate.upsert({
+      where: { templateCode: template.templateCode },
+      create: {
+        templateCode: template.templateCode,
+        name: template.name,
+        channel: template.channel,
+        subjectTemplate: template.subjectTemplate,
+        bodyTemplate: template.bodyTemplate,
+        isActive: template.isActive,
+        versionNo: 1,
+      },
+      update: {
+        name: template.name,
+        channel: template.channel,
+        subjectTemplate: template.subjectTemplate,
+        bodyTemplate: template.bodyTemplate,
+        isActive: template.isActive,
+      },
+    });
+  }
 }
 
 export async function createPostgresTestEnvironment(): Promise<PostgresTestEnvironment> {
@@ -36,6 +61,8 @@ export async function createPostgresTestEnvironment(): Promise<PostgresTestEnvir
       },
     },
   });
+
+  await seedNotificationTemplates(prisma);
 
   return {
     prisma,

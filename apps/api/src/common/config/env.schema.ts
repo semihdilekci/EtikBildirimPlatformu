@@ -48,6 +48,18 @@ const envInputSchema = z
 
     CLAMAV_HOST: z.string().optional(),
     CLAMAV_TIMEOUT_MS: positiveInt.default(30_000),
+
+    SMTP_HOST: z.string().optional(),
+    SMTP_PORT: positiveInt.default(587),
+    SMTP_USER: z.string().optional(),
+    SMTP_PASS: z.string().optional(),
+    SMTP_PASSWORD: z.string().optional(),
+    SMTP_FROM_ADDRESS: z.string().email().optional(),
+    SMTP_FROM: z.string().optional(),
+    SMTP_SECURE: z
+      .enum(['true', 'false'])
+      .default('false')
+      .transform((value) => value === 'true'),
   })
   .transform((input) => {
     const oidcIssuerUrl = input.OIDC_ISSUER_URL ?? input.OIDC_ISSUER;
@@ -134,6 +146,12 @@ const envInputSchema = z
       S3_BUCKET_QUARANTINE: input.S3_BUCKET_QUARANTINE,
       CLAMAV_HOST: input.CLAMAV_HOST,
       CLAMAV_TIMEOUT_MS: input.CLAMAV_TIMEOUT_MS,
+      SMTP_HOST: input.SMTP_HOST,
+      SMTP_PORT: input.SMTP_PORT,
+      SMTP_USER: input.SMTP_USER,
+      SMTP_PASS: input.SMTP_PASS ?? input.SMTP_PASSWORD,
+      SMTP_FROM_ADDRESS: input.SMTP_FROM_ADDRESS ?? input.SMTP_FROM,
+      SMTP_SECURE: input.SMTP_SECURE,
     };
   });
 

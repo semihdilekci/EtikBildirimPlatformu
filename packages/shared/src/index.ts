@@ -118,6 +118,21 @@ export {
   MEMBER_APPROVAL_SILENT_ACCEPTANCE_MS,
 } from './constants/silent-acceptance.constants.js';
 
+export {
+  SLA_REMINDER_CRON_INTERVAL_MS,
+  SILENT_ACCEPTANCE_CRON_INTERVAL_MS,
+  AUDIT_CHAIN_VERIFY_CRON_INTERVAL_MS,
+  RETENTION_PURGE_CRON_INTERVAL_MS,
+  IN_APP_NOTIFICATION_RETENTION_DAYS,
+} from './constants/worker-cron.constants.js';
+
+export {
+  SLA_WARNING_REMAINING_RATIO,
+  resolveSlaWindowPhase,
+  type SlaWindowPhase,
+  type SlaWindowInput,
+} from './sla/sla-window.util.js';
+
 export { TASK_TYPE_LABELS, getTaskTypeLabel } from './constants/task-type-labels.js';
 
 export {
@@ -167,7 +182,23 @@ export {
   NOTIFICATION_DISPATCH_SENT,
   NOTIFICATION_DISPATCH_FAILED,
   NOTIFICATION_DISPATCH_RETRYING,
+  NOTIFICATION_DISPATCH_PERMANENTLY_FAILED,
 } from './constants/notification.constants.js';
+
+export {
+  NOTIFICATION_EVENT_TEMPLATE_MAP,
+  resolveNotificationTemplateCode,
+} from './constants/notification-event-template-map.js';
+
+export {
+  DEFAULT_NOTIFICATION_EMAIL_SUBJECT,
+  SENSITIVE_EMAIL_CONTENT_PATTERNS,
+  containsSensitiveEmailContent,
+  escapeHtml,
+  renderNotificationEmailTemplate,
+  type NotificationTemplateRenderInput,
+  type RenderedNotificationEmail,
+} from './notification/render-notification-template.js';
 
 export {
   ALLOWED_UPLOAD_RULES,

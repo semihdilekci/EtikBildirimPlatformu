@@ -15,6 +15,21 @@ export class NotificationEventPublisher {
     tx: NotificationTransactionClient,
     input: PublishNotificationEventInput,
   ): Promise<PublishedNotificationEventRecord> {
+    if (input.idempotencyKey) {
+      const existing = await tx.notificationEvent.findUnique({
+        where: { idempotencyKey: input.idempotencyKey },
+        select: { id: true, eventType: true, dispatchStatus: true },
+      });
+
+      if (existing) {
+        return {
+          id: existing.id,
+          eventType: existing.eventType as PublishNotificationEventInput['eventType'],
+          dispatchStatus: existing.dispatchStatus,
+        };
+      }
+    }
+
     try {
       const record = await tx.notificationEvent.create({
         data: {
@@ -47,16 +62,16 @@ export class NotificationEventPublisher {
         error.code === 'P2002' &&
         input.idempotencyKey
       ) {
-        const existing = await tx.notificationEvent.findUnique({
+        const raced = await tx.notificationEvent.findUnique({
           where: { idempotencyKey: input.idempotencyKey },
           select: { id: true, eventType: true, dispatchStatus: true },
         });
 
-        if (existing) {
+        if (raced) {
           return {
-            id: existing.id,
-            eventType: existing.eventType as PublishNotificationEventInput['eventType'],
-            dispatchStatus: existing.dispatchStatus,
+            id: raced.id,
+            eventType: raced.eventType as PublishNotificationEventInput['eventType'],
+            dispatchStatus: raced.dispatchStatus,
           };
         }
       }

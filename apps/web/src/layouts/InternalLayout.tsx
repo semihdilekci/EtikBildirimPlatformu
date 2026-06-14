@@ -24,6 +24,7 @@ import { YildizHoldingLogo } from '@/components/brand';
 import { PermissionGate } from '@/features/auth/components/PermissionGate';
 import { useLogout } from '@/features/auth/hooks/useLogout';
 import { usePermissions } from '@/features/auth/hooks/usePermissions';
+import { NotificationBell } from '@/features/notifications/components/NotificationBell';
 import { useAuthStore } from '@/stores/useAuthStore';
 
 const DRAWER_WIDTH = 240;
@@ -131,6 +132,7 @@ export function InternalLayout() {
             İç Operasyon
           </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <NotificationBell />
             <AccountCircleOutlinedIcon fontSize="small" />
             <Typography variant="body2" sx={{ display: { xs: 'none', md: 'block' } }}>
               {user?.displayName ?? user?.email}
