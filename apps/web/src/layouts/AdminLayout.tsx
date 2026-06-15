@@ -3,19 +3,21 @@ import MenuIcon from '@mui/icons-material/Menu';
 import {
   AppBar,
   Box,
+  Divider,
   Drawer,
   IconButton,
   List,
   ListItemButton,
   ListItemIcon,
   ListItemText,
+  ListSubheader,
   Toolbar,
   Typography,
 } from '@mui/material';
 import { useState } from 'react';
 import { Link as RouterLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 
-import { adminNavItems } from '@/config/internal-navigation';
+import { adminNavItems, adminSectionIcon, internalNavItems } from '@/config/internal-navigation';
 import { YildizHoldingLogo } from '@/components/brand';
 import { PermissionGate } from '@/features/auth/components/PermissionGate';
 import { useLogout } from '@/features/auth/hooks/useLogout';
@@ -44,14 +46,37 @@ export function AdminLayout() {
     void navigate('/auth/login', { replace: true });
   };
 
+  const renderInternalNavItem = (item: (typeof internalNavItems)[number]) => (
+    <PermissionGate key={item.path} permission={item.permission}>
+      <ListItemButton
+        component={RouterLink}
+        to={item.path}
+        selected={location.pathname === item.path || location.pathname.startsWith(`${item.path}/`)}
+        onClick={() => {
+          setMobileOpen(false);
+        }}
+      >
+        <ListItemIcon>{item.icon}</ListItemIcon>
+        <ListItemText primary={item.label} />
+      </ListItemButton>
+    </PermissionGate>
+  );
+
   const drawer = (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <Toolbar>
         <Typography variant="subtitle1" fontWeight={600} noWrap>
-          Yönetim Konsolu
+          Etik Bildirim
         </Typography>
       </Toolbar>
       <List sx={{ flex: 1, px: 1 }}>
+        {internalNavItems.map(renderInternalNavItem)}
+
+        <Divider sx={{ my: 1 }} />
+        <ListSubheader component="div" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          {adminSectionIcon}
+          Yönetim
+        </ListSubheader>
         {adminNavItems.map((item) => (
           <PermissionGate key={item.path} permission={item.permission}>
             <ListItemButton

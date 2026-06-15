@@ -1,4 +1,5 @@
 import {
+  ADMIN_ACTION_CODE_VALUES,
   AdminActionCode,
   Role,
   type AdminActionCodeValue,
@@ -11,59 +12,14 @@ export interface ActionMatrixEntry {
   checkerRole: RoleCode;
 }
 
-/** Docs/07 §11.1 varsayılan aksiyon matrisi — Faz 9 İterasyon 4'te DB'ye taşınır */
-export const DEFAULT_ACTION_MATRIX: readonly ActionMatrixEntry[] = [
-  {
-    actionCode: AdminActionCode.ROLE_ASSIGN,
+/** Docs/07 §11.1 varsayılan aksiyon matrisi — seed + DB override kaynağı */
+export const DEFAULT_ACTION_MATRIX: readonly ActionMatrixEntry[] = ADMIN_ACTION_CODE_VALUES.map(
+  (actionCode) => ({
+    actionCode,
     makerRole: Role.ADMIN,
     checkerRole: Role.COUNCIL_SECRETARY,
-  },
-  {
-    actionCode: AdminActionCode.ROLE_ASSIGN_COUNCIL_SECRETARY,
-    makerRole: Role.ADMIN,
-    checkerRole: Role.BOARD_CHAIR,
-  },
-  {
-    actionCode: AdminActionCode.ROLE_ASSIGN_BOARD_CHAIR,
-    makerRole: Role.ADMIN,
-    checkerRole: Role.ADMIN,
-  },
-  {
-    actionCode: AdminActionCode.CLEARANCE_ELEVATE_STRICTLY_CONFIDENTIAL,
-    makerRole: Role.COUNCIL_SECRETARY,
-    checkerRole: Role.COUNCIL_CHAIR,
-  },
-  {
-    actionCode: AdminActionCode.SYSTEM_SETTING_CHANGE,
-    makerRole: Role.ADMIN,
-    checkerRole: Role.ADMIN,
-  },
-  {
-    actionCode: AdminActionCode.FIELD_VISIBILITY_CHANGE,
-    makerRole: Role.ADMIN,
-    checkerRole: Role.ADMIN,
-  },
-  {
-    actionCode: AdminActionCode.ACTION_MATRIX_CHANGE,
-    makerRole: Role.ADMIN,
-    checkerRole: Role.ADMIN,
-  },
-  {
-    actionCode: AdminActionCode.SLA_POLICY_CHANGE,
-    makerRole: Role.ADMIN,
-    checkerRole: Role.ADMIN,
-  },
-  {
-    actionCode: AdminActionCode.NOTIFICATION_TEMPLATE_CHANGE,
-    makerRole: Role.COUNCIL_SECRETARY,
-    checkerRole: Role.ADMIN,
-  },
-  {
-    actionCode: AdminActionCode.KVKK_TEXT_PUBLISH,
-    makerRole: Role.COUNCIL_SECRETARY,
-    checkerRole: Role.ADMIN,
-  },
-] as const;
+  }),
+);
 
 const ROLE_PRIVILEGE_RANK: Record<RoleCode, number> = {
   [Role.ADMIN]: 100,

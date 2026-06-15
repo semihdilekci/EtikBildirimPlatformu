@@ -26,6 +26,7 @@ import { AuthService } from '../../auth/auth.service.js';
 import { AuditEventPublisher } from '../../../audit/audit-event.publisher.js';
 import { ActionMatrixConfigService } from '../maker-checker/action-matrix-config.service.js';
 import { MakerCheckerService } from '../maker-checker/maker-checker.service.js';
+import { ApprovalWorkItemService } from '../maker-checker/approval-work-item.service.js';
 import { FieldVisibilityAdminService } from '../config/field-visibility.service.js';
 import { FieldVisibilityController } from '../config/field-visibility.controller.js';
 import { ActionMatrixAdminService } from '../config/action-matrix.service.js';
@@ -74,6 +75,7 @@ describe('Admin field visibility & action matrix DB integration (Testcontainers)
         [
           'superadmin@ethics.local',
           'checker.admin@ethics.local',
+          'council.secretary@ethics.local',
           'council.member@ethics.local',
         ].map(async (email) => [email, await loadAuthenticatedUser(environment, email)] as const),
       ),
@@ -95,6 +97,7 @@ describe('Admin field visibility & action matrix DB integration (Testcontainers)
         FieldMaskingService,
         ActionMatrixConfigService,
         MakerCheckerService,
+        ApprovalWorkItemService,
         AuditEventPublisher,
         { provide: PrismaService, useValue: prismaService },
         Reflector,
@@ -308,7 +311,7 @@ describe('Admin field visibility & action matrix DB integration (Testcontainers)
 
     const approveResponse = await request(app.getHttpServer())
       .post(`/api/v1/admin/field-visibility/batches/${batchId}/approve`)
-      .set('x-test-user-id', userIdFor('checker.admin@ethics.local'))
+      .set('x-test-user-id', userIdFor('council.secretary@ethics.local'))
       .send({ approved: true, reason: 'Onaylandı — test.' });
 
     expect(approveResponse.status).toBe(HttpStatus.OK);
@@ -334,7 +337,7 @@ describe('Admin field visibility & action matrix DB integration (Testcontainers)
     expect(auditEvents.length).toBeGreaterThan(0);
   });
 
-  it('action matrix list → 200 + invalid role pair proposal → 400', async () => {
+  it('action matrix list → 200 + same role pair proposal → 400', async () => {
     const listResponse = await request(app.getHttpServer())
       .get('/api/v1/admin/action-matrix')
       .set('x-test-user-id', userIdFor('superadmin@ethics.local'));
@@ -347,7 +350,7 @@ describe('Admin field visibility & action matrix DB integration (Testcontainers)
       .set('x-test-user-id', userIdFor('superadmin@ethics.local'))
       .send({
         makerRole: Role.COUNCIL_SECRETARY,
-        checkerRole: Role.ACTION_OWNER,
+        checkerRole: Role.COUNCIL_SECRETARY,
         reason: 'Geçersiz checker rolü testi.',
       });
 

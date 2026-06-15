@@ -1,25 +1,42 @@
+export { listTasksQuerySchema, type ListTasksQuery } from './list-tasks-query.schema.js';
+
 export {
-  listTasksQuerySchema,
-  taskListItemSchema,
-  taskPaginationSchema,
+  unifiedWorkItemListItemSchema,
+  workflowTaskListItemSchema,
+  approvalWorkItemListItemSchema,
+  unifiedWorkItemDetailSchema,
+  workflowTaskDetailSchema,
+  approvalWorkItemDetailSchema,
+  decideTaskBodySchema,
+  decideTaskResponseSchema,
   listTasksResponseSchema,
-  type ListTasksQuery,
+  taskPaginationSchema,
+  // eslint-disable-next-line @typescript-eslint/no-deprecated -- backward-compatible re-export
+  taskListItemSchema,
+  taskDetailSchema,
+  taskDetailResponseSchema,
+  completeTaskResponseSchema,
+  type UnifiedWorkItemListItem,
+  type WorkflowTaskListItem,
+  type ApprovalWorkItemListItem,
+  type UnifiedWorkItemDetail,
+  type WorkflowTaskDetail,
+  type ApprovalWorkItemDetail,
+  type DecideTaskBody,
+  type DecideTaskResponse,
+  type ListTasksResponse,
   type TaskListItem,
   type TaskPagination,
-  type ListTasksResponse,
-} from './list-tasks-query.schema.js';
+  type TaskDetail,
+  type TaskDetailResponse,
+} from './unified-work-item.schema.js';
 
 export {
   completeTaskBodySchema,
-  taskDetailSchema,
   taskDetailCaseSchema,
-  completeTaskResponseSchema,
-  taskDetailResponseSchema,
   type CompleteTaskBody,
-  type TaskDetail,
   type TaskDetailCase,
   type CompleteTaskResponse,
-  type TaskDetailResponse,
 } from './complete-task.schema.js';
 
 export {

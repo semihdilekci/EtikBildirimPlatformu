@@ -1,5 +1,5 @@
 import { CaseField, FieldVisibility } from '@ethics/policy';
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 
 import type { AuthenticatedUser } from '../common/types/authenticated-user.type.js';
 import {
@@ -16,7 +16,10 @@ export class FieldMaskingService {
   private readonly managedPropertyKeys: ReadonlySet<string>;
   private readonly contextPropertyKeys: ReadonlySet<string>;
 
-  constructor(private readonly fieldVisibilityPolicy: FieldVisibilityPolicyService) {
+  constructor(
+    @Inject(FieldVisibilityPolicyService)
+    private readonly fieldVisibilityPolicy: FieldVisibilityPolicyService,
+  ) {
     const managed = new Set<string>(CASE_MASKING_CONTEXT_PROPERTIES);
     for (const properties of Object.values(CASE_FIELD_PROPERTY_MAP)) {
       for (const property of properties) {

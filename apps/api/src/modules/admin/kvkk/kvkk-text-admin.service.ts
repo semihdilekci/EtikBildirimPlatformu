@@ -8,6 +8,7 @@ import type {
 } from '@ethics/dto';
 import {
   AdminActionCode,
+  ApprovalWorkItemTargetType,
   AuditActorType,
   AuditEventType,
   AuditOutcome,
@@ -19,6 +20,7 @@ import { AuditEventPublisher } from '../../../audit/audit-event.publisher.js';
 import type { AuthenticatedUser } from '../../../common/types/authenticated-user.type.js';
 import { DomainException } from '../../../common/exceptions/domain.exception.js';
 import { PrismaService } from '../../../prisma/prisma.service.js';
+import { ApprovalWorkItemService } from '../maker-checker/approval-work-item.service.js';
 import { MakerCheckerService } from '../maker-checker/maker-checker.service.js';
 
 const KVKK_TEXT_ACTION = AdminActionCode.KVKK_TEXT_PUBLISH;
@@ -29,6 +31,8 @@ export class KvkkTextAdminService {
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(AuditEventPublisher) private readonly auditPublisher: AuditEventPublisher,
     @Inject(MakerCheckerService) private readonly makerChecker: MakerCheckerService,
+    @Inject(ApprovalWorkItemService)
+    private readonly approvalWorkItemService: ApprovalWorkItemService,
   ) {}
 
   assertKvkkReader(actor: AuthenticatedUser): void {
@@ -155,6 +159,15 @@ export class KvkkTextAdminService {
         },
       });
 
+      await this.approvalWorkItemService.createInTransaction(tx, {
+        actionCode: KVKK_TEXT_ACTION,
+        requestedBy: actor.id,
+        targetType: ApprovalWorkItemTargetType.KVKK_TEXT_BATCH,
+        targetId: createdBatch.id,
+        summary: this.approvalWorkItemService.buildKvkkTextBatchSummary(body.versionCode),
+        correlationId,
+      });
+
       return createdBatch;
     });
 
@@ -219,6 +232,14 @@ export class KvkkTextAdminService {
             reason: body.reason,
             version: item.versionCode,
           },
+        });
+
+        await this.approvalWorkItemService.closeInTransaction(tx, {
+          targetType: ApprovalWorkItemTargetType.KVKK_TEXT_BATCH,
+          targetId: batch.id,
+          decidedBy: checker.id,
+          approved: false,
+          reason: body.reason,
         });
 
         return updated;
@@ -286,6 +307,14 @@ export class KvkkTextAdminService {
           checker_user_id: checker.id,
           reason: body.reason,
         },
+      });
+
+      await this.approvalWorkItemService.closeInTransaction(tx, {
+        targetType: ApprovalWorkItemTargetType.KVKK_TEXT_BATCH,
+        targetId: batch.id,
+        decidedBy: checker.id,
+        approved: true,
+        reason: body.reason,
       });
 
       return { updatedBatch, versionCode: createdVersion.versionCode };

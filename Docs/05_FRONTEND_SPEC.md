@@ -121,8 +121,10 @@ apps/web/
           components/
             TaskFilters.tsx
             TaskSlaIndicator.tsx
+            ApprovalDecideDialog.tsx   # kind=APPROVAL onay/red + gerekçe
           hooks/
             useTasks.ts
+            useApprovalDecide.ts
         documents/
           components/
             DocumentList.tsx
@@ -278,9 +280,12 @@ Routing **React Router v6** ile yapılır. Route'lar 4 layout grubuna ayrılır;
 /app/dashboard                   → DashboardPage
 /app/cases                       → CaseListPage
 /app/cases/:id                   → CaseDetailPage
+/app/reports/pending             → PendingReportsPage (council_secretary)
 /app/tasks                       → TaskListPage
 /app/tasks/:id                   → TaskDetailPage
 /app/notifications               → (NotificationCenter sidebar olarak da açılır)
+
+**InternalLayout sidebar (Faz 5.1):** `council_secretary` rolü için "Bekleyen Bildirimler" menü öğesi (`/app/reports/pending`) — `PermissionGate(case:pre_review)` ile gösterilir. Diğer iç roller bu öğeyi görmez.
 
 /app/admin/users                 → AdminUserListPage
 /app/admin/users/:id             → AdminUserDetailPage

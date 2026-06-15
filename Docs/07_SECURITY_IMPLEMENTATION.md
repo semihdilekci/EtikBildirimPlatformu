@@ -556,7 +556,7 @@ Anonim bildirimde kimlik veya iletişim bilgisi şart koşulmaz. İsimli bildiri
 
 ### 11.1 Konfigüre Edilebilir Aksiyon Matrisi
 
-Maker-checker gerektiren tüm aksiyonlar `action_matrix_admin` ekranından yönetilir. Sabit kodlanmış maker-checker ataması yoktur. Sistem iki kuralı teknik olarak zorlar: (1) maker ve checker aynı kişi olamaz, (2) checker maker'dan düşük yetkili olamaz.
+Maker-checker gerektiren tüm aksiyonlar `action_matrix_admin` ekranından yönetilir. Sabit kodlanmış maker-checker ataması yoktur. Sistem tek kuralı teknik olarak zorlar: **maker ve checker aynı kişi/rol olamaz** (checker dropdown'unda maker rolü listelenmez).
 
 **Varsayılan aksiyon matrisi (admin tarafından değiştirilebilir):**
 
@@ -589,6 +589,28 @@ Break-glass yalnızca aşağıdaki beş koşulun tamamında tetiklenebilir:
 5. **Sonradan denetim:** Prosedür kapatıldıktan sonra 5 iş günü içinde KVKK/Hukuk raporu üretilir.
 
 Break-glass KMS anahtar materyalini, plaintext şifreli içeriği veya PII içeren alanları döküme edemez; yalnızca sınırlı metadata ve iş akışı kilit çözme işlevine sahiptir. Bu prosedür dışındaki tüm içerik erişim denemeleri sistem tarafından reddedilir ve güvenlik olayı olarak alarm üretilir.
+
+### 11.3 Onay İşleri — Birleşik Görev Kuyruğu
+
+Maker-checker proposal oluştuğunda sistem `approval_work_items` kaydı açar. Checker, **ek admin ekranına erişmeden** `/app/tasks` birleşik listesinden onaylar.
+
+**Akış:**
+
+1. Maker admin/config ekranından proposal oluşturur (rol, clearance, system settings batch, …).
+2. `ApprovalWorkItemService` action matrix'ten `checker_role` okur; `PENDING` work item yazar.
+3. Checker rolüne sahip kullanıcılar item'ı `GET /api/v1/tasks` listesinde görür (`kind=APPROVAL`).
+4. Checker detayda **Onayla** / **Reddet** + gerekçe → `POST /api/v1/tasks/:id/decide`.
+5. Backend ilgili domain approve servisine delegate eder; work item `COMPLETED` veya `REJECTED` olur.
+
+**Kapsanan kategoriler (MVP):** rol atama, clearance değişikliği, system settings batch, field visibility batch, action matrix batch, SLA policy batch, notification template batch, KVKK metin yayını.
+
+**Güvenlik:**
+- Onay özeti maskeli metadata — vaka/report plaintext yok.
+- Maker kendi item'ını decide edemez (`MAKER_CHECKER_SELF`).
+- Checker yalnızca `assigned_checker_role` ile uyumlu kullanıcı (`MAKER_CHECKER_FORBIDDEN`).
+- Delege yok (MVP); audit domain approve event'leri ile birleşir (`maker_checker_request_id` / work item id metadata).
+
+**Admin kullanıcı detayı:** `S-ADMIN-USER-DETAIL` bekleyen onay kartı admin maker için kalır; checker'ın birincil yolu görev kuyruğudur.
 
 ---
 

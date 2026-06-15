@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { BusinessCalendarDayTypeCode } from '@ethics/shared';
 import type { Prisma } from '@prisma/client';
 
@@ -14,7 +14,7 @@ type CalendarClient = PrismaService | Prisma.TransactionClient;
 
 @Injectable()
 export class BusinessCalendarService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   async loadActiveEntriesForRange(
     startDate: Date,

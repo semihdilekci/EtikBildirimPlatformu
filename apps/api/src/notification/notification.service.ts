@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import {
   NotificationChannel,
   NotificationEventType,
@@ -6,6 +6,7 @@ import {
   TaskType,
   WorkflowCommand,
   type NotificationEventTypeCode,
+  type Role as RoleCode,
   type WorkflowCommandCode,
 } from '@ethics/shared';
 
@@ -40,11 +41,14 @@ export interface EnqueueNotificationInput {
 const EMAIL_EXCLUDED_EVENT_TYPES = new Set<NotificationEventTypeCode>([
   NotificationEventType.SECURE_MESSAGE_REPORTER,
   NotificationEventType.SECURE_MESSAGE_RECEIVED,
+  NotificationEventType.APPROVAL_WORK_ITEM_ASSIGNED,
 ]);
 
 @Injectable()
 export class NotificationService {
-  constructor(private readonly publisher: NotificationEventPublisher) {}
+  constructor(
+    @Inject(NotificationEventPublisher) private readonly publisher: NotificationEventPublisher,
+  ) {}
 
   async enqueue(tx: NotificationTransactionClient, input: EnqueueNotificationInput): Promise<void> {
     const recipients = dedupeRecipients(input.recipients);
@@ -276,6 +280,35 @@ export class NotificationService {
       idempotencyKeyPrefix: `notification:silent-acceptance:${input.idempotencyKey}`,
       metadata: {
         voterUserId: input.voterUserId,
+      },
+    });
+  }
+
+  async enqueueApprovalWorkItemAssigned(
+    tx: NotificationTransactionClient,
+    input: {
+      workItemId: string;
+      checkerRole: RoleCode;
+      requestedBy: string;
+      correlationId: string;
+      category: string;
+    },
+  ): Promise<void> {
+    const checkerUserIds = await listActiveUserIdsByRole(tx, input.checkerRole);
+    const recipients = toUserRecipients(
+      checkerUserIds.filter((userId) => userId !== input.requestedBy),
+    );
+
+    await this.enqueue(tx, {
+      eventType: NotificationEventType.APPROVAL_WORK_ITEM_ASSIGNED,
+      recipients,
+      correlationId: input.correlationId,
+      idempotencyKeyPrefix: `notification:approval-work-item-assigned:${input.workItemId}`,
+      metadata: {
+        taskId: input.workItemId,
+        approvalWorkItemId: input.workItemId,
+        category: input.category,
+        checkerRole: input.checkerRole,
       },
     });
   }

@@ -157,6 +157,7 @@ export function ReportFormPage() {
           sizeBytes: attachment.file.size,
           contentSha256,
         });
+
         await uploadToPresignedUrl(initiated.uploadUrl, attachment.file, attachment.file.type);
       }
 

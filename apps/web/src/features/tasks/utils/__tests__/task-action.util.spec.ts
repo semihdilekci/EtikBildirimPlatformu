@@ -1,11 +1,12 @@
 import { TaskStatus, TaskType } from '@ethics/shared';
 import { describe, expect, it } from 'vitest';
 
-import type { TaskDetail } from '@ethics/dto';
+import type { WorkflowTaskDetail } from '@ethics/dto';
 
 import { canCompleteTask, canDelegateTask } from '@/features/tasks/utils/task-action.util';
 
-const baseTask: TaskDetail = {
+const baseTask: WorkflowTaskDetail = {
+  kind: 'WORKFLOW',
   id: 'task-1',
   caseId: 'case-1',
   taskType: TaskType.SECRETARIAT_REVIEW_TASK,

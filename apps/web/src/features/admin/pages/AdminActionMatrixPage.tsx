@@ -94,10 +94,20 @@ export function AdminActionMatrixPage() {
       makerRole: row.makerRole as RoleCode,
       checkerRole: row.checkerRole as RoleCode,
     };
+    const nextMakerRole = patch.makerRole ?? current.makerRole;
+    let nextCheckerRole = patch.checkerRole ?? current.checkerRole;
+
+    if (patch.makerRole && nextMakerRole === nextCheckerRole) {
+      const fallbackChecker = getCheckerRoleOptions(nextMakerRole)[0];
+      if (fallbackChecker) {
+        nextCheckerRole = fallbackChecker;
+      }
+    }
+
     const next: EditedRow = {
       ...current,
-      makerRole: patch.makerRole ?? current.makerRole,
-      checkerRole: patch.checkerRole ?? current.checkerRole,
+      makerRole: nextMakerRole,
+      checkerRole: nextCheckerRole,
     };
 
     if (next.makerRole === row.makerRole && next.checkerRole === row.checkerRole) {
@@ -174,7 +184,7 @@ export function AdminActionMatrixPage() {
       />
 
       <Typography variant="body2" color="text.secondary">
-        Maker ve checker aynı kişi olamaz. Checker, maker&apos;dan düşük yetkili olamaz.
+        Maker ve checker aynı rol olamaz.
       </Typography>
 
       {pendingBatchIds.map((batchId) => (

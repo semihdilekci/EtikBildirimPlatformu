@@ -259,6 +259,37 @@ Tüm SLA değerleri (24 saat sessiz kabul ve 14 iş günü aksiyon dönüşü ha
 
 ---
 
+### ApprovalWorkItem (Maker-Checker Onay Görevi)
+
+Maker-checker gerektiren admin işlemleri için checker kuyruğu kaydı. **Vaka workflow Task entity'sinden ayrıdır** — `case_id` ve `case_transition` bağı yoktur; birleşik “Görevlerim” ekranına API projeksiyonu ile dahil edilir.
+
+**Sorumluluğu:**
+- Maker proposal oluştuğunda ilgili action matrix `checker_role` için açık onay işi yaratır.
+- Checker rolüne sahip iç kullanıcılar kuyruğu `GET /api/v1/tasks` birleşik listesinde görür.
+- Onay/red kararı mevcut admin approve endpoint mantığına delegate edilir; iş kapanır.
+
+**Ana attribute'lar:**
+- `category` — onay kategorisi (`ROLE_ASSIGNMENT`, `CLEARANCE_CHANGE`, `SYSTEM_SETTING_CHANGE`, …)
+- `action_code` — action matrix aksiyon kodu
+- `assigned_checker_role` — checker rolü (proposal anı snapshot)
+- `requested_by` — maker kullanıcı ID
+- `status` — PENDING, COMPLETED, REJECTED, CANCELLED
+- `summary` — maskeli özet (kullanıcı adı/metadata; etik içerik yok)
+- `target_type`, `target_id` — onaylanacak domain kaydına referans (ör. `user_roles.id`, change batch id)
+
+**İlişkiler:**
+- → User (N-1): Maker ve checker
+- → ActionMatrixConfig (mantıksal): `action_code` ile eşleşme
+- Domain batch/role kayıtlarına `target_type` + `target_id` ile referans (FK polymorphic değil — uygulama katmanı doğrular)
+
+**Değişmezler:**
+- Maker ve checker aynı kişi olamaz.
+- Checker yalnızca `assigned_checker_role` kullanıcı rollerinden birine sahipse decide edebilir.
+- Onay özeti vaka içeriği, report metni veya decrypt edilmiş alan taşımaz.
+- Delege edilemez (MVP); yalnızca checker rol havuzu görür.
+
+---
+
 ### Document (Doküman)
 
 Vaka/workflow'a bağlı kapalı arşiv ve delil yönetimi kaydı. Genel amaçlı dosya paylaşımı değildir; her doküman bir report, case, task, transition veya action kaydıyla ilişkilidir.

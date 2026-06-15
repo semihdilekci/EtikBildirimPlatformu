@@ -1,0 +1,238 @@
+---
+description: '[Faz 9.1] Maker-checker onay kuyruğu — 5 iterasyon/chat (schema+service → birleşik API → batch hook → FE görev ekranı → test+gate). Mesajda "Faz 9.1 — İterasyon M" belirt.'
+---
+
+# Faz 9.1: Maker-Checker Onay Kuyruğu (Birleşik Görevlerim)
+
+## Goal
+
+Maker-checker bekleyen tüm admin onay kategorileri checker rolüne sahip kullanıcıların mevcut **Görevlerim** ekranına (`/app/tasks`) düşer. Onay/red + gerekçe sonrası iş kapanır; checker'ın admin kullanıcı/config ekranlarına erişmesi gerekmez.
+
+Detay: `Docs/10_IMPLEMENTATION_ROADMAP.md` §Faz 9.1; domain: `Docs/01_DOMAIN_MODEL.md` ApprovalWorkItem; güvenlik: `Docs/07_SECURITY_IMPLEMENTATION.md` §11.3.
+
+**Bağımlılık:** Faz 9 admin maker-checker backend (proposal + approve servisleri), Faz 6 task list/detail UI.
+
+## Feature branch (zorunlu)
+
+Faz koduna **main üzerinde başlanmaz**. İlk commit/dosya değişikliği öncesi `48-git-phase-branch.mdc` uygula.
+
+**Bu faz branch adı:** `feature/F9-1-admin-change`
+
+**Stop (İterasyon 1, kod öncesi):** [ ] Faz 9 maker-checker backend merge/hazır; [ ] faz branch oluşturuldu; [ ] `git push -u origin HEAD` (remote varsa).
+
+## Bu fazın çalışma modeli (iterasyonlar)
+
+Tek sohbette tamamlanmaz. Her session: `@59.1-phase-09.1-admin-change` + mesajda **「Faz 9.1 — İterasyon M」**. Branch açmadan kod yok.
+
+---
+
+### İterasyon 1 — Schema + ApprovalWorkItemService (rol/clearance)
+
+**Hedef:** `approval_work_items` tablosu; rol atama ve clearance proposal'da work item oluşturma.
+
+**Yapılacaklar:**
+
+1. Prisma migration — `Docs/02_DATABASE_SCHEMA.md` §approval_work_items
+2. `ApprovalWorkItemService` — create on proposal, idempotency, maskeli summary
+3. Hook: `AdminUsersService.assignRole`, clearance proposal
+4. Shared enum: approval category (`packages/shared`)
+5. Unit test: create + duplicate proposal guard
+
+**Minimum bağlam:**
+
+- `Docs/02_DATABASE_SCHEMA.md` §approval_work_items
+- `Docs/01_DOMAIN_MODEL.md` ApprovalWorkItem
+- `Docs/07_SECURITY_IMPLEMENTATION.md` §11.1, §11.3
+- `.cursor/rules/42-add-prisma-migration.mdc`
+
+**Bu iterasyonda yok:** Birleşik task list API, frontend, config batch hook'ları.
+
+**Stop:** [ ] Migration apply; [ ] rol proposal → work item DB kaydı; [ ] unit test green. PR/onay → İterasyon 2.
+
+---
+
+### İterasyon 2 — Birleşik GET /tasks + decide
+
+**Hedef:** Workflow task + approval work item birleşik liste/detay; `POST /tasks/:id/decide`.
+
+**Yapılacaklar:**
+
+1. `UnifiedWorkItemService` — union query, `kind` discriminator DTO (`packages/dto`)
+2. `GET /api/v1/tasks`, `GET /api/v1/tasks/:id` genişlet — `Docs/03_API_CONTRACTS.md` §8.5
+3. `POST /api/v1/tasks/:id/decide` — delegate `approveRoleAssignment`, clearance approve, …
+4. Checker rol filtresi; maker self-decide deny
+5. Integration test: admin propose → council secretary list + decide
+
+**Minimum bağlam:**
+
+- `Docs/03_API_CONTRACTS.md` §8.5 Tasks
+- `Docs/04_BACKEND_SPEC.md` — task + maker-checker modül yapısı
+- `.cursor/rules/40-add-new-endpoint.mdc`
+
+**Bu iterasyonda yok:** Config batch hook'ları, frontend.
+
+**Stop:** [ ] Integration happy path (rol atama); [ ] negatif self-decide 422. PR/onay → İterasyon 3.
+
+---
+
+### İterasyon 3 — Config batch hook'ları
+
+**Hedef:** Kalan maker-checker kategorileri proposal'da work item üretir; decide ilgili batch approve'a delegate eder.
+
+**Yapılacaklar:**
+
+1. Hook: system settings, field visibility, action matrix, SLA policy, notification template, KVKK batch servisleri
+2. Decide router: category → mevcut approve endpoint mantığı
+3. Proposal iptal/red → work item CANCELLED/REJECTED senkron
+4. Integration test: en az system settings batch + bir config batch
+
+**Minimum bağlam:**
+
+- `Docs/03_API_CONTRACTS.md` §8.12 Admin Config
+- Faz 9 `config.service.ts` maker-checker pattern
+
+**Bu iterasyonda yok:** Frontend.
+
+**Stop:** [ ] 8 category enum tamam; [ ] 2 batch integration green. PR/onay → İterasyon 4.
+
+---
+
+### İterasyon 4 — Frontend Görevlerim genişlemesi
+
+**Hedef:** S-TASK-LIST ve S-TASK-DETAIL `kind=APPROVAL` dalı; checker onay UX.
+
+**Yapılacaklar:**
+
+1. TaskList — tür filtresi, onay satır kolonları (`Docs/06_SCREEN_CATALOG.md` S-TASK-LIST)
+2. TaskDetail — approval bilgi kartı, `ApprovalDecideDialog`
+3. `useApprovalDecide` mutation + query invalidation
+4. Maker'a decide butonu gösterme (`canDecide`)
+5. Vitest: list render approval row; decide dialog submit
+
+**Minimum bağlam:**
+
+- `Docs/06_SCREEN_CATALOG.md` — S-TASK-LIST, S-TASK-DETAIL
+- `Docs/05_FRONTEND_SPEC.md` — tasks feature yapısı
+- `.cursor/rules/22-frontend-forms.mdc`
+
+**Bu iterasyonda yok:** E2E, notification worker.
+
+**Stop:** [ ] Council secretary `/app/tasks` smoke; [ ] onay sonrası liste yenilenir. PR/onay → İterasyon 5.
+
+---
+
+### İterasyon 5 — Test, bildirim, gate
+
+**Hedef:** Human gate; Akış 6; bildirim tetikleme.
+
+**Yapılacaklar:**
+
+1. Integration: `Docs/08_TESTING_STRATEGY.md` §9.3 tüm satırlar
+2. E2E veya journey test: Akış 6 (admin propose → secretary decide)
+3. In-app notification: checker rol havuzuna work item assigned (içeriksiz)
+4. `pnpm lint` + `pnpm typecheck` + `pnpm test` green
+
+**Minimum bağlam:**
+
+- `Docs/08_TESTING_STRATEGY.md` §9.3, §12 Akış 6
+- `Docs/11_UAT.md` F9 maker-checker maddeleri (güncelleme gerekirse)
+
+**Bu iterasyonda yok:** Ayrı onay inbox ekranı; approval delegation; SLA onay işlerine.
+
+**Stop:** [ ] Akış 6 green; [ ] negatif deny testler; Faz 9.1 Done Definition. PR/onay → merge hazır.
+
+---
+
+## Required Context
+
+- `Docs/01_DOMAIN_MODEL.md` — ApprovalWorkItem entity
+- `Docs/02_DATABASE_SCHEMA.md` §approval_work_items
+- `Docs/03_API_CONTRACTS.md` §8.5 Tasks (birleşik liste/decide)
+- `Docs/04_BACKEND_SPEC.md` — admin/maker-checker + task modülü
+- `Docs/05_FRONTEND_SPEC.md` — tasks feature
+- `Docs/06_SCREEN_CATALOG.md` — S-TASK-LIST, S-TASK-DETAIL, S-ADMIN-USER-DETAIL (checker yolu notu)
+- `Docs/07_SECURITY_IMPLEMENTATION.md` §11 Maker-Checker, §11.3 Onay İşleri
+- `Docs/08_TESTING_STRATEGY.md` §9.3, §12 Akış 6
+- `Docs/10_IMPLEMENTATION_ROADMAP.md` §Faz 9.1
+
+Auto-attached: `10-backend-architecture`, `13-workflow-engine` (task modülü), `20-frontend-architecture`, `23-frontend-queries`, `43-add-new-permission` (gerekirse).
+
+## Scope
+
+### Backend (özet)
+
+- `apps/api/prisma/` — migration
+- `apps/api/src/modules/admin/maker-checker/approval-work-item.service.ts`
+- `apps/api/src/modules/task/unified-work-item.service.ts`
+- `apps/api/src/modules/task/task.controller.ts` — decide route
+- Admin proposal servisleri — work item create hook
+
+### Frontend (özet)
+
+- `apps/web/src/features/tasks/` — list/detail approval dalı
+- `ApprovalDecideDialog.tsx`, `useApprovalDecide.ts`
+- `packages/dto` — birleşik task list/detail schema
+
+### Files NOT touched
+
+- Mevcut `tasks` tablosu şeması (case FK zorunluluğu değişmez)
+- Yeni admin ekranı / checker read-only users route
+- Break-glass onay (henüz yoksa)
+
+## Constraints
+
+### Use
+
+- Mevcut maker-checker approve servislerine delegate — duplicate business logic yok
+- `MakerCheckerService.assertChecker` decide path'te
+- Maskeli summary — FieldMasking / admin içerik göremez prensibi
+- Audit domain approve event'leri (work item id metadata)
+
+### Avoid
+
+- `tasks` tablosuna nullable `case_id` ile admin onay sıkıştırma
+- Checker'a `ADMIN_MANAGE_ROLES` vermek (UX bypass değil, birleşik kuyruk)
+- Onay özetinde vaka/report plaintext
+- Frontend-only onay enforcement
+
+## Done Definition
+
+### Backend
+
+- [ ] `approval_work_items` migration + seed uyumu
+- [ ] 8 approval category proposal → work item
+- [ ] Birleşik `GET /tasks` + `decide` endpoint
+- [ ] Integration: rol atama + config batch + negatif deny
+- [ ] Kritik modül coverage ≥%90 (approval-work-item, decide router)
+
+### Frontend
+
+- [ ] S-TASK-LIST onay satırları + tür filtresi
+- [ ] S-TASK-DETAIL onay dalı + ApprovalDecideDialog
+- [ ] Council secretary admin users olmadan onay smoke
+
+### Human Gate
+
+- [ ] Akış 6 (`Docs/08_TESTING_STRATEGY.md`)
+- [ ] maker=checker → 422; wrong checker → 403
+- [ ] CI green
+
+## Explicit Don'ts
+
+- Ayrı `/app/approvals` ekranı (MVP — birleşik görev kuyruğu yeterli)
+- Approval work item delegation
+- SLA policy onay işlerine (MVP — `dueAt` null)
+- Sahte/system case_id üretimi
+- Docs güncellemeden implementasyon sapması
+
+## Kısıtlar & Riskler
+
+| Risk | Önlem |
+| --- | --- |
+| Task complete ile decide karışması | `kind` guard; ayrı endpoint |
+| ID çakışması task vs approval | Ayrı tablo + union'da prefix veya ayrı id space |
+| Admin task denyAll | Approval items ayrı scope — admin checker olan aksiyonlarda yine decide edebilmeli |
+
+---
+
+Phase done → `Docs/10_IMPLEMENTATION_ROADMAP.md` Faz 9.1 durum güncelle.

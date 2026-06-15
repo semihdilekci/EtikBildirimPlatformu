@@ -10,9 +10,14 @@ import { NotificationService } from '../../../notification/notification.service.
 import type { PrismaService } from '../../../prisma/prisma.service.js';
 import { DecisionService } from '../../decision/decision.service.js';
 import { SilentAcceptanceHandler } from '../../decision/silent-acceptance.handler.js';
+import { createDefaultActionMatrixConfigService } from '../../admin/maker-checker/action-matrix-config.service.js';
+import { ApprovalWorkItemService } from '../../admin/maker-checker/approval-work-item.service.js';
+import { MakerCheckerService } from '../../admin/maker-checker/maker-checker.service.js';
+import { AdminUsersService } from '../../admin/users/admin-users.service.js';
 import { BusinessCalendarService } from '../../task/sla/business-calendar.service.js';
 import { SlaCalculatorService } from '../../task/sla/sla-calculator.service.js';
 import { TaskService } from '../../task/task.service.js';
+import { UnifiedWorkItemService } from '../../task/unified-work-item.service.js';
 import { CaseAvailableActionsService } from '../case-available-actions.service.js';
 import { CaseReportDecryptService } from '../case-report-decrypt.service.js';
 import { CaseService } from '../case.service.js';
@@ -50,6 +55,7 @@ function createWorkflowBundle(prismaService: PrismaService): {
   transitionSideEffects.wireDocumentAccessServiceForTests({
     applyTransitionGrants: () => Promise.resolve(undefined),
   } as never);
+  const unifiedWorkItemService = new UnifiedWorkItemService(prismaService, policyScopeService);
   const taskService = new TaskService(
     prismaService,
     policyScopeService,
@@ -57,7 +63,20 @@ function createWorkflowBundle(prismaService: PrismaService): {
     slaCalculatorService,
     notificationService,
     { get: () => undefined } as unknown as import('@nestjs/core').ModuleRef,
+    unifiedWorkItemService,
   );
+  const makerCheckerService = new MakerCheckerService(createDefaultActionMatrixConfigService());
+  const approvalWorkItemService = new ApprovalWorkItemService(
+    prismaService,
+    createDefaultActionMatrixConfigService(),
+  );
+  const adminUsersService = new AdminUsersService(
+    prismaService,
+    auditPublisher,
+    makerCheckerService,
+    approvalWorkItemService,
+  );
+  unifiedWorkItemService.wireAdminUsersServiceForTests(adminUsersService);
   const transitionService = new TransitionService(
     prismaService,
     new TransitionValidators(),

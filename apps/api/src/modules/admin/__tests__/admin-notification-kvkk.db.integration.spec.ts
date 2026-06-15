@@ -22,6 +22,7 @@ import { AuthService } from '../../auth/auth.service.js';
 import { AuditEventPublisher } from '../../../audit/audit-event.publisher.js';
 import { MakerCheckerService } from '../maker-checker/maker-checker.service.js';
 import { ActionMatrixConfigService } from '../maker-checker/action-matrix-config.service.js';
+import { ApprovalWorkItemService } from '../maker-checker/approval-work-item.service.js';
 import { NotificationTemplateController } from '../notification/notification-template.controller.js';
 import { KvkkTextController } from '../kvkk/kvkk-text.controller.js';
 import { NotificationTemplateAdminService } from '../notification/notification-template-admin.service.js';
@@ -84,6 +85,7 @@ describe('Admin notification templates + KVKK texts DB integration (Testcontaine
         KvkkTextAdminService,
         ActionMatrixConfigService,
         MakerCheckerService,
+        ApprovalWorkItemService,
         AuditEventPublisher,
         {
           provide: EmailRelayService,
@@ -202,7 +204,7 @@ describe('Admin notification templates + KVKK texts DB integration (Testcontaine
       .set('x-test-user-id', userIdFor('superadmin@ethics.local'));
 
     expect(response.status).toBe(HttpStatus.OK);
-    expect(response.body.data).toHaveLength(28);
+    expect(response.body.data).toHaveLength(29);
     expect(response.body.data[0]).toHaveProperty('templateCode');
     expect(response.body.data[0]).toHaveProperty('pendingBatchId');
   });
@@ -226,7 +228,7 @@ describe('Admin notification templates + KVKK texts DB integration (Testcontaine
   it('notification template maker-checker happy path', async () => {
     const proposeResponse = await request(app.getHttpServer())
       .patch(`/api/v1/admin/notification-templates/${NotificationTemplateCode.TASK_ASSIGNED}`)
-      .set('x-test-user-id', userIdFor('council.secretary@ethics.local'))
+      .set('x-test-user-id', userIdFor('superadmin@ethics.local'))
       .send({
         bodyTemplate: 'Güncellenmiş görev atama şablonu metni.',
         reason: 'Test şablon güncellemesi',
@@ -238,7 +240,7 @@ describe('Admin notification templates + KVKK texts DB integration (Testcontaine
 
     const approveResponse = await request(app.getHttpServer())
       .post(`/api/v1/admin/notification-templates/batches/${batchId}/approve`)
-      .set('x-test-user-id', userIdFor('superadmin@ethics.local'))
+      .set('x-test-user-id', userIdFor('council.secretary@ethics.local'))
       .send({
         approved: true,
         reason: 'Test onayı',
@@ -260,7 +262,7 @@ describe('Admin notification templates + KVKK texts DB integration (Testcontaine
   it('notification template same-user approve → 422 MAKER_CHECKER_SELF', async () => {
     const proposeResponse = await request(app.getHttpServer())
       .patch(`/api/v1/admin/notification-templates/${NotificationTemplateCode.SLA_WARNING}`)
-      .set('x-test-user-id', userIdFor('council.secretary@ethics.local'))
+      .set('x-test-user-id', userIdFor('superadmin@ethics.local'))
       .send({
         bodyTemplate: 'SLA uyarı metni güncellendi.',
         reason: 'Self-approve test',
@@ -271,7 +273,7 @@ describe('Admin notification templates + KVKK texts DB integration (Testcontaine
 
     const approveResponse = await request(app.getHttpServer())
       .post(`/api/v1/admin/notification-templates/batches/${batchId}/approve`)
-      .set('x-test-user-id', userIdFor('council.secretary@ethics.local'))
+      .set('x-test-user-id', userIdFor('superadmin@ethics.local'))
       .send({
         approved: true,
         reason: 'Kendi işlemini onaylama denemesi',
@@ -340,7 +342,7 @@ describe('Admin notification templates + KVKK texts DB integration (Testcontaine
   it('KVKK publish maker-checker happy path creates active version', async () => {
     const proposeResponse = await request(app.getHttpServer())
       .post('/api/v1/admin/kvkk-texts')
-      .set('x-test-user-id', userIdFor('council.secretary@ethics.local'))
+      .set('x-test-user-id', userIdFor('superadmin@ethics.local'))
       .send({
         versionCode: '1.1',
         contentText:
@@ -355,7 +357,7 @@ describe('Admin notification templates + KVKK texts DB integration (Testcontaine
 
     const approveResponse = await request(app.getHttpServer())
       .post(`/api/v1/admin/kvkk-texts/batches/${batchId}/approve`)
-      .set('x-test-user-id', userIdFor('superadmin@ethics.local'))
+      .set('x-test-user-id', userIdFor('council.secretary@ethics.local'))
       .send({
         approved: true,
         reason: 'KVKK metin yayını onaylandı',
@@ -385,7 +387,7 @@ describe('Admin notification templates + KVKK texts DB integration (Testcontaine
   it('KVKK publish same-user approve → 422 MAKER_CHECKER_SELF', async () => {
     const proposeResponse = await request(app.getHttpServer())
       .post('/api/v1/admin/kvkk-texts')
-      .set('x-test-user-id', userIdFor('council.secretary@ethics.local'))
+      .set('x-test-user-id', userIdFor('superadmin@ethics.local'))
       .send({
         versionCode: '1.2',
         contentText: 'Başka bir sentetik KVKK metni v1.2 — veri minimizasyonu ilkesi geçerlidir.',
@@ -398,7 +400,7 @@ describe('Admin notification templates + KVKK texts DB integration (Testcontaine
 
     const approveResponse = await request(app.getHttpServer())
       .post(`/api/v1/admin/kvkk-texts/batches/${batchId}/approve`)
-      .set('x-test-user-id', userIdFor('council.secretary@ethics.local'))
+      .set('x-test-user-id', userIdFor('superadmin@ethics.local'))
       .send({
         approved: true,
         reason: 'Kendi KVKK yayınını onaylama denemesi',

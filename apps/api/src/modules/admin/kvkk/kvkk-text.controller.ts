@@ -1,4 +1,14 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Req } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Inject,
+  Param,
+  Post,
+  Req,
+} from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { AuditEventType } from '@ethics/shared';
 import { PermissionCode } from '@ethics/policy';
@@ -24,7 +34,9 @@ const ADMIN_MUTATION_RATE_LIMIT = { limit: 30, ttl: 60_000 } as const;
 
 @Controller('admin/kvkk-texts')
 export class KvkkTextController {
-  constructor(private readonly kvkkTextAdminService: KvkkTextAdminService) {}
+  constructor(
+    @Inject(KvkkTextAdminService) private readonly kvkkTextAdminService: KvkkTextAdminService,
+  ) {}
 
   @RequirePolicy(PermissionCode.ADMIN_MANAGE_KVKK)
   @Throttle({ default: ADMIN_READ_RATE_LIMIT })

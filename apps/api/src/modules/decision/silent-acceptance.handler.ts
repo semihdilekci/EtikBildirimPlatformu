@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { CaseState, MEMBER_APPROVAL_SILENT_ACCEPTANCE_MS } from '@ethics/shared';
 import { randomUUID } from 'node:crypto';
 
@@ -18,8 +18,8 @@ export interface SilentAcceptanceProcessResult {
 @Injectable()
 export class SilentAcceptanceHandler {
   constructor(
-    private readonly prisma: PrismaService,
-    private readonly decisionService: DecisionService,
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(DecisionService) private readonly decisionService: DecisionService,
     private readonly clock: SilentAcceptanceClock = { now: () => new Date() },
   ) {}
 

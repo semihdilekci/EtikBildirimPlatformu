@@ -3,6 +3,7 @@ import { PERMISSION_CODE_VALUES, ROLE_VALUES } from '@ethics/policy';
 import { BusinessCalendarDayType, DEFAULT_SLA_POLICIES, Role } from '@ethics/shared';
 import { seedRoleTestUsers, seedWorkflowCaseStub } from '@ethics/test-fixtures';
 
+import { DEFAULT_ACTION_MATRIX } from '../src/modules/admin/maker-checker/default-action-matrix.js';
 import { seedNotificationTemplates } from '../src/modules/notification/notification-template.seed.js';
 
 const prisma = new PrismaClient();
@@ -156,6 +157,36 @@ async function seedKvkkConsentVersion(): Promise<void> {
   });
 }
 
+async function cleanupPendingActionMatrixChanges(): Promise<void> {
+  const removed = await prisma.actionMatrixChangeBatch.deleteMany({
+    where: { status: 'PENDING' },
+  });
+
+  if (removed.count > 0) {
+    console.warn(
+      `[seed] ${String(removed.count)} adet bekleyen aksiyon matrisi değişikliği kaldırıldı (eski maker/checker rolleri geçersiz).`,
+    );
+  }
+}
+
+async function seedActionMatrixConfigs(): Promise<void> {
+  for (const entry of DEFAULT_ACTION_MATRIX) {
+    await prisma.actionMatrixConfig.upsert({
+      where: { actionCode: entry.actionCode },
+      create: {
+        actionCode: entry.actionCode,
+        makerRole: entry.makerRole,
+        checkerRole: entry.checkerRole,
+      },
+      update: {
+        makerRole: entry.makerRole,
+        checkerRole: entry.checkerRole,
+        isActive: true,
+      },
+    });
+  }
+}
+
 async function seedSystemSettings(): Promise<void> {
   for (const setting of DEFAULT_SYSTEM_SETTINGS) {
     await prisma.systemSetting.upsert({
@@ -180,6 +211,8 @@ async function main(): Promise<void> {
   await seedSlaPolicies();
   await seedBusinessCalendarEntries();
   await seedNotificationTemplates(prisma);
+  await cleanupPendingActionMatrixChanges();
+  await seedActionMatrixConfigs();
   const { companyId, usersByRole } = await seedRoleTestUsers(prisma, {
     superadminOidcSub: SUPERADMIN_OIDC_SUB,
   });
@@ -196,7 +229,7 @@ async function main(): Promise<void> {
 main()
   .then(() => {
     console.warn(
-      '[seed] Faz 8 seed tamamlandı (SLA politikaları, iş günü takvimi, 28 bildirim şablonu, 7 rol test kullanıcısı, sentetik şirket, KVKK v1, system_settings, workflow case stub).',
+      '[seed] Faz 8 seed tamamlandı (SLA politikaları, iş günü takvimi, 28 bildirim şablonu, aksiyon matrisi, 7 rol test kullanıcısı, sentetik şirket, KVKK v1, system_settings, workflow case stub).',
     );
   })
   .catch((error: unknown) => {

@@ -4,6 +4,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Inject,
   Param,
   Patch,
   Post,
@@ -35,7 +36,9 @@ const ADMIN_MUTATION_RATE_LIMIT = { limit: 30, ttl: 60_000 } as const;
 
 @Controller('admin/sla-policies')
 export class SlaPoliciesController {
-  constructor(private readonly slaPolicyAdminService: SlaPolicyAdminService) {}
+  constructor(
+    @Inject(SlaPolicyAdminService) private readonly slaPolicyAdminService: SlaPolicyAdminService,
+  ) {}
 
   @RequirePolicy(PermissionCode.ADMIN_MANAGE_SETTINGS)
   @Throttle({ default: ADMIN_READ_RATE_LIMIT })

@@ -1,4 +1,4 @@
-import { HttpStatus, Injectable } from '@nestjs/common';
+import { HttpStatus, Inject, Injectable } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
 import type { CastVoteBody, DecisionVoteListItem } from '@ethics/dto';
 import {
@@ -39,12 +39,12 @@ export class DecisionService {
   private transitionServiceRef: TransitionService | null = null;
 
   constructor(
-    private readonly prisma: PrismaService,
-    private readonly policyScope: PolicyScopeService,
-    private readonly auditPublisher: AuditEventPublisher,
-    private readonly cryptoService: CryptoService,
-    private readonly notificationService: NotificationService,
-    private readonly moduleRef: ModuleRef,
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(PolicyScopeService) private readonly policyScope: PolicyScopeService,
+    @Inject(AuditEventPublisher) private readonly auditPublisher: AuditEventPublisher,
+    @Inject(CryptoService) private readonly cryptoService: CryptoService,
+    @Inject(NotificationService) private readonly notificationService: NotificationService,
+    @Inject(ModuleRef) private readonly moduleRef: ModuleRef,
   ) {}
 
   wireTransitionServiceForTests(transitionService: TransitionService): void {

@@ -1,7 +1,14 @@
 import { HttpStatus, type INestApplication } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD, Reflector } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
-import { AuditEventType, ClearanceLevel, ErrorCode, Role } from '@ethics/shared';
+import {
+  AuditEventType,
+  ClearanceLevel,
+  ErrorCode,
+  Role,
+  ApprovalWorkItemStatus,
+  ApprovalWorkItemTargetType,
+} from '@ethics/shared';
 import { UserFactory, seedRoleTestUsers } from '@ethics/test-fixtures';
 import type { Request, Response, NextFunction } from 'express';
 import request from 'supertest';
@@ -22,6 +29,7 @@ import { AuthService } from '../../auth/auth.service.js';
 import { AdminUsersController } from '../users/admin-users.controller.js';
 import { AdminUsersService } from '../users/admin-users.service.js';
 import { MakerCheckerService } from '../maker-checker/maker-checker.service.js';
+import { ApprovalWorkItemService } from '../maker-checker/approval-work-item.service.js';
 import { ActionMatrixConfigService } from '../maker-checker/action-matrix-config.service.js';
 import { AuditEventPublisher } from '../../../audit/audit-event.publisher.js';
 
@@ -76,6 +84,7 @@ describe('Admin users DB integration (Testcontainers)', () => {
         AdminUsersService,
         ActionMatrixConfigService,
         MakerCheckerService,
+        ApprovalWorkItemService,
         AuditEventPublisher,
         { provide: PrismaService, useValue: prismaService },
         Reflector,
@@ -201,6 +210,16 @@ describe('Admin users DB integration (Testcontainers)', () => {
 
     const roleId = assignResponse.body.data.id as string;
 
+    const workItem = await environment.prisma.approvalWorkItem.findFirst({
+      where: {
+        targetType: ApprovalWorkItemTargetType.USER_ROLE,
+        targetId: roleId,
+        status: ApprovalWorkItemStatus.PENDING,
+      },
+    });
+    expect(workItem).not.toBeNull();
+    expect(workItem?.summary).toContain(Role.COUNCIL_MEMBER);
+
     const selfApprove = await request(app.getHttpServer())
       .post(`/api/v1/admin/users/${targetUserId}/roles/${roleId}/approve`)
       .set('x-test-user-id', userIdFor('superadmin@ethics.local'))
@@ -243,9 +262,19 @@ describe('Admin users DB integration (Testcontainers)', () => {
 
     const requestId = patchResponse.body.data.requestId as string;
 
+    const clearanceWorkItem = await environment.prisma.approvalWorkItem.findFirst({
+      where: {
+        targetType: ApprovalWorkItemTargetType.CLEARANCE_REQUEST,
+        targetId: requestId,
+        status: ApprovalWorkItemStatus.PENDING,
+      },
+    });
+    expect(clearanceWorkItem).not.toBeNull();
+    expect(clearanceWorkItem?.summary).toContain(ClearanceLevel.STRICTLY_CONFIDENTIAL);
+
     const approveResponse = await request(app.getHttpServer())
       .post(`/api/v1/admin/users/${targetUserId}/clearance/${requestId}/approve`)
-      .set('x-test-user-id', userIdFor('council.chair@ethics.local'))
+      .set('x-test-user-id', userIdFor('council.secretary@ethics.local'))
       .send({ approved: true, reason: 'Clearance onaylandı.' });
 
     expect(approveResponse.status).toBe(HttpStatus.OK);

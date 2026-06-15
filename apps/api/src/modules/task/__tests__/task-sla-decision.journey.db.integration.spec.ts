@@ -11,6 +11,7 @@ import {
   TaskStatus,
   TaskType,
   WorkflowCommand,
+  WorkItemKind,
 } from '@ethics/shared';
 import { seedSyntheticCompany } from '@ethics/test-fixtures';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -127,6 +128,7 @@ describe('Task SLA journey E2E (Testcontainers)', () => {
     );
 
     const pendingList = await taskService.listTasks(secretaryUser, {
+      kind: WorkItemKind.WORKFLOW,
       status: [TaskStatus.PENDING],
       caseId: created.caseId,
       limit: 20,
@@ -135,17 +137,22 @@ describe('Task SLA journey E2E (Testcontainers)', () => {
     });
 
     expect(pendingList.data).toHaveLength(1);
-    expect(pendingList.data[0]?.taskType).toBe(TaskType.SECRETARIAT_REVIEW_TASK);
-    expect(pendingList.data[0]?.dueAt).not.toBeNull();
-    expect(pendingList.data[0]?.slaStatus).not.toBeNull();
-
-    const reviewTaskId = pendingList.data[0]?.id;
-    expect(reviewTaskId).toBeDefined();
-    if (!reviewTaskId) {
-      throw new Error('reviewTaskId expected');
+    const pendingTask = pendingList.data[0];
+    expect(pendingTask?.kind).toBe(WorkItemKind.WORKFLOW);
+    if (!pendingTask || pendingTask.kind !== WorkItemKind.WORKFLOW) {
+      throw new Error('workflow list item expected');
     }
+    expect(pendingTask.taskType).toBe(TaskType.SECRETARIAT_REVIEW_TASK);
+    expect(pendingTask.dueAt).not.toBeNull();
+    expect(pendingTask.slaStatus).not.toBeNull();
+
+    const reviewTaskId = pendingTask.id;
 
     const detailBefore = await taskService.getTaskDetail(secretaryUser, reviewTaskId);
+    expect(detailBefore.kind).toBe(WorkItemKind.WORKFLOW);
+    if (detailBefore.kind !== WorkItemKind.WORKFLOW) {
+      throw new Error('workflow detail expected');
+    }
     expect(detailBefore.status).toBe(TaskStatus.PENDING);
     expect(detailBefore.case.currentState).toBe(CaseState.SECRETARIAT_REVIEW);
 
@@ -168,6 +175,7 @@ describe('Task SLA journey E2E (Testcontainers)', () => {
     expect(caseRecord.currentState).toBe(CaseState.PRE_RESEARCH);
 
     const completedList = await taskService.listTasks(secretaryUser, {
+      kind: WorkItemKind.WORKFLOW,
       status: [TaskStatus.COMPLETED],
       caseId: created.caseId,
       limit: 20,
@@ -177,14 +185,18 @@ describe('Task SLA journey E2E (Testcontainers)', () => {
     expect(completedList.data.some((task) => task.id === reviewTaskId)).toBe(true);
 
     const nextPending = await taskService.listTasks(secretaryUser, {
+      kind: WorkItemKind.WORKFLOW,
       status: [TaskStatus.PENDING],
       caseId: created.caseId,
       limit: 20,
       sortBy: 'dueAt',
       sortOrder: 'asc',
     });
-    expect(nextPending.data.some((task) => task.taskType === TaskType.PRE_RESEARCH_TASK)).toBe(
-      true,
-    );
+    expect(
+      nextPending.data.some(
+        (task) =>
+          task.kind === WorkItemKind.WORKFLOW && task.taskType === TaskType.PRE_RESEARCH_TASK,
+      ),
+    ).toBe(true);
   });
 });

@@ -10,6 +10,7 @@ import type {
 } from '@ethics/dto';
 import {
   AdminActionCode,
+  ApprovalWorkItemTargetType,
   AuditActorType,
   AuditEventType,
   AuditOutcome,
@@ -23,6 +24,7 @@ import { AuditEventPublisher } from '../../../audit/audit-event.publisher.js';
 import type { AuthenticatedUser } from '../../../common/types/authenticated-user.type.js';
 import { DomainException } from '../../../common/exceptions/domain.exception.js';
 import { PrismaService } from '../../../prisma/prisma.service.js';
+import { ApprovalWorkItemService } from '../maker-checker/approval-work-item.service.js';
 import { MakerCheckerService } from '../maker-checker/maker-checker.service.js';
 import {
   toSystemSettingListItem,
@@ -43,6 +45,8 @@ export class ConfigService {
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(AuditEventPublisher) private readonly auditPublisher: AuditEventPublisher,
     @Inject(MakerCheckerService) private readonly makerChecker: MakerCheckerService,
+    @Inject(ApprovalWorkItemService)
+    private readonly approvalWorkItemService: ApprovalWorkItemService,
   ) {}
 
   async listSystemSettings(): Promise<SystemSettingListItem[]> {
@@ -146,6 +150,14 @@ export class ConfigService {
           },
         });
 
+        await this.approvalWorkItemService.closeInTransaction(tx, {
+          targetType: ApprovalWorkItemTargetType.SYSTEM_SETTING_BATCH,
+          targetId: batch.id,
+          decidedBy: checker.id,
+          approved: false,
+          reason: body.reason,
+        });
+
         return updated;
       });
 
@@ -214,6 +226,14 @@ export class ConfigService {
         },
       });
 
+      await this.approvalWorkItemService.closeInTransaction(tx, {
+        targetType: ApprovalWorkItemTargetType.SYSTEM_SETTING_BATCH,
+        targetId: batch.id,
+        decidedBy: checker.id,
+        approved: true,
+        reason: body.reason,
+      });
+
       return { updatedBatch, appliedKeys };
     });
 
@@ -268,6 +288,17 @@ export class ConfigService {
           reason,
           keys: preparedChanges.map((change) => change.key),
         },
+      });
+
+      await this.approvalWorkItemService.createInTransaction(tx, {
+        actionCode: SYSTEM_SETTING_ACTION,
+        requestedBy: actor.id,
+        targetType: ApprovalWorkItemTargetType.SYSTEM_SETTING_BATCH,
+        targetId: createdBatch.id,
+        summary: this.approvalWorkItemService.buildSystemSettingBatchSummary(
+          preparedChanges.map((change) => change.key),
+        ),
+        correlationId,
       });
 
       return createdBatch;

@@ -1,4 +1,4 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Inject } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { PermissionCode } from '@ethics/policy';
 
@@ -9,7 +9,10 @@ const ADMIN_READ_RATE_LIMIT = { limit: 60, ttl: 60_000 } as const;
 
 @Controller('admin/system-health')
 export class SystemHealthAdminController {
-  constructor(private readonly systemHealthAdminService: SystemHealthAdminService) {}
+  constructor(
+    @Inject(SystemHealthAdminService)
+    private readonly systemHealthAdminService: SystemHealthAdminService,
+  ) {}
 
   @RequirePolicy(PermissionCode.ADMIN_VIEW_SYNC_STATUS)
   @Throttle({ default: ADMIN_READ_RATE_LIMIT })

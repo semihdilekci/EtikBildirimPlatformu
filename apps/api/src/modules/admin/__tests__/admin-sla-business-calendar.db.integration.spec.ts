@@ -29,6 +29,7 @@ import { AuthService } from '../../auth/auth.service.js';
 import { AuditEventPublisher } from '../../../audit/audit-event.publisher.js';
 import { MakerCheckerService } from '../maker-checker/maker-checker.service.js';
 import { ActionMatrixConfigService } from '../maker-checker/action-matrix-config.service.js';
+import { ApprovalWorkItemService } from '../maker-checker/approval-work-item.service.js';
 import { SlaPoliciesController } from '../sla/sla-policies.controller.js';
 import { BusinessCalendarController } from '../sla/business-calendar.controller.js';
 import { SlaPolicyAdminService } from '../sla/sla-policy-admin.service.js';
@@ -99,6 +100,7 @@ describe('Admin SLA + business calendar DB integration (Testcontainers)', () => 
         [
           'superadmin@ethics.local',
           'sla.checker.admin@ethics.local',
+          'council.secretary@ethics.local',
           'council.member@ethics.local',
         ].map(async (email) => [email, await loadAuthenticatedUser(environment, email)] as const),
       ),
@@ -120,6 +122,7 @@ describe('Admin SLA + business calendar DB integration (Testcontainers)', () => 
         BusinessCalendarAdminService,
         ActionMatrixConfigService,
         MakerCheckerService,
+        ApprovalWorkItemService,
         AuditEventPublisher,
         { provide: PrismaService, useValue: prismaService },
         Reflector,
@@ -255,7 +258,7 @@ describe('Admin SLA + business calendar DB integration (Testcontainers)', () => 
 
     const approveResponse = await request(app.getHttpServer())
       .post(`/api/v1/admin/sla-policies/batches/${batchId}/approve`)
-      .set('x-test-user-id', userIdFor('sla.checker.admin@ethics.local'))
+      .set('x-test-user-id', userIdFor('council.secretary@ethics.local'))
       .send({ approved: true, reason: 'Onaylandı.' });
 
     expect(approveResponse.status).toBe(HttpStatus.OK);

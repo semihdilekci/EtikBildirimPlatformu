@@ -2,7 +2,7 @@ import 'reflect-metadata';
 
 import { config as loadEnv } from 'dotenv';
 import { resolve } from 'node:path';
-import { json } from 'express';
+import { json, raw } from 'express';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { Logger, ValidationPipe } from '@nestjs/common';
@@ -45,6 +45,7 @@ async function bootstrap(): Promise<void> {
 
   app.use(cookieParser());
   app.use(createCsrfMiddleware(csrfService, envService));
+  app.use('/api/v1/dev/local-storage/put', raw({ type: '*/*', limit: '50mb' }));
   app.use(json({ limit: '1mb' }));
 
   const sessionMiddleware = createPgSessionStore(envService);

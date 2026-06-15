@@ -1,6 +1,6 @@
 import {
   AdminActionCode,
-  Role,
+  ROLE_VALUES,
   type AdminActionCodeValue,
   type Role as RoleCode,
 } from '@ethics/shared';
@@ -26,21 +26,8 @@ export function getActionMatrixLabel(actionCode: string): string {
   return actionCode;
 }
 
-const ROLE_PRIVILEGE_RANK: Record<RoleCode, number> = {
-  [Role.ADMIN]: 100,
-  [Role.BOARD_CHAIR]: 90,
-  [Role.COUNCIL_SECRETARY]: 80,
-  [Role.COUNCIL_CHAIR]: 70,
-  [Role.COUNCIL_MEMBER]: 60,
-  [Role.RAPPORTEUR]: 50,
-  [Role.ACTION_OWNER]: 40,
-};
-
 export function getCheckerRoleOptions(makerRole: RoleCode): RoleCode[] {
-  const makerRank = ROLE_PRIVILEGE_RANK[makerRole];
-  return (Object.entries(ROLE_PRIVILEGE_RANK) as [RoleCode, number][])
-    .filter(([, rank]) => rank >= makerRank)
-    .map(([role]) => role);
+  return ROLE_VALUES.filter((role) => role !== makerRole);
 }
 
 export function isSameMakerCheckerRole(makerRole: RoleCode, checkerRole: RoleCode): boolean {

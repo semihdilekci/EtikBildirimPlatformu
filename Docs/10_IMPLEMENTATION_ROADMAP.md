@@ -685,6 +685,62 @@ Session'lara bölünmeli — tek session'da yazılamaz:
 
 ---
 
+### Faz 5.1 — Sekreterya Intake Köprüsü (Bekleyen Bildirimler → Vaka Açma)
+
+- **Durum:** planlandı (Cursor faz kuralı hazır)
+- **Bağımlılık:** Faz 4 (intake + tracking), Faz 5 (case + workflow UI), Faz 6 (task side-effects), Faz 8 (notification)
+
+#### Kapsam
+
+**Backend:**
+
+- `GET /api/v1/reports/pending` — vakası olmayan `SUBMITTED` bildirimler (council_secretary, clearance)
+- `GET /api/v1/reports/:id` — iç önizleme (field-masked metadata)
+- `POST /api/v1/cases` contract dokümantasyonu (mevcut `createCaseFromReport`)
+- `report.status` sync: vaka açma, `acknowledge_report`, vaka kapanışı
+- `GET/POST /api/v1/cases/:caseId/secure-messages` — sekreterya ↔ bildirimci (iç yüzey)
+- Yeni bildirim → council_secretary in-app bildirim (içeriksiz)
+
+**Frontend:**
+
+- **S-PENDING-REPORTS** — `/app/reports/pending` (bekleyen bildirim listesi + vaka aç)
+- InternalLayout menü: "Bekleyen Bildirimler" (`CASE_PRE_REVIEW` gate)
+- S-CASE-DETAIL — Güvenli Mesajlar sekmesi aktif
+
+#### Deliverable
+
+- Kurul sekreteri dış form bildirimini UI'da görür → vaka açar → `acknowledge_report` ile ön değerlendirmeye geçer
+- `Docs/08` Akış 2 (Sekreterya İş Akışı) manuel smoke + journey test green
+- Bildirimci takip ekranında `report.status` domain ile uyumlu
+
+#### Human Gate
+
+- Vakasız report pending listede; vaka açınca `/app/cases`'te görünür
+- Admin report içeriğine erişemez
+- Negatif: rapporteur/action_owner pending list deny
+- Güvenli mesaj: secretary send → bildirimci tracking'te görür
+- CI green
+
+#### Cursor faz kuralı
+
+- **Rule:** `.cursor/rules/55.1-phase-05.1-secretary-intake-bridge.mdc`
+- **Branch:** `feature/F5-1-secretary-intake-bridge`
+- **Durum:** planlandı
+
+#### İterasyon planı (agent)
+
+| #   | Hedef                                              | Stop                                      |
+| --- | -------------------------------------------------- | ----------------------------------------- |
+| 1   | Docs + `GET /reports/pending` + internal preview   | Integration + deny test                   |
+| 2   | Report status sync (open/ack/close)                | Tracking status journey                   |
+| 3   | İç güvenli mesaj API                               | GET/POST integration                      |
+| 4   | FE pending list + vaka aç + mesaj sekmesi          | Manuel smoke uçtan uca                    |
+| 5   | Notification + Akış 2 journey + gate               | CI green                                  |
+
+**Bu fazda yok:** Dashboard (`/dashboard/summary` — Faz 10), intake'te otomatik vaka açma.
+
+---
+
 ### Faz 6 — Task Management + SLA + Decision
 
 - **Durum:** tamamlandı (İterasyon 6 — E2E journey + task/SLA/decision coverage gate; Human Gate merge öncesi)
@@ -1075,6 +1131,57 @@ Session'lara bölünmeli — tek session'da yazılamaz:
 | 8   | Frontend AdminLayout + user screens                | Admin URL guard                           |
 | 9   | Frontend config screens                            | Maker-checker UI smoke                    |
 | 10  | Frontend monitoring + human gate                   | CI green                                  |
+
+---
+
+### Faz 9.1 — Maker-Checker Onay Kuyruğu (Birleşik Görevlerim)
+
+- **Durum:** tamamlandı (Human Gate — İterasyon 5)
+- **Bağımlılık:** Faz 9 (admin maker-checker backend + action matrix), Faz 6 (Task list/detail UI)
+
+#### Kapsam
+
+**Backend:**
+
+- `approval_work_items` tablosu + `ApprovalWorkItemService`
+- Maker proposal hook'ları (rol, clearance, tüm config batch kategorileri)
+- `GET /api/v1/tasks` birleşik projeksiyon (workflow + approval)
+- `POST /api/v1/tasks/:id/decide` — domain approve servislerine delegate
+- Bildirim: checker rol havuzuna in-app (opsiyonel e-posta içeriksiz)
+
+**Frontend:**
+
+- S-TASK-LIST / S-TASK-DETAIL genişlemesi (`kind` discriminator)
+- Onay detay + ApprovalDecideDialog
+- Filtre: Tür (Vaka Görevi / Yapılandırma Onayı)
+
+#### Deliverable
+
+- Kurul sekreteri (ve diğer checker roller) admin ekranına erişmeden `/app/tasks` üzerinden onaylar
+- Tüm maker-checker kategorileri tek kuyrukta
+- maker=checker deny; checker rol enforcement backend'de
+
+#### Human Gate
+
+- Integration: Akış 6 (`Docs/08_TESTING_STRATEGY.md` §12)
+- Negatif: self-decide, wrong checker, already decided
+- Admin içerik göremez: onay özetinde vaka/report plaintext yok
+
+#### Cursor faz kuralı
+
+- **Rule:** `.cursor/rules/59.1-phase-09.1-admin-change.mdc`
+- **Branch:** `feature/F9-1-admin-change`
+- **Durum:** tamamlandı
+
+#### İterasyon planı (agent)
+
+| #   | Hedef                                              | Stop                                      |
+| --- | -------------------------------------------------- | ----------------------------------------- |
+| 1   | Schema + ApprovalWorkItemService + rol/clearance hook | DB migration + unit test               |
+| 2   | Birleşik GET /tasks + decide endpoint              | Integration list/decide happy path        |
+| 3   | Config batch hook'ları (8 kategori)                | Batch approve → work item kapanır         |
+| 4   | FE TaskList + TaskDetail approval dalı             | Council secretary smoke                   |
+| 5   | Test + notification + gate                         | Akış 6 integration/E2E                    |
 
 ---
 

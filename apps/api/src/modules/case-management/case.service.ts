@@ -1,4 +1,4 @@
-import { HttpStatus, Injectable } from '@nestjs/common';
+import { HttpStatus, Inject, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type {
   CaseDetail,
@@ -101,12 +101,14 @@ const CASE_DETAIL_SELECT = {
 @Injectable()
 export class CaseService {
   constructor(
-    private readonly prisma: PrismaService,
-    private readonly policyScope: PolicyScopeService,
-    private readonly fieldMasking: FieldMaskingService,
-    private readonly transitionService: TransitionService,
-    private readonly auditPublisher: AuditEventPublisher,
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(PolicyScopeService) private readonly policyScope: PolicyScopeService,
+    @Inject(FieldMaskingService) private readonly fieldMasking: FieldMaskingService,
+    @Inject(TransitionService) private readonly transitionService: TransitionService,
+    @Inject(AuditEventPublisher) private readonly auditPublisher: AuditEventPublisher,
+    @Inject(CaseReportDecryptService)
     private readonly reportDecryptService: CaseReportDecryptService,
+    @Inject(CaseAvailableActionsService)
     private readonly availableActionsService: CaseAvailableActionsService,
   ) {}
 

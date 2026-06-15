@@ -1,4 +1,4 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Inject, Query } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { PermissionCode } from '@ethics/policy';
 import {
@@ -15,7 +15,10 @@ const ADMIN_READ_RATE_LIMIT = { limit: 60, ttl: 60_000 } as const;
 
 @Controller('admin/document-operations')
 export class DocumentOpsAdminController {
-  constructor(private readonly documentOpsAdminService: DocumentOpsAdminService) {}
+  constructor(
+    @Inject(DocumentOpsAdminService)
+    private readonly documentOpsAdminService: DocumentOpsAdminService,
+  ) {}
 
   @RequirePolicy(PermissionCode.ADMIN_VIEW_SYNC_STATUS)
   @Throttle({ default: ADMIN_READ_RATE_LIMIT })

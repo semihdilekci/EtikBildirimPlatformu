@@ -235,7 +235,7 @@ export function AdminUserListPage() {
         </Table>
       </TableContainer>
 
-      {!usersQuery.isLoading && usersQuery.data?.pagination.hasMore ? (
+      {!usersQuery.isLoading && usersQuery.data && usersQuery.data.pagination.hasMore ? (
         <Stack direction="row" spacing={2} justifyContent="flex-end">
           <Button
             variant="outlined"

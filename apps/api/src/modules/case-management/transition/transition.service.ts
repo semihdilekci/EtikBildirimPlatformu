@@ -1,4 +1,4 @@
-import { HttpStatus, Injectable } from '@nestjs/common';
+import { HttpStatus, Inject, Injectable } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
 import { Prisma } from '@prisma/client';
 import { AuditEventType, AuditOutcome, ErrorCode, Role, WorkflowCommand } from '@ethics/shared';
@@ -24,11 +24,11 @@ export class TransitionService {
   private decisionServiceRef: DecisionService | null = null;
 
   constructor(
-    private readonly prisma: PrismaService,
-    private readonly validators: TransitionValidators,
-    private readonly sideEffects: TransitionSideEffects,
-    private readonly auditPublisher: AuditEventPublisher,
-    private readonly moduleRef: ModuleRef,
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(TransitionValidators) private readonly validators: TransitionValidators,
+    @Inject(TransitionSideEffects) private readonly sideEffects: TransitionSideEffects,
+    @Inject(AuditEventPublisher) private readonly auditPublisher: AuditEventPublisher,
+    @Inject(ModuleRef) private readonly moduleRef: ModuleRef,
   ) {}
 
   /** Test factory circular wiring — production ModuleRef lazy resolve kullanır. */

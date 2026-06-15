@@ -222,6 +222,18 @@ Testler fake clock / controllable clock kullanır. business_calendar hafta sonu,
 | 5 | secure_reporter_message | Anonim bildirimciye yönelik mesaj tracking_code ile erişilebilir; e-posta yok |
 | 6 | Notification template aktif/pasif | Pasif template bildirim üretmez |
 
+### 9.3 Maker-Checker Onay İşleri (Approval Work Item)
+
+| # | Senaryo | Doğrulama |
+|---|---|---|
+| 1 | Admin rol ataması proposal | `approval_work_items` PENDING + `GET /tasks` `kind=APPROVAL` |
+| 2 | Council secretary checker listede görür | ABAC/checker rol filtresi; admin users sayfasına erişim gerekmez |
+| 3 | Checker onaylar | `POST /tasks/:id/decide` → rol ACTIVE + work item COMPLETED |
+| 4 | Maker self-decide | 422 `MAKER_CHECKER_SELF` |
+| 5 | Yanlış checker rolü | 403 `MAKER_CHECKER_FORBIDDEN` |
+| 6 | Config batch (system settings) | Proposal → work item → decide → batch APPROVED |
+| 7 | Idempotent decide | Aynı item ikinci decide → 409 veya no-op |
+
 ---
 
 ## 10. Concurrency ve Idempotency Testleri
@@ -301,6 +313,14 @@ Playwright ile test edilen minimum senaryo seti:
 3. Vaka detayına tıklandığında içerik alanları hiç gösterilmez
 4. Doküman indirme butonu yok veya devre dışı
 5. Rol/clearance yönetimi ekranı erişilebilir
+
+### Akış 6 — Checker Onay (Birleşik Görev Kuyruğu)
+
+1. admin rol ataması başlatır → PENDING_APPROVAL
+2. council_secretary SSO ile giriş yapar → `/app/tasks` listesinde "Rol Ataması Onayı" satırı
+3. Detayda özet + Onayla → gerekçe → görev tamamlanır (COMPLETED)
+4. admin kullanıcı detayında rol ACTIVE
+5. Negatif: admin kendi talebini görev detayında onaylayamaz (buton yok / API 422)
 
 ---
 

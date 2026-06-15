@@ -5,6 +5,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Inject,
   Param,
   Patch,
   Post,
@@ -32,7 +33,9 @@ const ADMIN_MUTATION_RATE_LIMIT = { limit: 30, ttl: 60_000 } as const;
 
 @Controller('admin/master-data')
 export class AdminMasterDataController {
-  constructor(private readonly adminMasterDataService: AdminMasterDataService) {}
+  constructor(
+    @Inject(AdminMasterDataService) private readonly adminMasterDataService: AdminMasterDataService,
+  ) {}
 
   @RequirePolicy(PermissionCode.ADMIN_VIEW_SYNC_STATUS)
   @Throttle({ default: ADMIN_READ_RATE_LIMIT })

@@ -14,7 +14,7 @@ export interface DefaultNotificationTemplateDefinition {
 }
 
 /**
- * 28 bildirim şablonu seed tanımı — içeriksiz metinler (hassas veri yok).
+ * 29 bildirim şablonu seed tanımı — içeriksiz metinler (hassas veri yok).
  */
 export const DEFAULT_NOTIFICATION_TEMPLATES: readonly DefaultNotificationTemplateDefinition[] = [
   {
@@ -240,6 +240,15 @@ export const DEFAULT_NOTIFICATION_TEMPLATES: readonly DefaultNotificationTemplat
     channel: NotificationChannel.IN_APP,
     subjectTemplate: 'Geciken görev',
     bodyTemplate: 'Geciken bir göreviniz bulunmaktadır. Platforma giriş yapınız.',
+    isActive: true,
+  },
+  {
+    templateCode: NotificationTemplateCode.APPROVAL_WORK_ITEM_ASSIGNED,
+    name: 'Yapılandırma Onayı Bekliyor',
+    channel: NotificationChannel.IN_APP,
+    subjectTemplate: 'Bekleyen onay işi',
+    bodyTemplate:
+      'Bekleyen bir yapılandırma onayı bulunmaktadır. Detaylar için Görevlerim ekranına gidiniz.',
     isActive: true,
   },
 ] as const;

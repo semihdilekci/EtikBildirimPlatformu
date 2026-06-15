@@ -5,6 +5,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Inject,
   Param,
   Patch,
   Post,
@@ -45,7 +46,7 @@ const ADMIN_MUTATION_RATE_LIMIT = { limit: 30, ttl: 60_000 } as const;
 
 @Controller('admin/users')
 export class AdminUsersController {
-  constructor(private readonly adminUsersService: AdminUsersService) {}
+  constructor(@Inject(AdminUsersService) private readonly adminUsersService: AdminUsersService) {}
 
   @RequirePolicy(PermissionCode.ADMIN_MANAGE_ROLES)
   @Throttle({ default: ADMIN_READ_RATE_LIMIT })

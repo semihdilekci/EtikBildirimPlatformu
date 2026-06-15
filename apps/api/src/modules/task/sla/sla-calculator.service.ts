@@ -1,4 +1,4 @@
-import { HttpStatus, Injectable } from '@nestjs/common';
+import { HttpStatus, Inject, Injectable } from '@nestjs/common';
 import {
   ErrorCode,
   SlaUnit,
@@ -24,7 +24,9 @@ type SlaPolicyRecord = {
 
 @Injectable()
 export class SlaCalculatorService {
-  constructor(private readonly businessCalendar: BusinessCalendarService) {}
+  constructor(
+    @Inject(BusinessCalendarService) private readonly businessCalendar: BusinessCalendarService,
+  ) {}
 
   async calculateDueAt(
     client: Prisma.TransactionClient,

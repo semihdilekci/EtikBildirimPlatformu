@@ -21,7 +21,7 @@ Veritabanı şeması sekiz mantıksal gruba ayrılır. Tüm tablolar aynı Postg
 | Task | `tasks`, `task_events` |
 | Document | `documents`, `document_versions`, `document_access_grants` |
 | Audit & Notification | `audit_outbox`, `audit_events`, `audit_seals`, `notification_events`, `notification_templates` |
-| Config & Admin | `sla_policy_configs`, `business_calendar_entries`, `system_settings`, `action_matrix_configs`, `field_visibility_configs`, `kvkk_consent_versions` |
+| Config & Admin | `sla_policy_configs`, `business_calendar_entries`, `system_settings`, `action_matrix_configs`, `field_visibility_configs`, `kvkk_consent_versions`, `approval_work_items` |
 
 ---
 
@@ -539,6 +539,34 @@ Bu Config & Admin tabloları aynı temel yapıyı paylaşır: `id`, standart ala
 **system_settings:** `key` (UNIQUE), `value` (JSONB), `category` (auth_cache, rate_limit, brute_force, session, sla, worker), `version_no`.
 
 **action_matrix_configs:** `action_code` (UNIQUE), `maker_role`, `checker_role`, `is_active`.
+
+### approval_work_items
+
+Maker-checker onay kuyruğu kaydı. Vaka workflow `tasks` tablosundan **ayrı** tutulur; checker'ların birleşik görev listesine (`GET /api/v1/tasks`) projeksiyon ile dahil edilir.
+
+| Kolon | Tip | Null | Kısıt | Açıklama |
+|---|---|---|---|---|
+| `id` | TEXT | No | PK | cuid |
+| `category` | TEXT | No | CHECK | Onay kategorisi enum (aşağıda) |
+| `action_code` | TEXT | No | — | `action_matrix_configs.action_code` snapshot |
+| `assigned_checker_role` | TEXT | No | — | Action matrix checker rolü (atama anı) |
+| `requested_by` | TEXT | No | FK → users | Maker kullanıcı |
+| `status` | TEXT | No | CHECK | `PENDING`, `COMPLETED`, `REJECTED`, `CANCELLED` |
+| `summary` | TEXT | No | — | Maskeli kısa özet (PII/etik içerik yok) |
+| `target_type` | TEXT | No | — | `user_role`, `clearance_request`, `system_setting_batch`, … |
+| `target_id` | TEXT | No | — | İlgili pending kayıt ID (ör. `user_roles.id`, batch id) |
+| `decided_by` | TEXT | Yes | FK → users | Onaylayan/reddeden checker |
+| `decided_at` | TIMESTAMPTZ | Yes | — | Karar zamanı |
+| `decision_reason` | TEXT | Yes | — | Gerekçe (audit metadata; plaintext log yok) |
+| `correlation_id` | TEXT | No | — | Maker proposal ile aynı correlation |
+| `created_at` | TIMESTAMPTZ | No | now() | — |
+| `updated_at` | TIMESTAMPTZ | No | — | — |
+
+**category enum:** `ROLE_ASSIGNMENT`, `CLEARANCE_CHANGE`, `SYSTEM_SETTING_CHANGE`, `FIELD_VISIBILITY_CHANGE`, `ACTION_MATRIX_CHANGE`, `SLA_POLICY_CHANGE`, `NOTIFICATION_TEMPLATE_CHANGE`, `KVKK_TEXT_PUBLISH`.
+
+**Index'ler:** `idx_awi_status_checker_role` (`status`, `assigned_checker_role`), `idx_awi_target` (`target_type`, `target_id`), `idx_awi_requested_by`.
+
+**Kritik kurallar:** Maker proposal oluştuğunda tek açık `PENDING` work item (idempotency). Onay/red mevcut maker-checker approve servislerini delegate eder; work item `COMPLETED`/`REJECTED` olur. Maker kendi item'ını decide edemez (`MAKER_CHECKER_SELF`). Vaka FK yok — admin onay özetinde case/report plaintext yok.
 
 **field_visibility_configs:** `role_code`, `field_name`, `is_visible` (BOOLEAN). UNIQUE (role_code, field_name).
 

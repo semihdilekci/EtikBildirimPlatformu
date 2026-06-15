@@ -98,8 +98,9 @@ apps/api/
           transition.service.spec.ts
       task/
         task.module.ts
-        task.controller.ts              # /tasks CRUD + /tasks/:id/complete, /delegate
+        task.controller.ts              # /tasks birleşik liste/detay + complete/delegate/decide
         task.service.ts                 # Görev lifecycle, SLA hesaplama
+        unified-work-item.service.ts    # Task + ApprovalWorkItem birleşik projeksiyon
         sla/
           sla-calculator.service.ts     # İş günü takvimi + SLA hesaplama
           business-calendar.service.ts  # Tatil, yarım gün, hafta sonu kontrolü
@@ -137,6 +138,10 @@ apps/api/
         users/
           admin-users.controller.ts     # /admin/users, /admin/users/:id/roles
           admin-users.service.ts
+        maker-checker/
+          approval-work-item.service.ts # Onay kuyruğu oluşturma + decide delegate
+          maker-checker.service.ts
+          action-matrix-config.service.ts
         master-data/
           master-data.controller.ts     # /admin/master-data/*
           master-data.service.ts

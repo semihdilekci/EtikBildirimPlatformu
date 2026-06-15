@@ -16,6 +16,7 @@ const TASK_TEMPLATE_CODES = new Set<string>([
   NotificationTemplateCode.TASK_OVERDUE_REMINDER,
   NotificationTemplateCode.RAPPORTEUR_ASSIGNED,
   NotificationTemplateCode.ACTION_ASSIGNED,
+  NotificationTemplateCode.APPROVAL_WORK_ITEM_ASSIGNED,
 ]);
 
 const MESSAGE_TEMPLATE_CODES = new Set<string>([

@@ -19,6 +19,31 @@ export type { MasterDataTypeCode } from './constants/master-data-types.js';
 export { AdminActionCode, ADMIN_ACTION_CODE_VALUES } from './constants/admin-action-codes.js';
 export type { AdminActionCodeValue } from './constants/admin-action-codes.js';
 
+export { ApprovalCategory, APPROVAL_CATEGORY_VALUES } from './enums/approval-category.enum.js';
+export type { ApprovalCategoryCode } from './enums/approval-category.enum.js';
+
+export {
+  ApprovalWorkItemStatus,
+  APPROVAL_WORK_ITEM_STATUS_VALUES,
+} from './enums/approval-work-item-status.enum.js';
+export type { ApprovalWorkItemStatusCode } from './enums/approval-work-item-status.enum.js';
+
+export {
+  ApprovalWorkItemTargetType,
+  APPROVAL_WORK_ITEM_TARGET_TYPE_VALUES,
+} from './enums/approval-work-item-target-type.enum.js';
+export type { ApprovalWorkItemTargetTypeCode } from './enums/approval-work-item-target-type.enum.js';
+
+export { resolveApprovalCategory } from './constants/approval-category-map.js';
+
+export { WorkItemKind, WORK_ITEM_KIND_VALUES } from './enums/work-item-kind.enum.js';
+export type { WorkItemKindCode } from './enums/work-item-kind.enum.js';
+
+export {
+  APPROVAL_CATEGORY_LABELS,
+  getApprovalCategoryLabel,
+} from './constants/approval-category-labels.js';
+
 export {
   AdminExportType,
   ADMIN_EXPORT_TYPE_VALUES,

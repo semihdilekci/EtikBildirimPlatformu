@@ -46,6 +46,8 @@ export const NOTIFICATION_EVENT_TEMPLATE_MAP: Readonly<
   [NotificationEventType.CHAIR_GATE_DECISION]: NotificationTemplateCode.CHAIR_GATE_DECISION,
   [NotificationEventType.DECISION_DRAFT_READY]: NotificationTemplateCode.DECISION_DRAFT_READY,
   [NotificationEventType.TASK_OVERDUE_REMINDER]: NotificationTemplateCode.TASK_OVERDUE_REMINDER,
+  [NotificationEventType.APPROVAL_WORK_ITEM_ASSIGNED]:
+    NotificationTemplateCode.APPROVAL_WORK_ITEM_ASSIGNED,
 };
 
 export function resolveNotificationTemplateCode(

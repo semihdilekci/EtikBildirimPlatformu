@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { taskDetailSchema } from './complete-task.schema.js';
+import { workflowTaskDetailSchema } from './unified-work-item.schema.js';
 
 export const delegateTaskBodySchema = z.object({
   delegateToUserId: z.string().min(1),
@@ -10,7 +10,7 @@ export const delegateTaskBodySchema = z.object({
 export type DelegateTaskBody = z.infer<typeof delegateTaskBodySchema>;
 
 export const delegateTaskResponseSchema = z.object({
-  data: taskDetailSchema,
+  data: workflowTaskDetailSchema,
 });
 
 export type DelegateTaskResponse = z.infer<typeof delegateTaskResponseSchema>;

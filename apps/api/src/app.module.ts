@@ -16,6 +16,7 @@ import { CryptoModule } from './crypto/crypto.module.js';
 import { NotificationModule } from './notification/notification.module.js';
 import { AuthModule } from './modules/auth/auth.module.js';
 import { DevCryptoAuditModule } from './modules/dev-crypto-audit/dev-crypto-audit.module.js';
+import { DevLocalStorageModule } from './modules/dev-local-storage/dev-local-storage.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { IntakeModule } from './modules/intake/intake.module.js';
 import { CaseManagementModule } from './modules/case-management/case-management.module.js';
@@ -72,6 +73,7 @@ import { PrismaModule } from './prisma/prisma.module.js';
     NotificationModule,
     HealthModule,
     DevCryptoAuditModule,
+    DevLocalStorageModule,
     AuthModule,
     IntakeModule,
     CaseManagementModule,

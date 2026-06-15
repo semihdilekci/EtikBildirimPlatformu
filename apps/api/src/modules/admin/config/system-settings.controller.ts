@@ -4,6 +4,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Inject,
   Param,
   Patch,
   Post,
@@ -36,7 +37,7 @@ const ADMIN_MUTATION_RATE_LIMIT = { limit: 30, ttl: 60_000 } as const;
 
 @Controller('admin/system-settings')
 export class SystemSettingsController {
-  constructor(private readonly configService: ConfigService) {}
+  constructor(@Inject(ConfigService) private readonly configService: ConfigService) {}
 
   @RequirePolicy(PermissionCode.ADMIN_MANAGE_SETTINGS)
   @Throttle({ default: ADMIN_READ_RATE_LIMIT })

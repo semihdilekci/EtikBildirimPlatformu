@@ -9,6 +9,7 @@ import type {
 } from '@ethics/dto';
 import {
   AdminActionCode,
+  ApprovalWorkItemTargetType,
   AuditActorType,
   AuditEventType,
   AuditOutcome,
@@ -22,6 +23,7 @@ import { AuditEventPublisher } from '../../../audit/audit-event.publisher.js';
 import type { AuthenticatedUser } from '../../../common/types/authenticated-user.type.js';
 import { DomainException } from '../../../common/exceptions/domain.exception.js';
 import { PrismaService } from '../../../prisma/prisma.service.js';
+import { ApprovalWorkItemService } from '../maker-checker/approval-work-item.service.js';
 import { MakerCheckerService } from '../maker-checker/maker-checker.service.js';
 import {
   configsEqual,
@@ -42,6 +44,8 @@ export class SlaPolicyAdminService {
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(AuditEventPublisher) private readonly auditPublisher: AuditEventPublisher,
     @Inject(MakerCheckerService) private readonly makerChecker: MakerCheckerService,
+    @Inject(ApprovalWorkItemService)
+    private readonly approvalWorkItemService: ApprovalWorkItemService,
   ) {}
 
   async listPolicies(): Promise<SlaPolicyListItem[]> {
@@ -174,6 +178,15 @@ export class SlaPolicyAdminService {
         },
       });
 
+      await this.approvalWorkItemService.createInTransaction(tx, {
+        actionCode: SLA_POLICY_ACTION,
+        requestedBy: actor.id,
+        targetType: ApprovalWorkItemTargetType.SLA_POLICY_BATCH,
+        targetId: createdBatch.id,
+        summary: this.approvalWorkItemService.buildSlaPolicyBatchSummary([taskType]),
+        correlationId,
+      });
+
       return createdBatch;
     });
 
@@ -229,6 +242,14 @@ export class SlaPolicyAdminService {
             reason: body.reason,
             task_types: batch.items.map((item) => item.taskType),
           },
+        });
+
+        await this.approvalWorkItemService.closeInTransaction(tx, {
+          targetType: ApprovalWorkItemTargetType.SLA_POLICY_BATCH,
+          targetId: batch.id,
+          decidedBy: checker.id,
+          approved: false,
+          reason: body.reason,
         });
 
         return updated;
@@ -303,6 +324,14 @@ export class SlaPolicyAdminService {
           approvedBy: checker.id,
           resolvedAt: new Date(),
         },
+      });
+
+      await this.approvalWorkItemService.closeInTransaction(tx, {
+        targetType: ApprovalWorkItemTargetType.SLA_POLICY_BATCH,
+        targetId: batch.id,
+        decidedBy: checker.id,
+        approved: true,
+        reason: body.reason,
       });
 
       return { updatedBatch, appliedTaskTypes };

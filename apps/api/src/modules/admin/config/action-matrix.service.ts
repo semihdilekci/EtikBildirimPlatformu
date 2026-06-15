@@ -8,6 +8,7 @@ import type {
 } from '@ethics/dto';
 import {
   AdminActionCode,
+  ApprovalWorkItemTargetType,
   ADMIN_ACTION_CODE_VALUES,
   AuditActorType,
   AuditEventType,
@@ -22,10 +23,8 @@ import type { AuthenticatedUser } from '../../../common/types/authenticated-user
 import { DomainException } from '../../../common/exceptions/domain.exception.js';
 import { PrismaService } from '../../../prisma/prisma.service.js';
 import { ActionMatrixConfigService } from '../maker-checker/action-matrix-config.service.js';
-import {
-  DEFAULT_ACTION_MATRIX,
-  getRolePrivilegeRank,
-} from '../maker-checker/default-action-matrix.js';
+import { DEFAULT_ACTION_MATRIX } from '../maker-checker/default-action-matrix.js';
+import { ApprovalWorkItemService } from '../maker-checker/approval-work-item.service.js';
 import { MakerCheckerService } from '../maker-checker/maker-checker.service.js';
 
 const ACTION_MATRIX_CHANGE = AdminActionCode.ACTION_MATRIX_CHANGE;
@@ -38,6 +37,8 @@ export class ActionMatrixAdminService {
     @Inject(MakerCheckerService) private readonly makerChecker: MakerCheckerService,
     @Inject(ActionMatrixConfigService)
     private readonly actionMatrixConfig: ActionMatrixConfigService,
+    @Inject(ApprovalWorkItemService)
+    private readonly approvalWorkItemService: ApprovalWorkItemService,
   ) {}
 
   async listMatrix(): Promise<ActionMatrixListItem[]> {
@@ -151,6 +152,15 @@ export class ActionMatrixAdminService {
         },
       });
 
+      await this.approvalWorkItemService.createInTransaction(tx, {
+        actionCode: ACTION_MATRIX_CHANGE,
+        requestedBy: actor.id,
+        targetType: ApprovalWorkItemTargetType.ACTION_MATRIX_BATCH,
+        targetId: createdBatch.id,
+        summary: this.approvalWorkItemService.buildActionMatrixBatchSummary(actionCode),
+        correlationId,
+      });
+
       return createdBatch;
     });
 
@@ -218,6 +228,14 @@ export class ActionMatrixAdminService {
             maker_user_id: batch.requestedBy,
             reason: body.reason,
           },
+        });
+
+        await this.approvalWorkItemService.closeInTransaction(tx, {
+          targetType: ApprovalWorkItemTargetType.ACTION_MATRIX_BATCH,
+          targetId: batch.id,
+          decidedBy: checker.id,
+          approved: false,
+          reason: body.reason,
         });
 
         return updated;
@@ -290,6 +308,14 @@ export class ActionMatrixAdminService {
         },
       });
 
+      await this.approvalWorkItemService.closeInTransaction(tx, {
+        targetType: ApprovalWorkItemTargetType.ACTION_MATRIX_BATCH,
+        targetId: batch.id,
+        decidedBy: checker.id,
+        approved: true,
+        reason: body.reason,
+      });
+
       return { updatedBatch, appliedActionCodes };
     });
 
@@ -307,14 +333,6 @@ export class ActionMatrixAdminService {
       throw new DomainException(
         ErrorCode.ADMIN_ACTION_MATRIX_INVALID_ROLES,
         'Maker ve checker rolü aynı olamaz.',
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
-    if (getRolePrivilegeRank(checkerRole) < getRolePrivilegeRank(makerRole)) {
-      throw new DomainException(
-        ErrorCode.ADMIN_ACTION_MATRIX_INVALID_ROLES,
-        'Checker rolü maker rolünden düşük yetkili olamaz.',
         HttpStatus.BAD_REQUEST,
       );
     }

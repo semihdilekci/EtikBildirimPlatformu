@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import {
   NotificationEventType,
   TaskStatus,
@@ -37,8 +37,8 @@ interface ActiveTaskRecord {
 @Injectable()
 export class SlaReminderHandler {
   constructor(
-    private readonly prisma: PrismaService,
-    private readonly notificationService: NotificationService,
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(NotificationService) private readonly notificationService: NotificationService,
     private readonly clock: SlaReminderClock = { now: () => new Date() },
   ) {}
 

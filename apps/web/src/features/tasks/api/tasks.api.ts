@@ -1,9 +1,12 @@
 import type {
   CompleteTaskBody,
+  DecideTaskBody,
+  DecideTaskResponse,
   DelegateTaskBody,
   ListTasksQuery,
   ListTasksResponse,
   TaskDetail,
+  UnifiedWorkItemDetail,
 } from '@ethics/dto';
 
 import { apiClient } from '@/api/client';
@@ -40,6 +43,10 @@ function buildListQueryParams(query: ListTasksQuery): Record<string, string | nu
     params.cursor = query.cursor;
   }
 
+  if (query.kind) {
+    params.kind = query.kind;
+  }
+
   return params;
 }
 
@@ -50,8 +57,8 @@ export async function fetchTasks(query: ListTasksQuery): Promise<ListTasksRespon
   return response.data;
 }
 
-export async function fetchTaskDetail(taskId: string): Promise<TaskDetail> {
-  const response = await apiClient.get<ApiSuccessEnvelope<TaskDetail>>(
+export async function fetchTaskDetail(taskId: string): Promise<UnifiedWorkItemDetail> {
+  const response = await apiClient.get<ApiSuccessEnvelope<UnifiedWorkItemDetail>>(
     `/tasks/${encodeURIComponent(taskId)}`,
   );
   return response.data.data;
@@ -68,6 +75,17 @@ export async function completeTask(taskId: string, body: CompleteTaskBody): Prom
 export async function delegateTask(taskId: string, body: DelegateTaskBody): Promise<TaskDetail> {
   const response = await apiClient.post<ApiSuccessEnvelope<TaskDetail>>(
     `/tasks/${encodeURIComponent(taskId)}/delegate`,
+    body,
+  );
+  return response.data.data;
+}
+
+export async function decideTask(
+  taskId: string,
+  body: DecideTaskBody,
+): Promise<DecideTaskResponse['data']> {
+  const response = await apiClient.post<DecideTaskResponse>(
+    `/tasks/${encodeURIComponent(taskId)}/decide`,
     body,
   );
   return response.data.data;

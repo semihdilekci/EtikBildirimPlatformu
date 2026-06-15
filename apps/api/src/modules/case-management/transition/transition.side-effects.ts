@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
 import type { Prisma } from '@prisma/client';
 import { NotificationService } from '../../../notification/notification.service.js';
@@ -30,8 +30,8 @@ export class TransitionSideEffects implements TransitionSideEffectPort {
   private documentAccessRef: DocumentAccessService | null = null;
 
   constructor(
-    private readonly notificationService: NotificationService,
-    private readonly moduleRef: ModuleRef,
+    @Inject(NotificationService) private readonly notificationService: NotificationService,
+    @Inject(ModuleRef) private readonly moduleRef: ModuleRef,
   ) {}
 
   wireTaskServiceForTests(taskService: TaskService): void {

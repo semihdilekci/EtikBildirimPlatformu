@@ -15,6 +15,7 @@ import { FieldVisibilityAdminService } from './config/field-visibility.service.j
 import { FieldVisibilityController } from './config/field-visibility.controller.js';
 import { SystemSettingsController } from './config/system-settings.controller.js';
 import { ActionMatrixConfigService } from './maker-checker/action-matrix-config.service.js';
+import { ApprovalWorkItemService } from './maker-checker/approval-work-item.service.js';
 import { MakerCheckerService } from './maker-checker/maker-checker.service.js';
 import { SlaPoliciesController } from './sla/sla-policies.controller.js';
 import { BusinessCalendarController } from './sla/business-calendar.controller.js';
@@ -57,6 +58,7 @@ import { StorageModule } from '../../storage/storage.module.js';
     ActionMatrixAdminService,
     ActionMatrixConfigService,
     MakerCheckerService,
+    ApprovalWorkItemService,
     SlaPolicyAdminService,
     BusinessCalendarAdminService,
     NotificationTemplateAdminService,
@@ -74,6 +76,7 @@ import { StorageModule } from '../../storage/storage.module.js';
     ActionMatrixAdminService,
     ActionMatrixConfigService,
     MakerCheckerService,
+    ApprovalWorkItemService,
     SlaPolicyAdminService,
     BusinessCalendarAdminService,
     NotificationTemplateAdminService,

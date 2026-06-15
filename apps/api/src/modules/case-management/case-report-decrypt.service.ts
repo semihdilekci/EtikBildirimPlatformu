@@ -1,4 +1,4 @@
-import { HttpStatus, Injectable } from '@nestjs/common';
+import { HttpStatus, Inject, Injectable } from '@nestjs/common';
 import { ErrorCode } from '@ethics/shared';
 
 import { CryptoService } from '../../crypto/crypto.service.js';
@@ -36,7 +36,7 @@ export type DecryptedReportFields = {
 
 @Injectable()
 export class CaseReportDecryptService {
-  constructor(private readonly cryptoService: CryptoService) {}
+  constructor(@Inject(CryptoService) private readonly cryptoService: CryptoService) {}
 
   async decryptReportFields(report: ReportFieldRow): Promise<DecryptedReportFields> {
     const metadata = report.encryptionMetadata as ReportEncryptionMetadata | { algorithm?: string };

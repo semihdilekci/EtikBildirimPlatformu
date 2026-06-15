@@ -45,10 +45,10 @@ function buildListQueryParams(
 }
 
 export async function fetchAdminUsers(query: ListAdminUsersQuery): Promise<ListAdminUsersResponse> {
-  const response = await apiClient.get<ApiSuccessEnvelope<ListAdminUsersResponse>>('/admin/users', {
+  const response = await apiClient.get<ListAdminUsersResponse>('/admin/users', {
     params: buildListQueryParams(query),
   });
-  return response.data.data;
+  return response.data;
 }
 
 export async function fetchAdminUserDetail(userId: string): Promise<AdminUserDetail> {

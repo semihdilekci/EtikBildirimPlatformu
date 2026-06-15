@@ -47,6 +47,14 @@ describe('MakerCheckerService', () => {
     ).toThrow(expect.objectContaining({ code: ErrorCode.MAKER_CHECKER_FORBIDDEN }));
   });
 
+  it('admin maker olarak rol ataması başlatabilir', () => {
+    const maker = buildUser(Role.ADMIN, 'maker-1');
+
+    expect(() =>
+      service.assertMaker(maker, service.resolveRoleAssignmentAction(Role.COUNCIL_MEMBER)),
+    ).not.toThrow();
+  });
+
   it('council_secretary varsayılan rol atamasını onaylayabilir', () => {
     const checker = buildUser(Role.COUNCIL_SECRETARY, 'checker-2');
 

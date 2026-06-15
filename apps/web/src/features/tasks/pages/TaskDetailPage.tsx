@@ -12,7 +12,14 @@ import {
   Typography,
 } from '@mui/material';
 import { PermissionCode } from '@ethics/policy';
-import { TaskType, type CaseStateCode, type TaskStatusCode } from '@ethics/shared';
+import {
+  TaskType,
+  ApprovalWorkItemStatus,
+  type ApprovalWorkItemStatusCode,
+  type CaseStateCode,
+  type Role as RoleCode,
+  type TaskStatusCode,
+} from '@ethics/shared';
 import { useEffect, useState } from 'react';
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom';
 
@@ -21,8 +28,11 @@ import { CaseStateBadge } from '@/features/cases/components/CaseStateBadge';
 import { formatCaseDateTime, formatShortCaseId } from '@/features/cases/utils/case-format.util';
 import { CompleteTaskDialog } from '@/features/tasks/components/CompleteTaskDialog';
 import { DelegateTaskDialog } from '@/features/tasks/components/DelegateTaskDialog';
+import { ApprovalDecideDialog } from '@/features/tasks/components/ApprovalDecideDialog';
+import { ApprovalStatusBadge } from '@/features/tasks/components/ApprovalStatusBadge';
 import { TaskSlaIndicator } from '@/features/tasks/components/TaskSlaIndicator';
 import { TaskStatusBadge } from '@/features/tasks/components/TaskStatusBadge';
+import { useApprovalDecideMutation } from '@/features/tasks/hooks/useApprovalDecide';
 import {
   useCompleteTaskMutation,
   useDelegateTaskMutation,
@@ -30,6 +40,7 @@ import {
 } from '@/features/tasks/hooks/useTasks';
 import { canCompleteTask, canDelegateTask } from '@/features/tasks/utils/task-action.util';
 import { getTaskErrorMessage, isTaskForbiddenError } from '@/features/tasks/utils/task-error.util';
+import { getRoleLabel } from '@/features/admin/constants/role-labels';
 import { useAuthStore } from '@/stores/useAuthStore';
 
 export function TaskDetailPage() {
@@ -39,12 +50,20 @@ export function TaskDetailPage() {
 
   const [showCompleteDialog, setShowCompleteDialog] = useState(false);
   const [showDelegateDialog, setShowDelegateDialog] = useState(false);
+  const [showDecideDialog, setShowDecideDialog] = useState<'approve' | 'reject' | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [toastSeverity, setToastSeverity] = useState<'success' | 'error'>('success');
 
   const taskDetailQuery = useTaskDetailQuery(taskId);
-  const completeMutation = useCompleteTaskMutation(taskId, taskDetailQuery.data?.caseId ?? '');
-  const delegateMutation = useDelegateTaskMutation(taskId, taskDetailQuery.data?.caseId ?? '');
+  const completeMutation = useCompleteTaskMutation(
+    taskId,
+    taskDetailQuery.data?.kind === 'WORKFLOW' ? taskDetailQuery.data.caseId : '',
+  );
+  const delegateMutation = useDelegateTaskMutation(
+    taskId,
+    taskDetailQuery.data?.kind === 'WORKFLOW' ? taskDetailQuery.data.caseId : '',
+  );
+  const decideMutation = useApprovalDecideMutation(taskId);
 
   useEffect(() => {
     if (taskDetailQuery.isError && isTaskForbiddenError(taskDetailQuery.error)) {
@@ -78,6 +97,20 @@ export function TaskDetailPage() {
     }
   };
 
+  const handleDecide = async (body: Parameters<typeof decideMutation.mutateAsync>[0]) => {
+    try {
+      await decideMutation.mutateAsync(body);
+      setShowDecideDialog(null);
+      setToastSeverity('success');
+      setToastMessage(body.approved ? 'Onay talebi onaylandı.' : 'Onay talebi reddedildi.');
+      await taskDetailQuery.refetch();
+    } catch (error) {
+      setToastSeverity('error');
+      setToastMessage(getTaskErrorMessage(error, 'Karar işlemi başarısız.'));
+      await taskDetailQuery.refetch();
+    }
+  };
+
   if (taskDetailQuery.isPending) {
     return (
       <Stack spacing={3}>
@@ -106,6 +139,138 @@ export function TaskDetailPage() {
   }
 
   const task = taskDetailQuery.data;
+
+  if (task.kind === 'APPROVAL') {
+    const isMaker = user?.id === task.requestedBy;
+    const showDecideActions = task.canDecide;
+
+    return (
+      <Stack spacing={3}>
+        <Button
+          component={RouterLink}
+          to="/app/tasks"
+          startIcon={<ArrowBackOutlinedIcon />}
+          sx={{ alignSelf: 'flex-start' }}
+        >
+          Görevlerim
+        </Button>
+
+        <Stack spacing={1}>
+          <Typography variant="h5" component="h1">
+            {task.approvalCategoryLabel}
+          </Typography>
+          <ApprovalStatusBadge status={task.status as ApprovalWorkItemStatusCode} />
+        </Stack>
+
+        <Card variant="outlined">
+          <CardContent>
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 12 }}>
+                <Typography variant="caption" color="text.secondary">
+                  Özet
+                </Typography>
+                <Typography variant="body1">{task.summary}</Typography>
+              </Grid>
+              <Grid size={{ xs: 12, md: 6 }}>
+                <Typography variant="caption" color="text.secondary">
+                  Talep Eden
+                </Typography>
+                <Typography variant="body1">{task.requestedByDisplayName}</Typography>
+              </Grid>
+              <Grid size={{ xs: 12, md: 6 }}>
+                <Typography variant="caption" color="text.secondary">
+                  Talep Tarihi
+                </Typography>
+                <Typography variant="body1">{formatCaseDateTime(task.requestedAt)}</Typography>
+              </Grid>
+              <Grid size={{ xs: 12, md: 6 }}>
+                <Typography variant="caption" color="text.secondary">
+                  Onaylayıcı Rol
+                </Typography>
+                <Typography variant="body1">
+                  {getRoleLabel(task.assignedRole as RoleCode)}
+                </Typography>
+              </Grid>
+              {task.decidedAt ? (
+                <Grid size={{ xs: 12, md: 6 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    Karar Tarihi
+                  </Typography>
+                  <Typography variant="body1">{formatCaseDateTime(task.decidedAt)}</Typography>
+                </Grid>
+              ) : null}
+              {task.decisionReason ? (
+                <Grid size={{ xs: 12 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    Karar Gerekçesi
+                  </Typography>
+                  <Typography variant="body1">{task.decisionReason}</Typography>
+                </Grid>
+              ) : null}
+            </Grid>
+          </CardContent>
+        </Card>
+
+        {showDecideActions ? (
+          <Stack direction="row" spacing={2} flexWrap="wrap">
+            <Button
+              variant="contained"
+              onClick={() => {
+                setShowDecideDialog('approve');
+              }}
+            >
+              Onayla
+            </Button>
+            <Button
+              variant="outlined"
+              color="error"
+              onClick={() => {
+                setShowDecideDialog('reject');
+              }}
+            >
+              Reddet
+            </Button>
+          </Stack>
+        ) : null}
+
+        {!showDecideActions && isMaker && task.status === ApprovalWorkItemStatus.PENDING ? (
+          <Alert severity="info" role="status">
+            Kendi oluşturduğunuz onay talebini karara bağlayamazsınız. Checker rolüne sahip bir
+            kullanıcının onaylaması gerekir.
+          </Alert>
+        ) : null}
+
+        <ApprovalDecideDialog
+          open={showDecideDialog !== null}
+          mode={showDecideDialog ?? 'approve'}
+          isSubmitting={decideMutation.isPending}
+          onClose={() => {
+            setShowDecideDialog(null);
+          }}
+          onConfirm={handleDecide}
+        />
+
+        <Snackbar
+          open={Boolean(toastMessage)}
+          autoHideDuration={5000}
+          onClose={() => {
+            setToastMessage(null);
+          }}
+          message={toastMessage ?? ''}
+          slotProps={{
+            content: {
+              role: toastSeverity === 'error' ? 'alert' : 'status',
+              sx: {
+                bgcolor: toastSeverity === 'error' ? 'error.main' : 'success.main',
+                color: 'common.white',
+              },
+            },
+          }}
+        />
+      </Stack>
+    );
+  }
+
   const showComplete =
     canCompleteTask(task, user) && task.taskType !== TaskType.MEMBER_APPROVAL_TASK;
   const showDelegate = canDelegateTask(task, user);

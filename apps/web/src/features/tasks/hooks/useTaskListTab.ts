@@ -1,4 +1,4 @@
-import { TaskStatus } from '@ethics/shared';
+import { TaskStatus, WORK_ITEM_KIND_VALUES, type WorkItemKindCode } from '@ethics/shared';
 import type { ListTasksQuery } from '@ethics/dto';
 import { useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
@@ -26,10 +26,18 @@ function parseTab(value: string | null): TaskListTab {
   return 'pending';
 }
 
+function parseKind(value: string | null): WorkItemKindCode | '' {
+  if (value && WORK_ITEM_KIND_VALUES.includes(value as WorkItemKindCode)) {
+    return value as WorkItemKindCode;
+  }
+  return '';
+}
+
 export function useTaskListTab() {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = parseTab(searchParams.get('tab'));
   const cursor = searchParams.get('cursor') ?? undefined;
+  const kind = parseKind(searchParams.get('kind'));
 
   const setActiveTab = useCallback(
     (tab: TaskListTab) => {
@@ -58,16 +66,42 @@ export function useTaskListTab() {
     [setSearchParams],
   );
 
+  const setKind = useCallback(
+    (nextKind: WorkItemKindCode | '') => {
+      setSearchParams((current) => {
+        const next = new URLSearchParams(current);
+        if (nextKind) {
+          next.set('kind', nextKind);
+        } else {
+          next.delete('kind');
+        }
+        next.delete('cursor');
+        return next;
+      });
+    },
+    [setSearchParams],
+  );
+
+  const clearFilters = useCallback(() => {
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      next.delete('kind');
+      next.delete('cursor');
+      return next;
+    });
+  }, [setSearchParams]);
+
   const listQuery = useMemo((): ListTasksQuery => {
     const isCompletedTab = activeTab === 'completed';
     return {
       status: [...TAB_STATUS_MAP[activeTab]],
+      ...(kind ? { kind } : {}),
       limit: 20,
       cursor,
       sortBy: isCompletedTab ? 'createdAt' : 'dueAt',
       sortOrder: isCompletedTab ? 'desc' : 'asc',
     };
-  }, [activeTab, cursor]);
+  }, [activeTab, cursor, kind]);
 
   const pendingCountQuery = useMemo(
     (): ListTasksQuery => ({
@@ -82,9 +116,13 @@ export function useTaskListTab() {
   return {
     activeTab,
     tabLabels: TAB_LABELS,
+    kind,
     listQuery,
     pendingCountQuery,
     setActiveTab,
     setCursor,
+    setKind,
+    clearFilters,
+    hasActiveFilters: kind !== '',
   };
 }

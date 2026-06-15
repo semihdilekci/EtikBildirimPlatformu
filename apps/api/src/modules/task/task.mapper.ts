@@ -1,10 +1,11 @@
 import {
   getCaseStateLabel,
   getTaskTypeLabel,
+  WorkItemKind,
   type CaseStateCode,
   type TaskTypeCode,
 } from '@ethics/shared';
-import type { TaskDetail, TaskListItem } from '@ethics/dto';
+import type { WorkflowTaskDetail, WorkflowTaskListItem } from '@ethics/dto';
 import type { Case, Company, Task } from '@prisma/client';
 
 export type TaskWithCase = Task & {
@@ -13,8 +14,23 @@ export type TaskWithCase = Task & {
   };
 };
 
+export const TASK_DETAIL_INCLUDE = {
+  case: {
+    include: {
+      company: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+    },
+  },
+} as const satisfies import('@prisma/client').Prisma.TaskInclude;
+
 /** SLA badge iter 2'de business calendar ile hesaplanır; iter 1'de due_at yoksa null. */
-export function deriveSlaStatus(task: Pick<Task, 'dueAt' | 'status'>): TaskListItem['slaStatus'] {
+export function deriveSlaStatus(
+  task: Pick<Task, 'dueAt' | 'status'>,
+): WorkflowTaskListItem['slaStatus'] {
   if (
     !task.dueAt ||
     task.status === 'COMPLETED' ||
@@ -34,8 +50,9 @@ export function deriveSlaStatus(task: Pick<Task, 'dueAt' | 'status'>): TaskListI
   return 'ON_TRACK';
 }
 
-export function toTaskListItem(task: TaskWithCase): TaskListItem {
+export function toTaskListItem(task: TaskWithCase): WorkflowTaskListItem {
   return {
+    kind: WorkItemKind.WORKFLOW,
     id: task.id,
     caseId: task.caseId,
     taskType: task.taskType,
@@ -48,8 +65,9 @@ export function toTaskListItem(task: TaskWithCase): TaskListItem {
   };
 }
 
-export function toTaskDetail(task: TaskWithCase): TaskDetail {
+export function toTaskDetail(task: TaskWithCase): WorkflowTaskDetail {
   return {
+    kind: WorkItemKind.WORKFLOW,
     id: task.id,
     caseId: task.caseId,
     taskType: task.taskType,

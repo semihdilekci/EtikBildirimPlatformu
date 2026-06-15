@@ -15,9 +15,11 @@ import { AuditEventType } from '@ethics/shared';
 import { PermissionCode } from '@ethics/policy';
 import {
   completeTaskBodySchema,
+  decideTaskBodySchema,
   delegateTaskBodySchema,
   listTasksQuerySchema,
   type CompleteTaskBody,
+  type DecideTaskBody,
   type DelegateTaskBody,
   type ListTasksQuery,
 } from '@ethics/dto';
@@ -88,6 +90,29 @@ export class TaskController {
   ) {
     const correlationId = request.correlationId ?? crypto.randomUUID();
     const data = await this.taskService.delegateTask(user, taskId, body, correlationId);
+    return { data };
+  }
+
+  @RequirePolicy(PermissionCode.ADMIN_MAKER_CHECKER_APPROVE)
+  @AuditAction(AuditEventType.ROLE_ASSIGNMENT_APPROVED, 'approval_work_item_decided', {
+    deferToService: true,
+  })
+  @Throttle({ default: TASK_MUTATION_RATE_LIMIT })
+  @Post(':id/decide')
+  @HttpCode(HttpStatus.OK)
+  async decideApprovalWorkItem(
+    @Param('id') workItemId: string,
+    @Body(createZodValidationPipe(decideTaskBodySchema)) body: DecideTaskBody,
+    @CurrentUser() user: AuthenticatedUser,
+    @Req() request: CorrelatedRequest,
+  ) {
+    const correlationId = request.correlationId ?? crypto.randomUUID();
+    const data = await this.taskService.decideApprovalWorkItem(
+      user,
+      workItemId,
+      body,
+      correlationId,
+    );
     return { data };
   }
 }

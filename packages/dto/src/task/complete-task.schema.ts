@@ -1,5 +1,13 @@
-import { TASK_STATUS_VALUES, TASK_TYPE_VALUES } from '@ethics/shared';
 import { z } from 'zod';
+
+import {
+  completeTaskResponseSchema,
+  unifiedWorkItemDetailSchema,
+  workflowTaskDetailSchema,
+  type CompleteTaskResponse,
+  type UnifiedWorkItemDetail,
+  type WorkflowTaskDetail,
+} from './unified-work-item.schema.js';
 
 export const completeTaskBodySchema = z.object({
   outcome: z.string().min(1).max(4000).optional(),
@@ -19,34 +27,22 @@ export const taskDetailCaseSchema = z.object({
 
 export type TaskDetailCase = z.infer<typeof taskDetailCaseSchema>;
 
-export const taskDetailSchema = z.object({
-  id: z.string(),
-  caseId: z.string(),
-  taskType: z.enum(TASK_TYPE_VALUES as [string, ...string[]]),
-  taskTypeLabel: z.string(),
-  status: z.enum(TASK_STATUS_VALUES as [string, ...string[]]),
-  assignedRole: z.string(),
-  assignedUserId: z.string().nullable(),
-  delegatedFromTaskId: z.string().nullable(),
-  dueAt: z.string().datetime().nullable(),
-  slaStatus: z.enum(['ON_TRACK', 'WARNING', 'OVERDUE']).nullable(),
-  outcome: z.string().nullable(),
-  completedAt: z.string().datetime().nullable(),
-  createdAt: z.string().datetime(),
-  updatedAt: z.string().datetime(),
-  case: taskDetailCaseSchema,
-});
+export {
+  completeTaskResponseSchema,
+  workflowTaskDetailSchema,
+  type CompleteTaskResponse,
+  type WorkflowTaskDetail,
+};
 
-export type TaskDetail = z.infer<typeof taskDetailSchema>;
+/** Workflow-only task detail (complete/delegate yanıtları) */
+export type TaskDetail = WorkflowTaskDetail;
 
-export const completeTaskResponseSchema = z.object({
-  data: taskDetailSchema,
-});
-
-export type CompleteTaskResponse = z.infer<typeof completeTaskResponseSchema>;
+export const taskDetailSchema = workflowTaskDetailSchema;
 
 export const taskDetailResponseSchema = z.object({
-  data: taskDetailSchema,
+  data: unifiedWorkItemDetailSchema,
 });
 
 export type TaskDetailResponse = z.infer<typeof taskDetailResponseSchema>;
+
+export type { UnifiedWorkItemDetail };

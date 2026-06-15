@@ -19,24 +19,50 @@ import {
   Typography,
 } from '@mui/material';
 import { PermissionCode } from '@ethics/policy';
-import type { TaskStatusCode } from '@ethics/shared';
+import type { TaskStatusCode, ApprovalWorkItemStatusCode } from '@ethics/shared';
+import type { UnifiedWorkItemListItem } from '@ethics/dto';
 import type { SyntheticEvent } from 'react';
 import { useRef } from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 
 import { PermissionGate } from '@/features/auth/components/PermissionGate';
 import { formatCaseDateTime, formatShortCaseId } from '@/features/cases/utils/case-format.util';
+import { ApprovalStatusBadge } from '@/features/tasks/components/ApprovalStatusBadge';
+import { TaskFilters } from '@/features/tasks/components/TaskFilters';
 import { TaskSlaIndicator } from '@/features/tasks/components/TaskSlaIndicator';
 import { TaskStatusBadge } from '@/features/tasks/components/TaskStatusBadge';
+import { WorkItemKindBadge } from '@/features/tasks/components/WorkItemKindBadge';
 import { useTaskListTab } from '@/features/tasks/hooks/useTaskListTab';
 import { useTasksListQuery } from '@/features/tasks/hooks/useTasks';
 import { getTaskErrorMessage } from '@/features/tasks/utils/task-error.util';
 
+function getTypeLabel(task: UnifiedWorkItemListItem): string {
+  return task.kind === 'APPROVAL' ? task.approvalCategoryLabel : task.taskTypeLabel;
+}
+
+function getDueOrRequestedLabel(task: UnifiedWorkItemListItem): string {
+  if (task.kind === 'APPROVAL') {
+    return formatCaseDateTime(task.requestedAt);
+  }
+
+  return task.dueAt ? formatCaseDateTime(task.dueAt) : '—';
+}
+
 export function TaskListPage() {
   const navigate = useNavigate();
   const cursorHistoryRef = useRef<string[]>([]);
-  const { activeTab, tabLabels, listQuery, pendingCountQuery, setActiveTab, setCursor } =
-    useTaskListTab();
+  const {
+    activeTab,
+    tabLabels,
+    kind,
+    listQuery,
+    pendingCountQuery,
+    setActiveTab,
+    setCursor,
+    setKind,
+    clearFilters,
+    hasActiveFilters,
+  } = useTaskListTab();
 
   const tasksQuery = useTasksListQuery(listQuery);
   const pendingCountQueryResult = useTasksListQuery(pendingCountQuery);
@@ -72,6 +98,8 @@ export function TaskListPage() {
 
   const isInitialLoading = tasksQuery.isPending && !tasksQuery.data;
   const isFetching = tasksQuery.isFetching && !tasksQuery.isPending;
+  const isEmptyWithFilters =
+    !isInitialLoading && tasksQuery.data?.data.length === 0 && hasActiveFilters;
 
   return (
     <PermissionGate
@@ -99,6 +127,13 @@ export function TaskListPage() {
             </Badge>
           ) : null}
         </Stack>
+
+        <TaskFilters
+          kind={kind}
+          onKindChange={setKind}
+          onClearFilters={clearFilters}
+          hasActiveFilters={hasActiveFilters}
+        />
 
         <Tabs
           value={activeTab}
@@ -145,11 +180,12 @@ export function TaskListPage() {
           <Table size="small" aria-label="Görev listesi">
             <TableHead>
               <TableRow>
-                <TableCell scope="col">Görev Tipi</TableCell>
-                <TableCell scope="col">Vaka No</TableCell>
+                <TableCell scope="col">Tür</TableCell>
+                <TableCell scope="col">Görev / Onay Tipi</TableCell>
+                <TableCell scope="col">İlişkili Vaka</TableCell>
                 <TableCell scope="col">Durum</TableCell>
                 <TableCell scope="col">SLA</TableCell>
-                <TableCell scope="col">Son Tarih</TableCell>
+                <TableCell scope="col">Son Tarih / Talep Tarihi</TableCell>
                 <TableCell scope="col">Oluşturma</TableCell>
               </TableRow>
             </TableHead>
@@ -157,7 +193,7 @@ export function TaskListPage() {
               {isInitialLoading
                 ? Array.from({ length: 8 }).map((_, index) => (
                     <TableRow key={index}>
-                      {Array.from({ length: 6 }).map((__, cellIndex) => (
+                      {Array.from({ length: 7 }).map((__, cellIndex) => (
                         <TableCell key={cellIndex}>
                           <Skeleton variant="text" />
                         </TableCell>
@@ -168,15 +204,22 @@ export function TaskListPage() {
 
               {!isInitialLoading && tasksQuery.data?.data.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6}>
+                  <TableCell colSpan={7}>
                     <Stack spacing={1} alignItems="flex-start" sx={{ py: 3 }}>
                       <Typography variant="body1">
-                        {activeTab === 'pending'
-                          ? 'Bekleyen göreviniz bulunmuyor.'
-                          : activeTab === 'in_progress'
-                            ? 'Devam eden göreviniz bulunmuyor.'
-                            : 'Tamamlanan görev bulunmuyor.'}
+                        {isEmptyWithFilters
+                          ? 'Filtre kriterlerine uygun görev bulunamadı.'
+                          : activeTab === 'pending'
+                            ? 'Bekleyen göreviniz bulunmuyor.'
+                            : activeTab === 'in_progress'
+                              ? 'Devam eden göreviniz bulunmuyor.'
+                              : 'Tamamlanan görev bulunmuyor.'}
                       </Typography>
+                      {isEmptyWithFilters ? (
+                        <Button variant="text" onClick={clearFilters}>
+                          Filtreleri Temizle
+                        </Button>
+                      ) : null}
                     </Stack>
                   </TableCell>
                 </TableRow>
@@ -191,30 +234,45 @@ export function TaskListPage() {
                     void navigate(`/app/tasks/${task.id}`);
                   }}
                 >
-                  <TableCell>{task.taskTypeLabel}</TableCell>
                   <TableCell>
-                    <Link
-                      component={RouterLink}
-                      to={`/app/cases/${task.caseId}`}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                      }}
-                    >
-                      {formatShortCaseId(task.caseId)}
-                    </Link>
+                    <WorkItemKindBadge kind={task.kind} />
+                  </TableCell>
+                  <TableCell>{getTypeLabel(task)}</TableCell>
+                  <TableCell>
+                    {task.kind === 'WORKFLOW' ? (
+                      <Link
+                        component={RouterLink}
+                        to={`/app/cases/${task.caseId}`}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                        }}
+                      >
+                        {formatShortCaseId(task.caseId)}
+                      </Link>
+                    ) : (
+                      '—'
+                    )}
                   </TableCell>
                   <TableCell>
-                    <TaskStatusBadge status={task.status as TaskStatusCode} />
+                    {task.kind === 'APPROVAL' ? (
+                      <ApprovalStatusBadge status={task.status as ApprovalWorkItemStatusCode} />
+                    ) : (
+                      <TaskStatusBadge status={task.status as TaskStatusCode} />
+                    )}
                   </TableCell>
                   <TableCell>
-                    <TaskSlaIndicator
-                      dueAt={task.dueAt}
-                      createdAt={task.createdAt}
-                      slaStatus={task.slaStatus}
-                      status={task.status}
-                    />
+                    {task.kind === 'WORKFLOW' ? (
+                      <TaskSlaIndicator
+                        dueAt={task.dueAt}
+                        createdAt={task.createdAt}
+                        slaStatus={task.slaStatus}
+                        status={task.status}
+                      />
+                    ) : (
+                      '—'
+                    )}
                   </TableCell>
-                  <TableCell>{task.dueAt ? formatCaseDateTime(task.dueAt) : '—'}</TableCell>
+                  <TableCell>{getDueOrRequestedLabel(task)}</TableCell>
                   <TableCell>{formatCaseDateTime(task.createdAt)}</TableCell>
                 </TableRow>
               ))}

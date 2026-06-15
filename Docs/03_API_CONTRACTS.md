@@ -719,6 +719,109 @@ Frontend bu bilgiyle menü, navigation ve role-gated UI davranışını belirler
 
 ---
 
+### 8.3.5 Internal Reports (Sekreterya)
+
+Kurul sekreteryası (`council_secretary`) için bekleyen bildirim listesi ve iç önizleme. Tüm endpoint'ler OIDC session + `case:pre_review` permission gerektirir. Liste yanıtında şifreli içerik alanları döndürülmez; detay yanıtında decrypt + `FieldMaskingPolicy` uygulanır. `admin` rolü bu yüzeye erişemez (404 / boş liste).
+
+---
+
+#### GET /api/v1/reports/pending
+
+**Purpose:** Vakası henüz açılmamış (`case_id IS NULL`) ve `status = SUBMITTED` bildirimlerin metadata listesi.
+
+**Auth:** Session — `council_secretary` (`case:pre_review`).
+
+**Rate limit:** 60 req/dk per user.
+
+**Query params:**
+
+| Param | Tip | Açıklama |
+|---|---|---|
+| `companyId` | string | Şirket filtresi |
+| `urgentRiskOnly` | boolean | Yalnızca acil risk bayraklı bildirimler |
+| `limit`, `cursor`, `sortBy`, `sortOrder` | — | Cursor pagination (`sortBy`: `submittedAt` \| `urgentRiskFlag`) |
+
+**Response 200:**
+
+```json
+{
+  "data": [
+    {
+      "id": "clxrpt01",
+      "trackingCodeMasked": "ETK-NPW7-****",
+      "status": "SUBMITTED",
+      "confidentialityLevel": "SENSITIVE",
+      "companyId": "clx1abc",
+      "companyName": "Pınar Süt A.Ş.",
+      "categoryGroup": "EMPLOYEE_HUMAN",
+      "categoryGroupLabel": "Çalışan ve İnsan Hakları",
+      "categories": ["WORKPLACE_VIOLENCE"],
+      "urgentRiskFlag": false,
+      "submittedAt": "2026-06-09T14:30:00Z",
+      "incidentCountry": "TUR",
+      "incidentCity": "Ankara"
+    }
+  ],
+  "pagination": { "nextCursor": null, "hasMore": false, "total": null }
+}
+```
+
+Clearance filtresi: kullanıcının `clearanceLevel` değeri yetersiz bildirimler listede görünmez.
+
+**Errors:**
+
+| Code | HTTP | Koşul |
+|---|---|---|
+| `AUTHZ_FORBIDDEN` | 403 | `case:pre_review` yok |
+| `VALIDATION_FAILED` | 400 | Geçersiz cursor |
+
+**Audit:** Yok — metadata-only read.
+
+---
+
+#### GET /api/v1/reports/:id
+
+**Purpose:** Bekleyen bildirimin iç önizlemesi (vaka açmadan önce). Yalnızca `SUBMITTED` + `case_id IS NULL` kayıtlar döner.
+
+**Auth:** Session — `case:pre_review` + clearance yeterli.
+
+**Rate limit:** 60 req/dk per user.
+
+**Response 200:** Metadata + field-masked içerik özeti. `incidentDescription` ve diğer şifreli alanlar yalnızca yetkili roller için decrypt edilir; `admin` erişemez.
+
+```json
+{
+  "data": {
+    "id": "clxrpt01",
+    "trackingCodeMasked": "ETK-NPW7-****",
+    "status": "SUBMITTED",
+    "confidentialityLevel": "SENSITIVE",
+    "companyId": "clx1abc",
+    "companyName": "Pınar Süt A.Ş.",
+    "categoryGroup": "EMPLOYEE_HUMAN",
+    "categoryGroupLabel": "Çalışan ve İnsan Hakları",
+    "categories": ["WORKPLACE_VIOLENCE"],
+    "isAnonymous": true,
+    "urgentRiskFlag": false,
+    "submittedAt": "2026-06-09T14:30:00Z",
+    "incidentCountry": "TUR",
+    "incidentCity": "Ankara",
+    "incidentDescription": "...",
+    "attachmentCount": 1
+  }
+}
+```
+
+**Errors:**
+
+| Code | HTTP | Koşul |
+|---|---|---|
+| `RESOURCE_NOT_FOUND` | 404 | Bildirim yok, vakası açılmış, clearance yetersiz veya erişim yetkisi yok |
+
+**Audit:** Yok — read-only (Faz 5.1). Vaka açıldıktan sonra tam içerik `GET /cases/:id` üzerinden.
+
+---
+
 ### 8.4 Cases
 
 Tüm case endpoint'leri OIDC session gerektirir. Liste endpoint'leri otomatik olarak RBAC+ABAC+clearance scope filtresi uygular — kullanıcı yalnızca yetkili olduğu vakaları görür.
@@ -817,6 +920,59 @@ Maskeleme örnekleri: `action_owner` rolü `incidentDescription`, `involvedPerso
 | `RESOURCE_NOT_FOUND` | 404 | Vaka yok veya erişim yetkisi yok |
 
 **Audit:** `CASE_VIEWED` — case_id, user_id, fields_visible (alan listesi), clearance_level_snapshot.
+
+---
+
+#### POST /api/v1/cases
+
+**Purpose:** Bekleyen bildirimden vaka açma (`createCaseFromReport`). Bildirim `SUBMITTED` ve `case_id IS NULL` olmalıdır. Başarılı işlem sonrası vaka `report_submitted` state ile oluşturulur; sekreterya `acknowledge_report` geçişi ile devam eder.
+
+**Auth:** Session — `council_secretary` (`case:pre_review`).
+
+**Rate limit:** 30 req/dk per user.
+
+**Request body:**
+
+```json
+{
+  "reportId": "clxrpt01",
+  "idempotencyKey": "550e8400-e29b-41d4-a716-446655440000"
+}
+```
+
+| Alan | Kural |
+|---|---|
+| `reportId` | Zorunlu; bekleyen bildirim ID |
+| `idempotencyKey` | Zorunlu; UUID v4; aynı key ile tekrar istek idempotent yanıt döner |
+
+**Response 201:**
+
+```json
+{
+  "data": {
+    "caseId": "clxcase01",
+    "reportId": "clxrpt01",
+    "currentState": "report_submitted",
+    "confidentialityLevel": "SENSITIVE",
+    "companyId": "clx1abc",
+    "openedAt": "2026-06-09T14:35:00Z",
+    "idempotentReplay": false
+  }
+}
+```
+
+**Errors:**
+
+| Code | HTTP | Koşul |
+|---|---|---|
+| `VALIDATION_FAILED` | 400 | Bildirim `SUBMITTED` değil veya zaten vakası var |
+| `RESOURCE_NOT_FOUND` | 404 | Bildirim bulunamadı |
+| `CASE_ALREADY_EXISTS` | 409 | Aynı bildirimden vaka zaten açılmış |
+| `AUTHZ_FORBIDDEN` | 403 | `case:pre_review` yok |
+
+**Audit:** `CASE_TRANSITION` (`case_opened`) — report_id, case_id, idempotency_key (içerik kopyalanmaz).
+
+**Not (Faz 5.1 İterasyon 2):** `report.status` senkronizasyonu (`UNDER_REVIEW`) bu iterasyonda uygulanmaz.
 
 ---
 
@@ -939,19 +1095,20 @@ Maskeleme örnekleri: `action_owner` rolü `incidentDescription`, `involvedPerso
 
 #### GET /api/v1/tasks
 
-**Purpose:** Görev listesi (kullanıcının kendi görevleri).
+**Purpose:** Birleşik görev listesi — vaka workflow görevleri + maker-checker onay işleri (`ApprovalWorkItem`).
 
-**Auth:** Session — tüm iç kullanıcı rolleri.
+**Auth:** Session — tüm iç kullanıcı rolleri (ABAC + checker rol filtresi).
 
-**Query params:** `status`, `taskType`, `caseId`, `dueBefore`, `dueAfter`, `limit`, `cursor`, `sortBy`, `sortOrder`.
+**Query params:** `status`, `taskType`, `kind` (`WORKFLOW` | `APPROVAL` | tümü), `caseId`, `dueBefore`, `dueAfter`, `limit`, `cursor`, `sortBy`, `sortOrder`.
 
-**Response 200:** Paginated, ABAC-scoped görev listesi.
+**Response 200:** Paginated birleşik liste. Her satır `kind` alanı taşır.
 
 ```json
 {
   "data": [
     {
       "id": "clxtask01",
+      "kind": "WORKFLOW",
       "caseId": "clxcase01",
       "taskType": "secretariat_review_task",
       "taskTypeLabel": "Ön Değerlendirme",
@@ -960,13 +1117,32 @@ Maskeleme örnekleri: `action_owner` rolü `incidentDescription`, `involvedPerso
       "dueAt": "2026-06-12T17:00:00Z",
       "slaStatus": "ON_TRACK",
       "createdAt": "2026-06-09T15:00:00Z"
+    },
+    {
+      "id": "clxappr01",
+      "kind": "APPROVAL",
+      "caseId": null,
+      "approvalCategory": "ROLE_ASSIGNMENT",
+      "approvalCategoryLabel": "Rol Ataması Onayı",
+      "status": "PENDING",
+      "assignedRole": "council_secretary",
+      "summary": "Kullanıcı: Ayşe Y. — Rol: council_member",
+      "requestedByDisplayName": "Sistem Yöneticisi",
+      "requestedAt": "2026-06-14T10:00:00Z",
+      "dueAt": null,
+      "slaStatus": null,
+      "createdAt": "2026-06-14T10:00:00Z"
     }
   ],
   "pagination": { "nextCursor": "...", "hasMore": false, "total": null }
 }
 ```
 
-`slaStatus`: hesaplanan türetilmiş alan — `ON_TRACK`, `WARNING`, `OVERDUE`. Veritabanında saklanmaz, business_calendar ve sla_policy_config üzerinden runtime hesaplanır.
+**Görünürlük kuralları:**
+- `kind=WORKFLOW`: mevcut Task ABAC scope (clearance, assignment, company).
+- `kind=APPROVAL`: kullanıcının rollerinden biri `assignedRole` ile eşleşmeli; maker kendi talebini listede görür ama decide edemez.
+
+`slaStatus`: yalnızca `WORKFLOW` için geçerli — hesaplanan türetilmiş alan (`ON_TRACK`, `WARNING`, `OVERDUE`).
 
 **Audit:** Yok — read-only.
 
@@ -974,11 +1150,11 @@ Maskeleme örnekleri: `action_owner` rolü `incidentDescription`, `involvedPerso
 
 #### GET /api/v1/tasks/:id
 
-**Purpose:** Görev detayı.
+**Purpose:** Görev veya onay işi detayı (`kind` discriminator).
 
-**Auth:** Session — göreve erişim yetkisi (atanmış kullanıcı veya üst rol).
+**Auth:** Session — kaynağa erişim yetkisi.
 
-**Response 200:** Task detayı + ilişkili case metadata.
+**Response 200:** `kind=WORKFLOW` ise Task detayı + ilişkili case metadata. `kind=APPROVAL` ise maskeli özet, maker bilgisi, `approvalCategory`, decide edilebilirlik (`canDecide: boolean`), mevcut admin approve endpoint'ine yönlendirme metadata'sı (`targetType`, `targetId`).
 
 **Audit:** Yok — read-only.
 
@@ -986,7 +1162,7 @@ Maskeleme örnekleri: `action_owner` rolü `incidentDescription`, `involvedPerso
 
 #### POST /api/v1/tasks/:id/complete
 
-**Purpose:** Görevi tamamlama.
+**Purpose:** Vaka workflow görevini tamamlama. **Yalnızca `kind=WORKFLOW`.**
 
 **Auth:** Session — göreve atanmış kullanıcı.
 
@@ -1023,6 +1199,29 @@ Maskeleme örnekleri: `action_owner` rolü `incidentDescription`, `involvedPerso
 **Response 200:** Yeni görev bilgisi (delegation zinciri korunur).
 
 **Audit:** `TASK_DELEGATED` — task_id, from_user, to_user, case_id.
+
+---
+
+#### POST /api/v1/tasks/:id/decide
+
+**Purpose:** Maker-checker onay işini onaylama veya reddetme. **Yalnızca `kind=APPROVAL`.**
+
+**Auth:** Session — `@RequirePolicy(admin:maker_checker_approve)` + checker rolü action matrix ile uyumlu.
+
+**Request body:**
+
+```json
+{
+  "approved": true,
+  "reason": "Rol ataması uygun bulundu."
+}
+```
+
+**Response 200:** Güncellenen approval work item + domain sonucu (ör. rol `ACTIVE`, batch `APPROVED`).
+
+**Error codes:** `MAKER_CHECKER_SELF`, `MAKER_CHECKER_FORBIDDEN`, `APPROVAL_WORK_ITEM_NOT_FOUND`, `APPROVAL_WORK_ITEM_ALREADY_DECIDED`.
+
+**Audit:** İlgili domain approve audit event'i (ör. `ROLE_ASSIGNMENT_APPROVED`) — work item kapanışı metadata ile.
 
 ---
 

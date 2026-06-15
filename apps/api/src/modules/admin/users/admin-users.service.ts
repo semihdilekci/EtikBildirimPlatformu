@@ -11,6 +11,7 @@ import type {
 } from '@ethics/dto';
 import {
   AdminActionCode,
+  ApprovalWorkItemTargetType,
   AuditActorType,
   AuditEventType,
   AuditOutcome,
@@ -29,6 +30,7 @@ import type { AuthenticatedUser } from '../../../common/types/authenticated-user
 import { DomainException } from '../../../common/exceptions/domain.exception.js';
 import { PrismaService } from '../../../prisma/prisma.service.js';
 import { MakerCheckerService } from '../maker-checker/maker-checker.service.js';
+import { ApprovalWorkItemService } from '../maker-checker/approval-work-item.service.js';
 import {
   decodeAdminUserCursor,
   deriveUserRoleStatus,
@@ -63,6 +65,8 @@ export class AdminUsersService {
     @Inject(PrismaService) private readonly prisma: PrismaService,
     @Inject(AuditEventPublisher) private readonly auditPublisher: AuditEventPublisher,
     @Inject(MakerCheckerService) private readonly makerChecker: MakerCheckerService,
+    @Inject(ApprovalWorkItemService)
+    private readonly approvalWorkItemService: ApprovalWorkItemService,
   ) {}
 
   async listUsers(query: ListAdminUsersQuery) {
@@ -158,7 +162,7 @@ export class AdminUsersService {
     correlationId: string,
   ): Promise<AssignAdminUserRoleResponse> {
     this.assertValidRoleCode(body.roleCode);
-    await this.findUserOrThrow(userId);
+    const targetUser = await this.findUserOrThrow(userId);
 
     const actionCode = this.makerChecker.resolveRoleAssignmentAction(body.roleCode);
     this.makerChecker.assertMaker(actor, actionCode);
@@ -220,6 +224,18 @@ export class AdminUsersService {
           maker_user_id: actor.id,
           reason: body.reason,
         },
+      });
+
+      await this.approvalWorkItemService.createInTransaction(tx, {
+        actionCode,
+        requestedBy: actor.id,
+        targetType: ApprovalWorkItemTargetType.USER_ROLE,
+        targetId: roleAssignment.id,
+        summary: this.approvalWorkItemService.buildRoleAssignmentSummary({
+          roleCode: body.roleCode as RoleCode,
+          targetDisplayName: targetUser.displayName,
+        }),
+        correlationId,
       });
 
       return roleAssignment;
@@ -286,6 +302,14 @@ export class AdminUsersService {
           },
         });
 
+        await this.approvalWorkItemService.closeInTransaction(tx, {
+          targetType: ApprovalWorkItemTargetType.USER_ROLE,
+          targetId: roleAssignment.id,
+          decidedBy: checker.id,
+          approved: false,
+          reason: body.reason,
+        });
+
         return updated;
       });
 
@@ -322,6 +346,14 @@ export class AdminUsersService {
           checker_user_id: checker.id,
           reason: body.reason,
         },
+      });
+
+      await this.approvalWorkItemService.closeInTransaction(tx, {
+        targetType: ApprovalWorkItemTargetType.USER_ROLE,
+        targetId: roleAssignment.id,
+        decidedBy: checker.id,
+        approved: true,
+        reason: body.reason,
       });
 
       await this.invalidateUserSessions(tx, userId);
@@ -474,6 +506,19 @@ export class AdminUsersService {
           },
         });
 
+        await this.approvalWorkItemService.createInTransaction(tx, {
+          actionCode: AdminActionCode.CLEARANCE_ELEVATE_STRICTLY_CONFIDENTIAL,
+          requestedBy: actor.id,
+          targetType: ApprovalWorkItemTargetType.CLEARANCE_REQUEST,
+          targetId: created.id,
+          summary: this.approvalWorkItemService.buildClearanceChangeSummary({
+            currentLevel: currentLevel,
+            requestedLevel: body.clearanceLevel as ClearanceLevelCode,
+            targetDisplayName: user.displayName,
+          }),
+          correlationId,
+        });
+
         return created;
       });
 
@@ -553,6 +598,14 @@ export class AdminUsersService {
             reason: body.reason,
           },
         });
+
+        await this.approvalWorkItemService.closeInTransaction(tx, {
+          targetType: ApprovalWorkItemTargetType.CLEARANCE_REQUEST,
+          targetId: request.id,
+          decidedBy: checker.id,
+          approved: false,
+          reason: body.reason,
+        });
       });
 
       return {
@@ -593,6 +646,14 @@ export class AdminUsersService {
           checker_user_id: checker.id,
           reason: body.reason,
         },
+      });
+
+      await this.approvalWorkItemService.closeInTransaction(tx, {
+        targetType: ApprovalWorkItemTargetType.CLEARANCE_REQUEST,
+        targetId: request.id,
+        decidedBy: checker.id,
+        approved: true,
+        reason: body.reason,
       });
 
       await this.invalidateUserSessions(tx, userId);

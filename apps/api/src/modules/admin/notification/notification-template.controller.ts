@@ -4,6 +4,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Inject,
   Param,
   Patch,
   Post,
@@ -40,6 +41,7 @@ const ADMIN_MUTATION_RATE_LIMIT = { limit: 30, ttl: 60_000 } as const;
 @Controller('admin/notification-templates')
 export class NotificationTemplateController {
   constructor(
+    @Inject(NotificationTemplateAdminService)
     private readonly notificationTemplateAdminService: NotificationTemplateAdminService,
   ) {}
 

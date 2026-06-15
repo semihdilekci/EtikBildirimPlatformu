@@ -4,6 +4,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Inject,
   Param,
   Patch,
   Post,
@@ -34,7 +35,10 @@ const ADMIN_MUTATION_RATE_LIMIT = { limit: 30, ttl: 60_000 } as const;
 
 @Controller('admin/action-matrix')
 export class ActionMatrixController {
-  constructor(private readonly actionMatrixAdminService: ActionMatrixAdminService) {}
+  constructor(
+    @Inject(ActionMatrixAdminService)
+    private readonly actionMatrixAdminService: ActionMatrixAdminService,
+  ) {}
 
   @RequirePolicy(PermissionCode.ADMIN_MANAGE_SETTINGS)
   @Throttle({ default: ADMIN_READ_RATE_LIMIT })

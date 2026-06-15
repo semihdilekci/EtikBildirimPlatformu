@@ -142,7 +142,9 @@ describe('Task list/detail integration (Testcontainers)', () => {
     expect(result.data.some((task) => task.id === taskId)).toBe(true);
     expect(result.data.every((task) => task.status === TaskStatus.PENDING)).toBe(true);
     expect(result.pagination.total).toBeNull();
-    expect(result.data.find((task) => task.id === taskId)?.caseId).toBe(caseId);
+    expect(result.data.find((task) => task.id === taskId && task.kind === 'WORKFLOW')?.caseId).toBe(
+      caseId,
+    );
   });
 
   it('getTaskDetail görev detayını döner', async () => {
@@ -150,6 +152,10 @@ describe('Task list/detail integration (Testcontainers)', () => {
 
     const detail = await taskService.getTaskDetail(secretaryUser, taskId);
 
+    expect(detail.kind).toBe('WORKFLOW');
+    if (detail.kind !== 'WORKFLOW') {
+      throw new Error('workflow detail expected');
+    }
     expect(detail.id).toBe(taskId);
     expect(detail.caseId).toBe(caseId);
     expect(detail.taskType).toBe(TaskType.SECRETARIAT_REVIEW_TASK);

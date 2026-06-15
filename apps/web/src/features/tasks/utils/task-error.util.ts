@@ -12,6 +12,11 @@ const TASK_ERROR_MESSAGES: Partial<Record<string, string>> = {
     'Devir hedefi geçersiz veya görev rolüne sahip değil.',
   [ErrorCode.AUTHZ_FORBIDDEN]: 'Bu işlem için yetkiniz yok.',
   [ErrorCode.RESOURCE_NOT_FOUND]: 'Görev bulunamadı veya erişim yetkiniz yok.',
+  [ErrorCode.MAKER_CHECKER_SELF]: 'Kendi oluşturduğunuz onay talebini karara bağlayamazsınız.',
+  [ErrorCode.MAKER_CHECKER_FORBIDDEN]: 'Bu onay işlemi için yetkiniz yok.',
+  [ErrorCode.APPROVAL_WORK_ITEM_NOT_FOUND]: 'Onay işi bulunamadı veya erişim yetkiniz yok.',
+  [ErrorCode.APPROVAL_WORK_ITEM_ALREADY_DECIDED]: 'Bu onay işi zaten karara bağlanmış.',
+  [ErrorCode.APPROVAL_WORK_ITEM_UNSUPPORTED]: 'Bu onay işi türü desteklenmiyor.',
 };
 
 export function getTaskErrorMessage(error: unknown, fallback = 'Bir hata oluştu.'): string {

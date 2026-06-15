@@ -13,6 +13,7 @@ import type {
 } from '@ethics/dto';
 import {
   AdminActionCode,
+  ApprovalWorkItemTargetType,
   AuditActorType,
   AuditEventType,
   AuditOutcome,
@@ -30,6 +31,7 @@ import type { AuthenticatedUser } from '../../../common/types/authenticated-user
 import { DomainException } from '../../../common/exceptions/domain.exception.js';
 import { EmailRelayService } from '../../integration/email/email-relay.service.js';
 import { PrismaService } from '../../../prisma/prisma.service.js';
+import { ApprovalWorkItemService } from '../maker-checker/approval-work-item.service.js';
 import { MakerCheckerService } from '../maker-checker/maker-checker.service.js';
 import {
   configsEqual,
@@ -46,6 +48,8 @@ export class NotificationTemplateAdminService {
     @Inject(AuditEventPublisher) private readonly auditPublisher: AuditEventPublisher,
     @Inject(MakerCheckerService) private readonly makerChecker: MakerCheckerService,
     @Inject(EmailRelayService) private readonly emailRelay: EmailRelayService,
+    @Inject(ApprovalWorkItemService)
+    private readonly approvalWorkItemService: ApprovalWorkItemService,
   ) {}
 
   async listTemplates(): Promise<NotificationTemplateListItem[]> {
@@ -191,6 +195,15 @@ export class NotificationTemplateAdminService {
         },
       });
 
+      await this.approvalWorkItemService.createInTransaction(tx, {
+        actionCode: NOTIFICATION_TEMPLATE_ACTION,
+        requestedBy: actor.id,
+        targetType: ApprovalWorkItemTargetType.NOTIFICATION_TEMPLATE_BATCH,
+        targetId: createdBatch.id,
+        summary: this.approvalWorkItemService.buildNotificationTemplateBatchSummary([templateCode]),
+        correlationId,
+      });
+
       return createdBatch;
     });
 
@@ -246,6 +259,14 @@ export class NotificationTemplateAdminService {
             reason: body.reason,
             template_codes: batch.items.map((item) => item.templateCode),
           },
+        });
+
+        await this.approvalWorkItemService.closeInTransaction(tx, {
+          targetType: ApprovalWorkItemTargetType.NOTIFICATION_TEMPLATE_BATCH,
+          targetId: batch.id,
+          decidedBy: checker.id,
+          approved: false,
+          reason: body.reason,
         });
 
         return updated;
@@ -319,6 +340,14 @@ export class NotificationTemplateAdminService {
           approvedBy: checker.id,
           resolvedAt: new Date(),
         },
+      });
+
+      await this.approvalWorkItemService.closeInTransaction(tx, {
+        targetType: ApprovalWorkItemTargetType.NOTIFICATION_TEMPLATE_BATCH,
+        targetId: batch.id,
+        decidedBy: checker.id,
+        approved: true,
+        reason: body.reason,
       });
 
       return { updatedBatch, appliedTemplateCodes };

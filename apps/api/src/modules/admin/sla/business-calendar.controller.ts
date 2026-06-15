@@ -5,6 +5,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Inject,
   Param,
   Post,
   Query,
@@ -38,7 +39,10 @@ const ADMIN_MUTATION_RATE_LIMIT = { limit: 30, ttl: 60_000 } as const;
 
 @Controller('admin/business-calendar')
 export class BusinessCalendarController {
-  constructor(private readonly businessCalendarAdminService: BusinessCalendarAdminService) {}
+  constructor(
+    @Inject(BusinessCalendarAdminService)
+    private readonly businessCalendarAdminService: BusinessCalendarAdminService,
+  ) {}
 
   @RequirePolicy(PermissionCode.ADMIN_MANAGE_SETTINGS)
   @Throttle({ default: ADMIN_READ_RATE_LIMIT })

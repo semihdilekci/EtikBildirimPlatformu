@@ -22,6 +22,7 @@ import { AuthService } from '../../auth/auth.service.js';
 import { AdminUsersController } from '../users/admin-users.controller.js';
 import { AdminUsersService } from '../users/admin-users.service.js';
 import { MakerCheckerService } from '../maker-checker/maker-checker.service.js';
+import { ApprovalWorkItemService } from '../maker-checker/approval-work-item.service.js';
 import { ActionMatrixConfigService } from '../maker-checker/action-matrix-config.service.js';
 import { AuditEventPublisher } from '../../../audit/audit-event.publisher.js';
 
@@ -81,6 +82,7 @@ describe('Admin user management E2E journey (Testcontainers)', () => {
         AdminUsersService,
         ActionMatrixConfigService,
         MakerCheckerService,
+        ApprovalWorkItemService,
         AuditEventPublisher,
         { provide: PrismaService, useValue: prismaService },
         Reflector,
@@ -175,7 +177,7 @@ describe('Admin user management E2E journey (Testcontainers)', () => {
   it('admin login (seed) → list → role maker-checker → clearance → audit outbox', async () => {
     const adminEmail = 'superadmin@ethics.local';
     const checkerEmail = 'council.secretary@ethics.local';
-    const clearanceCheckerEmail = 'council.chair@ethics.local';
+    const clearanceCheckerEmail = 'council.secretary@ethics.local';
     const deniedEmail = 'council.member@ethics.local';
 
     const deniedList = await request(app.getHttpServer())

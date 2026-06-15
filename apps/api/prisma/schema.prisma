@@ -71,6 +71,8 @@ model User {
   kvkkTextChangeBatchesRequested KvkkTextChangeBatch[] @relation("KvkkTextChangeRequestedBy")
   kvkkTextChangeBatchesApproved KvkkTextChangeBatch[] @relation("KvkkTextChangeApprovedBy")
   kvkkTextChangeBatchesRejected KvkkTextChangeBatch[] @relation("KvkkTextChangeRejectedBy")
+  approvalWorkItemsRequested ApprovalWorkItem[] @relation("ApprovalWorkItemRequestedBy")
+  approvalWorkItemsDecided ApprovalWorkItem[] @relation("ApprovalWorkItemDecidedBy")
 
   @@index([companyId], map: "idx_users_company_id")
   @@index([isActive], map: "idx_users_is_active")
@@ -121,6 +123,32 @@ model ClearanceChangeRequest {
 
   @@index([userId, status], map: "idx_clearance_change_requests_user_status")
   @@map("clearance_change_requests")
+}
+
+model ApprovalWorkItem {
+  id                  String    @id @default(cuid())
+  category            String
+  actionCode          String    @map("action_code")
+  assignedCheckerRole String    @map("assigned_checker_role")
+  requestedBy         String    @map("requested_by")
+  status              String    @default("PENDING")
+  summary             String
+  targetType          String    @map("target_type")
+  targetId            String    @map("target_id")
+  decidedBy           String?   @map("decided_by")
+  decidedAt           DateTime? @map("decided_at")
+  decisionReason      String?   @map("decision_reason")
+  correlationId       String    @map("correlation_id")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+
+  requestedByUser User  @relation("ApprovalWorkItemRequestedBy", fields: [requestedBy], references: [id])
+  decidedByUser   User? @relation("ApprovalWorkItemDecidedBy", fields: [decidedBy], references: [id])
+
+  @@index([status, assignedCheckerRole], map: "idx_awi_status_checker_role")
+  @@index([targetType, targetId], map: "idx_awi_target")
+  @@index([requestedBy], map: "idx_awi_requested_by")
+  @@map("approval_work_items")
 }
 
 /// connect-pg-simple session store — sid/sess/expire convention

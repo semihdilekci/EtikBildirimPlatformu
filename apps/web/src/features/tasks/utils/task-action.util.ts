@@ -1,4 +1,4 @@
-import type { TaskDetail } from '@ethics/dto';
+import type { WorkflowTaskDetail } from '@ethics/dto';
 import { TaskStatus, TaskType, type Role as RoleCode } from '@ethics/shared';
 
 type TaskActorUser = {
@@ -6,11 +6,11 @@ type TaskActorUser = {
   roles: readonly RoleCode[];
 };
 
-export function isTaskActionableStatus(status: TaskDetail['status']): boolean {
+export function isTaskActionableStatus(status: WorkflowTaskDetail['status']): boolean {
   return status === TaskStatus.PENDING || status === TaskStatus.IN_PROGRESS;
 }
 
-export function canUserActOnTask(task: TaskDetail, user: TaskActorUser | null): boolean {
+export function canUserActOnTask(task: WorkflowTaskDetail, user: TaskActorUser | null): boolean {
   if (!user) {
     return false;
   }
@@ -22,7 +22,7 @@ export function canUserActOnTask(task: TaskDetail, user: TaskActorUser | null): 
   return user.roles.includes(task.assignedRole as RoleCode);
 }
 
-export function canCompleteTask(task: TaskDetail, user: TaskActorUser | null): boolean {
+export function canCompleteTask(task: WorkflowTaskDetail, user: TaskActorUser | null): boolean {
   if (task.taskType === TaskType.MEMBER_APPROVAL_TASK) {
     return false;
   }
@@ -30,6 +30,6 @@ export function canCompleteTask(task: TaskDetail, user: TaskActorUser | null): b
   return isTaskActionableStatus(task.status) && canUserActOnTask(task, user);
 }
 
-export function canDelegateTask(task: TaskDetail, user: TaskActorUser | null): boolean {
+export function canDelegateTask(task: WorkflowTaskDetail, user: TaskActorUser | null): boolean {
   return isTaskActionableStatus(task.status) && canUserActOnTask(task, user);
 }

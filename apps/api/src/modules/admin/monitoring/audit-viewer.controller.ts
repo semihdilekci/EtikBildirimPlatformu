@@ -1,4 +1,14 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Inject,
+  Param,
+  Post,
+  Query,
+} from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { PermissionCode } from '@ethics/policy';
 import {
@@ -20,7 +30,9 @@ const ADMIN_MUTATION_RATE_LIMIT = { limit: 20, ttl: 60_000 } as const;
 
 @Controller('admin/audit-events')
 export class AuditViewerController {
-  constructor(private readonly auditViewerService: AuditViewerService) {}
+  constructor(
+    @Inject(AuditViewerService) private readonly auditViewerService: AuditViewerService,
+  ) {}
 
   @RequirePolicy(PermissionCode.AUDIT_VIEW_METADATA)
   @Throttle({ default: ADMIN_READ_RATE_LIMIT })

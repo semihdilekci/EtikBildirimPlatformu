@@ -9,6 +9,7 @@ import type {
 import { CASE_FIELD_VALUES, CaseField, FieldVisibility } from '@ethics/policy';
 import {
   AdminActionCode,
+  ApprovalWorkItemTargetType,
   AuditActorType,
   AuditEventType,
   AuditOutcome,
@@ -22,6 +23,7 @@ import { AuditEventPublisher } from '../../../audit/audit-event.publisher.js';
 import type { AuthenticatedUser } from '../../../common/types/authenticated-user.type.js';
 import { DomainException } from '../../../common/exceptions/domain.exception.js';
 import { PrismaService } from '../../../prisma/prisma.service.js';
+import { ApprovalWorkItemService } from '../maker-checker/approval-work-item.service.js';
 import { MakerCheckerService } from '../maker-checker/maker-checker.service.js';
 import { assertAdminFieldVisibilityAllowed } from './field-visibility.rules.js';
 
@@ -42,6 +44,8 @@ export class FieldVisibilityAdminService {
     @Inject(MakerCheckerService) private readonly makerChecker: MakerCheckerService,
     @Inject(FieldVisibilityPolicyService)
     private readonly fieldVisibilityPolicy: FieldVisibilityPolicyService,
+    @Inject(ApprovalWorkItemService)
+    private readonly approvalWorkItemService: ApprovalWorkItemService,
   ) {}
 
   async getMatrix(): Promise<FieldVisibilityMatrixResponse> {
@@ -135,6 +139,15 @@ export class FieldVisibilityAdminService {
         },
       });
 
+      await this.approvalWorkItemService.createInTransaction(tx, {
+        actionCode: FIELD_VISIBILITY_ACTION,
+        requestedBy: actor.id,
+        targetType: ApprovalWorkItemTargetType.FIELD_VISIBILITY_BATCH,
+        targetId: createdBatch.id,
+        summary: this.approvalWorkItemService.buildFieldVisibilityBatchSummary(prepared.length),
+        correlationId,
+      });
+
       return createdBatch;
     });
 
@@ -201,6 +214,14 @@ export class FieldVisibilityAdminService {
             maker_user_id: batch.requestedBy,
             reason: body.reason,
           },
+        });
+
+        await this.approvalWorkItemService.closeInTransaction(tx, {
+          targetType: ApprovalWorkItemTargetType.FIELD_VISIBILITY_BATCH,
+          targetId: batch.id,
+          decidedBy: checker.id,
+          approved: false,
+          reason: body.reason,
         });
 
         return updated;
@@ -272,6 +293,14 @@ export class FieldVisibilityAdminService {
           approvedBy: checker.id,
           resolvedAt: new Date(),
         },
+      });
+
+      await this.approvalWorkItemService.closeInTransaction(tx, {
+        targetType: ApprovalWorkItemTargetType.FIELD_VISIBILITY_BATCH,
+        targetId: batch.id,
+        decidedBy: checker.id,
+        approved: true,
+        reason: body.reason,
       });
 
       return { updatedBatch, appliedChanges };

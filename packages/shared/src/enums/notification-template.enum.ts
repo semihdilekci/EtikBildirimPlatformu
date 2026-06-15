@@ -1,5 +1,5 @@
 /**
- * Notification template catalog — 28 şablon (Docs/04_BACKEND_SPEC, Faz 8).
+ * Notification template catalog — 29 şablon (Docs/04_BACKEND_SPEC, Faz 8 + Faz 9.1).
  * Her kod notification_templates.template_code ile birebir eşleşir.
  */
 export const NotificationTemplateCode = {
@@ -31,6 +31,7 @@ export const NotificationTemplateCode = {
   CHAIR_GATE_DECISION: 'chair_gate_decision',
   DECISION_DRAFT_READY: 'decision_draft_ready',
   TASK_OVERDUE_REMINDER: 'task_overdue_reminder',
+  APPROVAL_WORK_ITEM_ASSIGNED: 'approval_work_item_assigned',
 } as const;
 
 export type NotificationTemplateCodeValue =

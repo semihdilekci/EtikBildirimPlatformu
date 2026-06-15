@@ -22,6 +22,7 @@ import { AuthService } from '../../auth/auth.service.js';
 import { AuditEventPublisher } from '../../../audit/audit-event.publisher.js';
 import { MakerCheckerService } from '../maker-checker/maker-checker.service.js';
 import { ActionMatrixConfigService } from '../maker-checker/action-matrix-config.service.js';
+import { ApprovalWorkItemService } from '../maker-checker/approval-work-item.service.js';
 import { ConfigService } from '../config/config.service.js';
 import { SystemSettingsController } from '../config/system-settings.controller.js';
 
@@ -80,6 +81,7 @@ describe('Admin system settings DB integration (Testcontainers)', () => {
         [
           'superadmin@ethics.local',
           'checker.admin@ethics.local',
+          'council.secretary@ethics.local',
           'council.member@ethics.local',
         ].map(async (email) => [email, await loadAuthenticatedUser(environment, email)] as const),
       ),
@@ -98,6 +100,7 @@ describe('Admin system settings DB integration (Testcontainers)', () => {
         ConfigService,
         ActionMatrixConfigService,
         MakerCheckerService,
+        ApprovalWorkItemService,
         AuditEventPublisher,
         { provide: PrismaService, useValue: prismaService },
         Reflector,
@@ -234,7 +237,7 @@ describe('Admin system settings DB integration (Testcontainers)', () => {
 
     const approveResponse = await request(app.getHttpServer())
       .post(`/api/v1/admin/system-settings/batches/${batchId}/approve`)
-      .set('x-test-user-id', userIdFor('checker.admin@ethics.local'))
+      .set('x-test-user-id', userIdFor('council.secretary@ethics.local'))
       .send({ approved: true, reason: 'Onaylandı.' });
 
     expect(approveResponse.status).toBe(HttpStatus.OK);
@@ -274,7 +277,7 @@ describe('Admin system settings DB integration (Testcontainers)', () => {
 
     const approveResponse = await request(app.getHttpServer())
       .post(`/api/v1/admin/system-settings/batches/${batchId}/approve`)
-      .set('x-test-user-id', userIdFor('checker.admin@ethics.local'))
+      .set('x-test-user-id', userIdFor('council.secretary@ethics.local'))
       .send({ approved: true, reason: 'Bulk onay.' });
 
     expect(approveResponse.status).toBe(HttpStatus.OK);

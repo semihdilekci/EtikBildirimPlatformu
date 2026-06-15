@@ -86,10 +86,12 @@ Mesajda **「Faz N — İterasyon M」** belirt. Kod öncesi `48-git-phase-branc
 | 3 Crypto + Audit | `53-phase-03-crypto-audit` | hazır |
 | 4 Intake + Tracking | `54-phase-04-intake-tracking` | hazır |
 | 5 Case + Workflow | `55-phase-05-case-workflow` | hazır |
+| 5.1 Sekreterya Intake Köprüsü | `55.1-phase-05.1-secretary-intake-bridge` | hazır |
 | 6 Task + SLA | `56-phase-06-task-sla` | hazır |
 | 7 Document | `57-phase-07-document` | hazır |
 | 8 Notification | `58-phase-08-notification` | hazır |
 | 9 Admin Panel | `59-phase-09-admin` | hazır |
+| 9.1 Onay Kuyruğu | `59.1-phase-09.1-admin-change` | hazır |
 | 10 Dashboard + Polish | `60-phase-10-dashboard-polish` | hazır |
 | 11 Performance | `61-phase-11-performance` | hazır |
 | 12 Security Hardening | `62-phase-12-security-hardening` | hazır |

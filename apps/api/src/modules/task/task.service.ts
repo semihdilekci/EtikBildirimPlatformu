@@ -1,6 +1,12 @@
-import { HttpStatus, Injectable } from '@nestjs/common';
+import { HttpStatus, Inject, Injectable } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
-import type { CompleteTaskBody, DelegateTaskBody, ListTasksQuery, TaskDetail } from '@ethics/dto';
+import type {
+  CompleteTaskBody,
+  DecideTaskBody,
+  DelegateTaskBody,
+  ListTasksQuery,
+  WorkflowTaskDetail,
+} from '@ethics/dto';
 import {
   AuditActorType,
   AuditEventType,
@@ -11,7 +17,6 @@ import {
   TaskEventType,
   TaskStatus,
   TaskType,
-  TASK_STATUS_VALUES,
   TASK_TYPES_WITHOUT_COMPLETION,
   type AuditActorTypeCode,
   type CaseStateCode,
@@ -32,42 +37,25 @@ import type {
   TransitionTaskStub,
 } from '../case-management/transition/transition.types.js';
 import type { TransitionService } from '../case-management/transition/transition.service.js';
-import {
-  buildTaskCursorSortCondition,
-  decodeTaskListCursor,
-  encodeTaskListCursor,
-  resolveTaskSortField,
-  toTaskSortValue,
-} from './task-pagination.util.js';
-import { toTaskDetail, toTaskListItem, type TaskWithCase } from './task.mapper.js';
+import { TASK_DETAIL_INCLUDE, type TaskWithCase } from './task.mapper.js';
+import { UnifiedWorkItemService } from './unified-work-item.service.js';
+import { toWorkflowTaskDetail } from './unified-work-item.mapper.js';
 import { resolveTasksForTransition } from './task-transition-catalog.js';
 import { recordTaskEvent } from './task-event.writer.js';
 import { SlaCalculatorService } from './sla/sla-calculator.service.js';
-
-const TASK_DETAIL_INCLUDE = {
-  case: {
-    include: {
-      company: {
-        select: {
-          id: true,
-          name: true,
-        },
-      },
-    },
-  },
-} as const satisfies Prisma.TaskInclude;
 
 @Injectable()
 export class TaskService {
   private transitionServiceRef: TransitionService | null = null;
 
   constructor(
-    private readonly prisma: PrismaService,
-    private readonly policyScope: PolicyScopeService,
-    private readonly auditPublisher: AuditEventPublisher,
-    private readonly slaCalculator: SlaCalculatorService,
-    private readonly notificationService: NotificationService,
-    private readonly moduleRef: ModuleRef,
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(PolicyScopeService) private readonly policyScope: PolicyScopeService,
+    @Inject(AuditEventPublisher) private readonly auditPublisher: AuditEventPublisher,
+    @Inject(SlaCalculatorService) private readonly slaCalculator: SlaCalculatorService,
+    @Inject(NotificationService) private readonly notificationService: NotificationService,
+    @Inject(ModuleRef) private readonly moduleRef: ModuleRef,
+    @Inject(UnifiedWorkItemService) private readonly unifiedWorkItemService: UnifiedWorkItemService,
   ) {}
 
   /** Test factory circular wiring — production ModuleRef lazy resolve kullanır. */
@@ -159,65 +147,26 @@ export class TaskService {
     return created;
   }
 
-  async listTasks(
-    user: AuthenticatedUser,
-    query: ListTasksQuery,
-  ): Promise<{
-    data: ReturnType<typeof toTaskListItem>[];
-    pagination: { nextCursor: string | null; hasMore: boolean; total: null };
-  }> {
-    const policyScope = this.policyScope.buildTaskScope(user) as Prisma.TaskWhereInput;
-    const filterScope = this.buildListFilterScope(query);
-    const sortField = resolveTaskSortField(query.sortBy);
-    const take = query.limit + 1;
-
-    const whereConditions: Prisma.TaskWhereInput[] = [policyScope, filterScope];
-
-    if (query.cursor) {
-      try {
-        const cursorPayload = decodeTaskListCursor(query.cursor);
-        whereConditions.push(
-          buildTaskCursorSortCondition(sortField, query.sortOrder, cursorPayload),
-        );
-      } catch {
-        throw new DomainException(
-          ErrorCode.VALIDATION_FAILED,
-          'Geçersiz sayfalama imleci.',
-          HttpStatus.BAD_REQUEST,
-        );
-      }
-    }
-
-    const rows = (await this.prisma.task.findMany({
-      where: { AND: whereConditions },
-      orderBy: [{ [sortField]: query.sortOrder }, { id: query.sortOrder }],
-      take,
-      include: TASK_DETAIL_INCLUDE,
-    })) as TaskWithCase[];
-
-    const hasMore = rows.length > query.limit;
-    const pageRows = hasMore ? rows.slice(0, query.limit) : rows;
-    const lastRow = pageRows.at(-1);
-
-    return {
-      data: pageRows.map(toTaskListItem),
-      pagination: {
-        nextCursor:
-          hasMore && lastRow
-            ? encodeTaskListCursor({
-                id: lastRow.id,
-                sortValue: this.resolveRowSortValue(lastRow, sortField),
-              })
-            : null,
-        hasMore,
-        total: null,
-      },
-    };
+  async listTasks(user: AuthenticatedUser, query: ListTasksQuery) {
+    return this.unifiedWorkItemService.listItems(user, query);
   }
 
-  async getTaskDetail(user: AuthenticatedUser, taskId: string): Promise<TaskDetail> {
-    const task = await this.findTaskWithinScope(user, taskId);
-    return toTaskDetail(task);
+  async getTaskDetail(user: AuthenticatedUser, taskId: string) {
+    return this.unifiedWorkItemService.getItemDetail(user, taskId);
+  }
+
+  async decideApprovalWorkItem(
+    user: AuthenticatedUser,
+    workItemId: string,
+    body: DecideTaskBody,
+    correlationId: string,
+  ) {
+    return this.unifiedWorkItemService.decideApprovalWorkItem(
+      user,
+      workItemId,
+      body,
+      correlationId,
+    );
   }
 
   async completeTask(
@@ -225,7 +174,7 @@ export class TaskService {
     taskId: string,
     body: CompleteTaskBody,
     correlationId: string,
-  ): Promise<TaskDetail> {
+  ): Promise<WorkflowTaskDetail> {
     const transitionIdempotencyKey = `task-complete:${body.idempotencyKey}`;
 
     const existingTransition = await this.prisma.caseTransition.findUnique({
@@ -235,7 +184,7 @@ export class TaskService {
     if (existingTransition) {
       const task = await this.findTaskWithinScope(user, taskId);
       if (task.status === TaskStatus.COMPLETED) {
-        return toTaskDetail(task);
+        return toWorkflowTaskDetail(task);
       }
     }
 
@@ -285,7 +234,7 @@ export class TaskService {
       }
 
       if (currentTask.status === TaskStatus.COMPLETED) {
-        return toTaskDetail(currentTask);
+        return toWorkflowTaskDetail(currentTask);
       }
 
       await this.transitionService.executeInTransaction(
@@ -356,7 +305,7 @@ export class TaskService {
         completedByUserId: user.id,
       });
 
-      return toTaskDetail(completedTask);
+      return toWorkflowTaskDetail(completedTask);
     });
   }
 
@@ -365,7 +314,7 @@ export class TaskService {
     taskId: string,
     body: DelegateTaskBody,
     correlationId: string,
-  ): Promise<TaskDetail> {
+  ): Promise<WorkflowTaskDetail> {
     const scopedTask = await this.findTaskWithinScope(user, taskId);
 
     this.assertTaskDelegatable(scopedTask.status as TaskStatusCode);
@@ -503,58 +452,8 @@ export class TaskService {
         idempotencyKey: `${taskId}:${body.delegateToUserId}`,
       });
 
-      return toTaskDetail(delegatedTask);
+      return toWorkflowTaskDetail(delegatedTask);
     });
-  }
-
-  private buildListFilterScope(query: ListTasksQuery): Prisma.TaskWhereInput {
-    const scope: Prisma.TaskWhereInput = {};
-
-    if (query.status?.length) {
-      for (const status of query.status) {
-        if (!TASK_STATUS_VALUES.includes(status as TaskStatusCode)) {
-          throw new DomainException(
-            ErrorCode.VALIDATION_FAILED,
-            `Geçersiz görev durumu: ${status}`,
-            HttpStatus.BAD_REQUEST,
-          );
-        }
-      }
-
-      scope.status = { in: query.status };
-    }
-
-    if (query.taskType) {
-      scope.taskType = query.taskType;
-    }
-
-    if (query.caseId) {
-      scope.caseId = query.caseId;
-    }
-
-    if (query.dueBefore || query.dueAfter) {
-      scope.dueAt = {
-        ...(query.dueBefore ? { lte: new Date(query.dueBefore) } : {}),
-        ...(query.dueAfter ? { gte: new Date(query.dueAfter) } : {}),
-      };
-    }
-
-    return scope;
-  }
-
-  private resolveRowSortValue(
-    row: TaskWithCase,
-    sortField: ReturnType<typeof resolveTaskSortField>,
-  ): string {
-    switch (sortField) {
-      case 'dueAt':
-        return toTaskSortValue(row.dueAt);
-      case 'status':
-        return row.status;
-      case 'createdAt':
-      default:
-        return toTaskSortValue(row.createdAt);
-    }
   }
 
   private async findTaskWithinScope(
